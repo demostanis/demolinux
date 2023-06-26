@@ -1,0 +1,70 @@
+# Maintainer: Daniel M. Capella <polyzen@archlinux.org>
+# Contributor: demostanis worlds
+# we maintain our own uBlock Origin which prefetches more lists,
+# since using managed storage makes firefox horribly slow on startup.
+
+pkgname='firefox-ublock-origin'
+pkgbase=ublock-origin
+pkgver=1.44.4
+pkgrel=1
+pkgdesc='Efficient blocker add-on for various browsers. Fast, potent, and lean'
+arch=('any')
+url=https://github.com/gorhill/uBlock
+license=('GPL3')
+makedepends=('git' 'npm' 'python' 'strip-nondeterminism' 'zip')
+source=("git+$url.git#commit=$pkgver?signed"
+        "git+https://github.com/uBlockOrigin/uAssets.git"
+        "0001-Prefetch-some-assets-instead-of-making-them-external.patch"
+        "0002-Don-t-overwrite-copied-files.patch"
+				# additional filters to be packed in the .xpi
+				"https://filters.adtidy.org/extension/ublock/filters/14.txt"
+				"https://filters.adtidy.org/extension/ublock/filters/4.txt"
+				"https://secure.fanboy.co.nz/fanboy-antifacebook.txt"
+				"https://secure.fanboy.co.nz/fanboy-annoyance.txt"
+				"https://secure.fanboy.co.nz/fanboy-cookiemonster.txt"
+				"https://easylist.to/easylist/fanboy-social.txt"
+				"https://ublockorigin.github.io/uAssets/filters/annoyances.txt")
+b2sums=('SKIP'
+        'SKIP'
+        'dae345ba580086a7e76ed7a1af90fba4f941804c33796dd40bc3407901c62a3457eb6a145c46af0c09a441f6d770518572328f53e1e04901387c0e3f80c870c1'
+        '6dfe747ca0761710f5166bc5b276b08f20a161205be7f4154a4f38caf9a91e087f7914e9ee157b7ed3908a197875d5e86fe1eb72e3de77f5043adbca35ae576d'
+        '190b34b945a42974a16bc03c1b98fc6376ac18ab643d16f4f61631c758d14cfd42e13ddfca76f35d37950b6bddf9b34929e86376cd70b8c930636c1728759062'
+        '791ba127cf09a8ee8d25fc037e14174725928b28e5125dfeb3f895b01f939059c4cb52c5603e3c47e70feef2decdfed8a05b72c1b6dc47c90b5840c2083dae7d'
+        '923d3a9b3cb9d7c156d5ca92bcd211e774fe5d7b6261e7904e42bf01ac3e5855275ef3cba2be649639d9991862c09b16a12d2fbd48996e811a1f8cff03c87f5b'
+        '490d3fe6107d2030f10c0aa3f05fea15e8db25c8de116ff9045b4699853edc9b73a09a43d36238e32839c3bc9e1a70439168377eb1cd8f309c7d56e7ddf29761'
+        '6b3e994fc70ce88792b1ad196556c7b4ba7303014a92b9b009f109509355a9bbf80dc072db4a5f6759fe5c8054c02c518290f8680af66f36f4bd27fa616efe77'
+        '4d0ba0cb5dd10b3537bc4d7890d2e26e649921fc3083264dffe5846cf0619bfb6b03b87b90f8390d74d1a7b483ccc91afab5ebbefc8c3bd76435e6caa65ae4ee'
+        '8cda896d227c50b5196f41e45a2e60ae0a1dfe60f8d993d392d8f2fdaa69647764656873beeac882d9e48a2f7293a83b12de3c093f1adaaea1b28a05f60d8dbc')
+validpgpkeys=('603B28AA5D6CD687A554347425E1490B761470C2') # Raymond Hill <rhill@raymondhill.net>
+
+prepare() {
+  cd uBlock
+  git submodule init
+  git config submodule.submodules/uAssets.url ../uAssets
+  git -c protocol.file.allow=always submodule update
+
+	for file in ../*.txt; do
+		echo copying $file
+	  cp "$file" ../uBlock/submodules/uAssets/filters/
+  done
+  git apply ../0001-Prefetch-some-assets-instead-of-making-them-external.patch
+  git apply ../0002-Don-t-overwrite-copied-files.patch
+}
+
+build() {
+  cd uBlock
+  make
+  /usr/bin/vendor_perl/strip-nondeterminism -t zip dist/build/uBlock0.firefox.xpi
+}
+
+check() {
+  cd uBlock
+  make test
+}
+
+package_firefox-ublock-origin() {
+  groups=('firefox-addons')
+  cd uBlock/dist/build
+  install -Dm644 uBlock0.firefox.xpi \
+    "$pkgdir"/usr/lib/firefox/browser/extensions/uBlock0@raymondhill.net.xpi
+}

@@ -1,0 +1,256 @@
+local tab_masters = {}
+local tabbed_clients = {"URxvt"}
+local is_launching_tab = false
+
+local titlebar_args = {
+    position = "bottom",
+    bg_focus = beautiful.tabs_bg or 
+        beautiful.bg_normal
+}
+
+local function wants_tabs(c)
+    for _, class in ipairs(tabbed_clients) do
+        if class == c.class then
+           return true
+        end
+    end
+    return false
+end
+
+local function deactivate(tabs)
+    for _, tab in ipairs(tabs) do
+        tab.active = false
+    end
+end
+
+local function mktabw(text, active)
+    local bg_color = beautiful.bg_focus
+    if active then bg_color = beautiful.color3 end
+
+    local tabw = wibox.widget{
+        {
+            {
+                {
+                    widget = wibox.widget.textbox,
+                    markup = text,
+                    id = "text",
+                },
+                widget = wibox.container.margin,
+                margins = 4,
+            },
+            bg = bg_color,
+            shape = rrect(),
+            widget = wibox.container.background,
+            id = "background",
+        },
+        widget = wibox.container.margin,
+        margins = 2,
+    }
+    local textw = tabw:get_children_by_id("text")[1]
+    tabw:connect_signal("mouse::enter", function()
+        textw.old_markup = textw.markup
+        textw.markup = string.format(
+            [[<span foreground="%s">%s</span>]],
+            beautiful.color13, textw.text
+        )
+    end)
+    tabw:connect_signal("mouse::leave", function()
+        textw.markup = textw.old_markup
+    end)
+    return tabw
+end
+
+local function update_tabs(master)
+    local tabs = master.tabs
+    local tabsl = master.tabsl
+
+    local drawn_tabs_count = 0
+    local to_delete = {}
+    for i, child in ipairs(tabsl:get_children()) do
+        if child.is_plus_button then break end
+
+        if tabs[i].to_delete then
+            table.insert(to_delete, i)
+        else
+            local child_background = child
+                :get_children_by_id("background")[1]
+            if tabs[i].active then
+                child_background:set_bg(beautiful.color3)
+            else
+                child_background:set_bg(beautiful.bg_focus)
+            end
+        end
+
+        drawn_tabs_count = drawn_tabs_count + 1
+    end
+    for _, i in ipairs(to_delete) do
+        table.remove(tabs, i)
+        tabsl:remove(i)
+    end
+    for i = 1,#tabs-drawn_tabs_count do
+        local tab_index = drawn_tabs_count+i
+        local tab = tabs[tab_index]
+        local tabw = mktabw(tab.name, tab.active)
+
+        tabsl:insert(tab_index, tabw)
+        tabw:buttons(gears.table.join(
+            awful.button({ }, 1, function()
+                if tab.active then return end
+
+                local previous_active_slave = master.active_slave
+                deactivate(tabs)
+                tab.active = true
+
+                delayed(function()
+                    tab.client.x = previous_active_slave.x
+                    tab.client.y = previous_active_slave.y
+                    tab.client.width = previous_active_slave.width
+                    tab.client.height = previous_active_slave.height
+                    tab.client.minimized = false
+
+                    tab.client:raise()
+                    client.focus = tab.client
+                    previous_active_slave.minimized = true
+                    master:set_active_slave(tab.client)
+                end)
+
+                update_tabs(master)
+            end)
+        ))
+    end
+end
+
+local function delete_tab_in(master, tab_to_delete)
+    local tabs = master.tabs
+    local tabsl = master.tabsl
+    local last = master.last
+
+    local tab_index = 0
+    for i, tab in ipairs(tabs) do
+        if tab == tab_to_delete then
+            tab.to_delete = true
+            tab_index = i
+            break
+        end
+    end
+    if #tabs > 1 then
+        local previous_tab = tabs[tab_index-1] or tabs[tab_index+1]
+        master:set_active_slave(previous_tab.client)
+        previous_tab.active = true
+
+        delayed(function()
+            previous_tab.client.x = last.x
+            previous_tab.client.y = last.y
+            previous_tab.client.width = last.width
+            previous_tab.client.height = last.height
+            previous_tab.client.minimized = false
+            client.focus = previous_tab.client
+            previous_tab.client:raise()
+        end)
+    else
+        master:set_active_slave(nil)
+    end
+
+    update_tabs(master)
+end
+
+local function spawn_new_tab_in(master)
+    if is_launching_tab then return end
+    is_launching_tab = true
+
+    local tabs = master.tabs
+    deactivate(tabs)
+    local tab =  {
+        name = "Untitled #"..#tabs,
+        active = true,
+    }
+    table.insert(tabs, tab)
+    update_tabs(master)
+
+    local c = master.active_slave
+    local command = io.open("/proc/"..c.pid.."/cmdline"):read()
+    local new_client = awful.spawn(command, {
+        x = c.x, y = c.y,
+        width = c.width,
+        height = c.height,
+    }, function(new_client)
+        is_launching_tab = false
+        tab.client = new_client
+        new_client.is_tab = true
+        master:set_active_slave(new_client)
+
+        delayed(function()
+            c.minimized = true
+            new_client:raise()
+        end)
+
+        local last = master.last
+        new_client:emit_signal("render_tabs", master)
+        new_client:connect_signal("property::x", function() last.x = new_client.x end)
+        new_client:connect_signal("property::y", function() last.y = new_client.y end)
+        new_client:connect_signal("property::width", function() last.width = new_client.width end)
+        new_client:connect_signal("property::height", function() last.height = new_client.height end)
+        new_client:connect_signal("unmanage", function()
+            delete_tab_in(master, tab)
+        end)
+    end)
+end
+
+return function(c)
+    if wants_tabs(c) then
+        local tabsl
+
+        if not is_launching_tab then
+            tabsl = wibox.layout.fixed.horizontal()
+            local tabs = {{
+                name = c.name,
+                active = true,
+                client = c,
+            }}
+            tab_masters[c] = {
+                tabsl = tabsl,
+                tabs = tabs,
+                last = {}
+            }
+            local master = tab_masters[c]
+            function master.set_active_slave(self, s)
+                self.active_slave = s
+                pcall(function()
+                    c.active_slave = s
+                end)
+            end
+            master:set_active_slave(c)
+
+            local plus_button = mktabw("+")
+            plus_button.is_plus_button = true
+            plus_button:buttons(gears.table.join(
+                awful.button({ }, 1, function()
+                    spawn_new_tab_in(master)
+                end)
+            ))
+            tabsl:add(plus_button)
+
+            c:connect_signal("unmanage", function()
+                delete_tab_in(master, tabs[1])
+            end)
+
+            update_tabs(master)
+            awful.titlebar(c, titlebar_args):setup{ tabsl,
+                layout = wibox.layout.align.horizontal
+            }
+        else
+            c:connect_signal("render_tabs", function(_, master)
+                awful.titlebar(c, titlebar_args):setup{ master.tabsl,
+                    layout = wibox.layout.align.horizontal
+                }
+                -- Since we render our tab bar after request::titlebars,
+                -- the client's height is improperly calculated, so we
+                -- need to adjust it
+                local height = c._private.titlebars.top.drawable.drawable:geometry().height
+                c.height = c.height - height
+            end)
+        end
+    end
+end
+
+-- vim:set et sw=4 ts=4:

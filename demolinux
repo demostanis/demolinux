@@ -1,0 +1,53 @@
+#!/bin/sh
+# demolinux build&run script
+#  Usage: ./demolinux [run|clean|build|all|schemes]
+
+A=( $@ )
+elevate(){
+	[ $(id -u) -ne 0 ] && exec sudo -E ./"$0" ${A[@]}
+}
+
+clean(){
+	elevate
+	pkill archiso
+	mount | grep $PWD | cut -d\  -f3 | xargs -r umount -l
+	rm -rf work/
+}
+
+ensure_installed(){
+	pacman -Q $(<bdep_packages.x86_64) >/dev/null || {
+		echo Missing packages to build. Installing...
+		pacman -S $(<bdep_packages.x86_64)
+	}
+}
+
+rebuild_schemes(){
+	flavours -c flavours.conf apply ${1:-mellow-purple}
+}
+
+build(){
+	ensure_installed
+	elevate
+	./bin/mkarchiso -o out/ -w work/ -v .
+}
+
+run(){
+	without_root ./bin/run_archiso -i out/$(ls -t out/ | head -1)
+}
+
+without_root(){
+	if [ $(id -u) -ne 0 ]; then
+		$@
+	else
+		su $SUDO_USER -pc "$*"
+	fi
+}
+
+case $1 in
+	run) run ;;
+	clean) clean ;;
+	build) clean; build ;;
+	all) clean; build; run ;;
+	schemes) rebuild_schemes $2 ;;
+	*) sed -n '2,3s/# //p' "$0" ;;
+esac

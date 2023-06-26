@@ -1,0 +1,27 @@
+pkgname='bling'
+pkgdesc="Utilities for the AwesomeWM"
+pkgver=dev
+pkgrel=7
+arch=(any)
+url='https://github.com/BlingCorp/bling'
+license=(MIT)
+makedepends=(git)
+depends=(awesome)
+source=(git+https://github.com/BlingCorp/bling.git
+	0001-Let-me-theme-my-app_launcher-with-beautiful-variable.patch)
+sha256sums=('SKIP'
+            '15c8220223ac04f78442671e759b7b2a849e743120b7213fc95216b51be13909')
+_luaver=5.4
+
+prepare() {
+	cd $pkgname
+	git apply ../0001-Let-me-theme-my-app_launcher-with-beautiful-variable.patch
+}
+
+package() {
+	cd $pkgname
+	_dest="$pkgdir"/usr/share/lua/$_luaver/$pkgname
+	mkdir -p "$_dest"
+	cp -r -- * "$_dest" 
+	chmod -R 755 "$_dest"/*
+}

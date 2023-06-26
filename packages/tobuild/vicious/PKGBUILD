@@ -1,0 +1,28 @@
+# Maintainer: Caleb Maclennan <caleb@alerque.com>
+# Contributor: Levente Polyak <anthraxx[at]archlinux[dot]org>
+# Contributor: Sébastien Luttringer
+
+pkgname=vicious
+pkgver=2.6.0
+pkgrel=2
+pkgdesc='Widgets for the Awesome window manager'
+url="https://github.com/Mic92/$pkgname"
+arch=(any)
+license=(GPL2)
+depends=(lua)
+optdepends=('alsa-utils: for the Volume widget type'
+            'curl: for widget types accessing network resources'
+            'hddtemp: for the HDD Temp widget type'
+            'wireless_tools: for the Wireless widget type')
+_archive="$pkgname-$pkgver"
+source=("$url/archive/v$pkgver/$_archive.tar.gz")
+sha256sums=('444280d6c96c27a0c523b5f0a5e933a3f6dbf473c0a53bf4a8bce43a9b3dd537')
+
+package() {
+  cd "$_archive"
+  install -Dm0644 -t "$pkgdir/usr/share/lua/5.4/$pkgname/" *.lua
+  install -Dm0644 -t "$pkgdir/usr/share/lua/5.4/$pkgname/contrib/" contrib/*.lua
+  install -Dm0644 -t "$pkgdir/usr/share/lua/5.4/$pkgname/widgets/" widgets/*.lua
+  install -Dm0644 -t "$pkgdir/usr/share/doc/$pkgname/" README.md
+}
+

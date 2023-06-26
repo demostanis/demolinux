@@ -1,0 +1,12 @@
+work/
+out/
+packages/tobuild/*/src
+packages/tobuild/*/pkg
+packages/tobuild/*/*.tar.gz
+packages/tobuild/*/*.tar.bz2
+packages/tobuild/*/*.tar.zst
+packages/tobuild/*/*.xpi
+packages/chroot/
+packages/aurcache/
+packages/db/
+*.log

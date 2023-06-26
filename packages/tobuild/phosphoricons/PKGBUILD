@@ -1,0 +1,18 @@
+pkgname=phosphoricons
+pkgver=2.0.2
+pkgrel=1
+pkgdesc='A flexible icon family for the web'
+arch=('any')
+url='https://phosphoricons.com'
+license=('MIT')
+makedepends=('git')
+source=("$pkgname::git+https://github.com/phosphor-icons/web.git")
+md5sums=('SKIP')
+
+package () {
+  cd "$pkgname"
+  install -dm755 "$pkgdir"/usr/share/fonts/TTF/
+  install -m644 src/*/*.ttf "$pkgdir/usr/share/fonts/TTF/"
+}
+
+# vim:set ts=2 sw=2 et:

@@ -1,0 +1,16 @@
+pkgname=firefox-ff2mpv
+pkgver=4.0.0
+pkgrel=1
+pkgdesc="A Firefox/Chrome add-on for playing URLs in mpv"
+url="https://github.com/zerodytrash/Simple-YouTube-Age-Restriction-Bypass"
+license=('MIT')
+arch=('any')
+depends=(firefox)
+source=("$pkgname-$pkgver.xpi::https://addons.mozilla.org/firefox/downloads/file/3898765/ff2mpv-$pkgver.xpi")
+noextract=("$pkgname-$pkgver.xpi")
+
+package() {
+    install -Dm644 "$pkgname-$pkgver.xpi" \
+        "${pkgdir}/usr/lib/firefox/browser/extensions/ff2mpv@yossarian.net.xpi"
+}
+sha256sums=('88312a84fc0a5d8e32100664af900a252a86875ee51869c30fd68054e990c992')

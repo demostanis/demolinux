@@ -1,0 +1,16 @@
+pkgname=firefox-ytarb
+pkgver=2.5.4
+pkgrel=1
+pkgdesc="Bypass YouTube's age verification"
+url="https://github.com/zerodytrash/Simple-YouTube-Age-Restriction-Bypass"
+license=('MIT')
+arch=('any')
+depends=(firefox)
+source=("$pkgname-$pkgver.xpi::https://github.com/zerodytrash/Simple-YouTube-Age-Restriction-Bypass/releases/download/v$pkgver/extension_mv2_firefox.zip")
+noextract=("$pkgname-$pkgver.xpi")
+
+package() {
+    install -Dm644 "$pkgname-$pkgver.xpi" \
+        "${pkgdir}/usr/lib/firefox/browser/extensions/simple-youtube-age-restriction-bypass@zerody.one.xpi"
+}
+sha256sums=('290909223b24abbe970baee9b5e29cde0f04b74fa5a0d320c89f16f9304f0ad2')

@@ -1,0 +1,93 @@
+From cc3c7b9c2e0a76194f9f42eaf6b90bc7c541a058 Mon Sep 17 00:00:00 2001
+From: demostanis <demostanis@protonmail.com>
+Date: Tue, 13 Jun 2023 14:30:56 +0200
+Subject: [PATCH 1] Let me theme my app_launcher with beautiful variables
+
+(and allow passing a whitelist to the app_launcher. I wonder why this
+wasn't separated in two commits...)
+
+---
+ widget/app_launcher/init.lua | 27 ++++++++++++++++++++-------
+ 1 file changed, 20 insertions(+), 7 deletions(-)
+
+diff --git a/widget/app_launcher/init.lua b/widget/app_launcher/init.lua
+index 4cc6a55..31f29f3
+--- a/widget/app_launcher/init.lua
++++ b/widget/app_launcher/init.lua
+@@ -595,8 +595,20 @@ local function generate_apps(self)
+             local executable = app_info.get_executable(app)
+             local icon = icon_theme:get_gicon_path(app_info.get_icon(app))
+ 
+-            -- Check if this app should be skipped, depanding on the skip_names / skip_commands table
+-            if not has_value(self.skip_names, name) and not has_value(self.skip_commands, commandline) then
++            local function matcher()
++                if self.whitelist then
++                        for _, whitelisted in ipairs(self.whitelist) do
++                                if whitelisted == name then
++                                        return true
++                                end
++                        end
++                        return false
++                else
++                        return not has_value(self.skip_names, name) and not has_value(self.skip_commands, commandline)
++                end
++            end
++
++            if matcher() then
+                 -- Check if this app should be skipped becuase it's iconless depanding on skip_empty_icons
+                 if icon ~= "" or self.skip_empty_icons == false then
+                     if icon == "" then
+@@ -753,6 +765,7 @@ local function new(args)
+     args.favorites = args.favorites or {}
+     args.search_commands = args.search_commands == nil and true or args.search_commands
+     args.skip_names = args.skip_names or {}
++    args.whitelist = args.whitelist or nil
+     args.skip_commands = args.skip_commands or {}
+     args.skip_empty_icons = args.skip_empty_icons ~= nil and args.skip_empty_icons or false
+     args.sort_alphabetically = args.sort_alphabetically == nil and true or args.sort_alphabetically
+@@ -788,7 +801,7 @@ local function new(args)
+     args.prompt_margins = args.prompt_margins or dpi(0)
+     args.prompt_paddings = args.prompt_paddings or dpi(30)
+     args.prompt_shape = args.prompt_shape or nil
+-    args.prompt_color = args.prompt_color or beautiful.fg_normal or "#FFFFFF"
++    args.prompt_color = args.prompt_color or beautiful.app_launcher_prompt_color or beautiful.fg_normal or "#FFFFFF"
+     args.prompt_border_width = args.prompt_border_width or beautiful.border_width or dpi(0)
+     args.prompt_border_color = args.prompt_border_color or beautiful.border_color or args.prompt_color
+     args.prompt_text_halign = args.prompt_text_halign or "left"
+@@ -796,13 +809,13 @@ local function new(args)
+     args.prompt_icon_text_spacing = args.prompt_icon_text_spacing or dpi(10)
+     args.prompt_show_icon = args.prompt_show_icon == nil and true or args.prompt_show_icon
+     args.prompt_icon_font = args.prompt_icon_font or beautiful.font
+-    args.prompt_icon_color = args.prompt_icon_color or beautiful.bg_normal or "#000000"
++    args.prompt_icon_color = args.prompt_icon_color or beautiful.app_launcher_prompt_icon_color or beautiful.bg_normal or "#000000"
+     args.prompt_icon = args.prompt_icon or ""
+     args.prompt_icon_markup = args.prompt_icon_markup or string.format("<span size='xx-large' foreground='%s'>%s</span>", args.prompt_icon_color, args.prompt_icon)
+     args.prompt_text = args.prompt_text or "<b>Search</b>: "
+     args.prompt_start_text = args.prompt_start_text or ""
+     args.prompt_font = args.prompt_font or beautiful.font
+-    args.prompt_text_color = args.prompt_text_color or beautiful.bg_normal or "#000000"
++    args.prompt_text_color = args.prompt_text_color or beautiful.app_launcher_prompt_text_color or beautiful.bg_normal or "#000000"
+     args.prompt_cursor_color = args.prompt_cursor_color or beautiful.bg_normal or "#000000"
+ 
+     args.apps_per_row = args.apps_per_row or 5
+@@ -818,7 +831,7 @@ local function new(args)
+     args.app_normal_hover_color = args.app_normal_hover_color or (color.is_dark(args.app_normal_color) or color.is_opaque(args.app_normal_color)) and
+         color.rgba_to_hex(color.multiply(color.hex_to_rgba(args.app_normal_color), 2.5)) or
+         color.rgba_to_hex(color.multiply(color.hex_to_rgba(args.app_normal_color), 0.5))
+-    args.app_selected_color = args.app_selected_color or beautiful.fg_normal or "#FFFFFF"
++    args.app_selected_color = args.app_selected_color or beautiful.app_launcher_app_selected_color or beautiful.fg_normal or "#FFFFFF"
+     args.app_selected_hover_color = args.app_selected_hover_color or (color.is_dark(args.app_normal_color) or color.is_opaque(args.app_normal_color)) and
+         color.rgba_to_hex(color.multiply(color.hex_to_rgba(args.app_selected_color), 2.5)) or
+         color.rgba_to_hex(color.multiply(color.hex_to_rgba(args.app_selected_color), 0.5))
+@@ -833,7 +846,7 @@ local function new(args)
+     args.app_name_halign = args.app_name_halign or "center"
+     args.app_name_font = args.app_name_font or beautiful.font
+     args.app_name_normal_color = args.app_name_normal_color or beautiful.fg_normal or "#FFFFFF"
+-    args.app_name_selected_color = args.app_name_selected_color or beautiful.bg_normal or "#000000"
++    args.app_name_selected_color = args.app_name_selected_color or beautiful.app_launcher_app_name_selected_color or beautiful.bg_normal or "#000000"
+     args.app_show_generic_name = args.app_show_generic_name ~= nil and args.app_show_generic_name or false
+ 
+     local ret = gobject({})
+-- 
+2.41.0
+

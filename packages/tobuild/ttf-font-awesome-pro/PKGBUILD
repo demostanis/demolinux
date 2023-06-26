@@ -1,0 +1,15 @@
+pkgname=ttf-font-awesome-pro
+pkgver=6.2.0
+pkgrel=2
+pkgdesc="Iconic font designed for Bootstrap"
+url="https://fontawesome.com/"
+license=('custom:OFL')
+arch=('any')
+source=("pro-fa-solid-900.ttf")
+sha256sums=('420ff85b780e3f52bb15ae2d8aae71e22401210b892ee1c0e1e58eb1d0b07cf9')
+
+package() {
+  install -d "$pkgdir/usr/share/fonts/TTF"
+  install -m644 ./*.ttf "$pkgdir/usr/share/fonts/TTF"
+}
+

@@ -1,0 +1,80 @@
+alsa-utils
+amd-ucode
+arch-install-scripts
+aur awesome-git
+aur awesome-rubato-git
+aur ff2mpv-native-messaging-host-git
+aur firefox-userchromejs
+aur la-capitaine-icon-theme
+base
+base-devel
+bat
+bind
+btrfs-progs
+cryptsetup
+e2fsprogs
+edk2-shell
+efibootmgr
+fd
+firefox
+firefox-dark-reader
+git
+grub
+imv
+inotify-tools
+intel-ucode
+irssi
+jq
+linux-firmware
+linux-hardened
+local bling
+local firefox-canvasblocker
+local firefox-ff2mpv
+local firefox-sponsorblock
+local firefox-ublock-origin
+local firefox-vimfx
+local firefox-ytarb
+local lsb-release
+local phosphoricons
+local picom-sdhand
+local rxvt-unicode-pixbuf
+local slop
+local ttf-font-awesome-pro
+local vicious
+lsb-release
+luarocks
+lynx
+man-db
+man-pages
+memtest86+
+memtest86+-efi
+mkinitcpio
+mkinitcpio-archiso
+mkinitcpio-nfs-utils
+mpv
+nbd
+nemo
+neofetch
+neovim
+nmap
+noto-fonts
+noto-fonts-emoji
+openssh
+pacman-contrib
+pulseaudio
+pv
+reflector
+ripgrep
+scrcpy
+squashfs-tools
+sudo
+syslinux
+systemd-resolvconf
+ttf-cascadia-code-nerd
+ttf-fira-code
+ttf-font-awesome
+websocat
+xorg
+xorg-xinit
+xterm
+zsh

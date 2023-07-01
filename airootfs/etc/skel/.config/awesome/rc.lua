@@ -49,6 +49,15 @@ function moveclient(direction)
     client.focus = c
 end
 
+local should_spawn_with_selection = false
+local function spawn_with_selection_if_needed(...)
+    if should_spawn_with_selection then
+        spawn_with_selection(...)
+    else
+        awful.spawn(...)
+    end
+end
+
 globalkeys = gears.table.join(
     awful.key({ modkey,           }, "j",  awful.tag.viewnext,
               {description = "view next", group = "tag"}),
@@ -60,10 +69,24 @@ globalkeys = gears.table.join(
     awful.key({ modkey, "Shift"   }, "k", function() moveclient("up") end,
               {description = "view previous", group = "tag"}),
 
-    awful.key({ modkey,           }, "Return", function () spawn_with_selection(terminal) end,
+    awful.key({ modkey,           }, "Return", function () spawn_with_selection_if_needed(terminal) end,
               {description = "open a terminal", group = "launcher"}),
+    awful.key({ modkey,           }, "f", function () spawn_with_selection_if_needed("firefox") end,
+              {description = "open firefox", group = "launcher"}),
+
     awful.key({ modkey }, "r", awesome.restart,
               {description = "reload awesome", group = "awesome"}),
+
+    awful.key({ modkey }, "x", function()
+        should_spawn_with_selection = true
+        gears.timer{
+            timeout = 1000,
+            single_shot = true,
+            callback = function()
+                should_spawn_with_selection = false
+            end
+        }
+    end),
 
     awful.key({ modkey, }, "space", function()
         bling.widget.app_launcher{

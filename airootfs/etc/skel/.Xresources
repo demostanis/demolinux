@@ -5,6 +5,7 @@ URxvt.scrollBar: true
 URxvt.scrollstyle: plain
 URxvt.scrollBar_right: true
 URxvt.scrollTtyOutput: false
+URxvt.scrollTtyKeypress: true
 
 ! hewwo pwease wepwace this
 ! Base16 Mellow Purple

@@ -1,0 +1,50 @@
+#!/bin/sh
+
+if [ $(id -u) -ne 0 ]; then
+	echo You need root
+	exit 1
+fi
+
+case $1 in
+	add)
+		file=${2:?Missing file to add}
+		if [ ! -f "$file" ]; then
+			echo File does not exist: $file
+			exit 1
+		fi
+
+		echo "$(realpath "$file")" >> /run/archiso/persistfs/upperdir/index
+
+		current="$(realpath "$(dirname "$file")")"
+		parent="$current"
+
+		while [ ! "$current" = / ]; do
+			mkdir -p /run/archiso/persistfs/upperdir/"$current"
+			chown --reference="$current" /run/archiso/persistfs/upperdir/"$current"
+			chmod --reference="$current" /run/archiso/persistfs/upperdir/"$current"
+			current="$(dirname "$current")"
+		done
+
+		cp -a "$file" /run/archiso/persistfs/upperdir"$parent/$(basename "$file")"
+		;;
+	remove)
+		file=${2:?Missing file to remove}
+		if [ ! -f "$file" ]; then
+			echo File does not exist: $file
+			exit 1
+		fi
+
+		file="$(realpath "$file")"
+		rm -f /run/archiso/persistfs/upperdir/"$file"
+		e=$(echo "$file" | sed 's,/,\\\/,g')
+		sed /"$e"/d -i /run/archiso/persistfs/upperdir/index
+		;;
+	list)
+		cat /run/archiso/persistfs/upperdir/index
+		;;
+	*)
+		echo Unknown subcommand
+		exit 1
+		;;
+esac
+

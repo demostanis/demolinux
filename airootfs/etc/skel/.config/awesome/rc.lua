@@ -107,11 +107,16 @@ clientkeys = gears.table.join(
 root.keys(globalkeys)
 
 client.connect_signal("manage", function(c)
-    if not c.icon then
+    if not c.icon and not c.transient_for then
         -- default icon
         -- -- todo put in theme.lua
         local icon = gears.surface("/usr/share/icons/la-capitaine/status/scalable-dark/dialog-question.svg")._native
         c.icon = icon
+    end
+
+    if c.transient_for then
+        awful.placement.centered(c, {parent = c.transient_for})
+        awful.placement.no_offscreen(c)
     end
 end)
 

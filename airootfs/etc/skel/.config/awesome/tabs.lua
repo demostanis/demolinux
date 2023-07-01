@@ -107,10 +107,12 @@ local function update_tabs(master)
                     tab.client.width = previous_active_slave.width
                     tab.client.height = previous_active_slave.height
                     tab.client.minimized = false
+                    tab.client.is_minimized_tab = false
 
                     tab.client:raise()
                     client.focus = tab.client
                     previous_active_slave.minimized = true
+                    previous_active_slave.is_minimized_tab = true
                     master:set_active_slave(tab.client)
                 end)
 
@@ -144,6 +146,7 @@ local function delete_tab_in(master, tab_to_delete)
             previous_tab.client.width = last.width
             previous_tab.client.height = last.height
             previous_tab.client.minimized = false
+            previous_tab.client.is_minimized_tab = false
             client.focus = previous_tab.client
             previous_tab.client:raise()
         end)
@@ -181,6 +184,7 @@ local function spawn_new_tab_in(master)
 
         delayed(function()
             c.minimized = true
+            c.is_minimized_tab = true
             new_client:raise()
         end)
 

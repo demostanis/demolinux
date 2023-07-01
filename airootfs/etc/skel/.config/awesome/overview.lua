@@ -293,7 +293,13 @@ return function()
             end
         end
 
-        local clients = s.selected_tag:clients()
+        local all_clients = s.selected_tag:clients()
+        local clients = {}
+        for _, c in ipairs(all_clients) do
+            if not c.is_minimized_tab then
+                table.insert(clients, c)
+            end
+        end
         draw_clients(clients)
 
         overview_shown = true

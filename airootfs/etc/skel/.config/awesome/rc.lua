@@ -21,8 +21,6 @@ require"startup"
 terminal = "urxvt"
 modkey = "Mod4"
 
-awful.layout.layouts = { awful.layout.suit.floating }
-
 awful.screen.connect_for_each_screen(function(s)
     gears.wallpaper.set(beautiful.wallpaper)
 

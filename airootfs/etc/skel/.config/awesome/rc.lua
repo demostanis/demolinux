@@ -101,7 +101,7 @@ globalkeys = gears.table.join(
         }:toggle()
     end),
 
-    awful.key({ modkey }, "s", require"overview")
+    awful.key({ modkey }, "o", require"overview")
 )
 
 clientkeys = gears.table.join(

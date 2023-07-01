@@ -1,0 +1,39 @@
+# Maintainer: David Runge <dvzrv@archlinux.org>
+
+pkgname=mkinitcpio-archiso
+pkgver=68
+_commit=2ac885187f6dc610254c2fd1a6bb8e13f6e739fa  #refs/tags/v68
+pkgrel=22
+pkgdesc="Initcpio scripts used by archiso"
+arch=(any)
+url="https://gitlab.archlinux.org/mkinitcpio/mkinitcpio-archiso"
+license=(GPL3)
+depends=(bash device-mapper mkinitcpio)
+makedepends=(git)
+checkdepends=(shellcheck shfmt)
+optdepends=(
+  'curl: for PXE over HTTP'
+  'gnupg: for PGP signature verification of rootfs over PXE'
+  'mkinitcpio-nfs-utils: for PXE over NFS'
+  'nbd: for PXE over NBD'
+  'openssl: for CMS signature verification of rootfs over PXE'
+  'pv: for status display during copy to RAM'
+)
+source=(git+https://gitlab.archlinux.org/mkinitcpio/$pkgname.git#tag=$_commit
+	0001-Adapt-to-how-demolinux-works.patch)
+sha256sums=('SKIP'
+            'aaeeae8f4ff7c49d455b4f9b77d24f41e1bfe04f37fc50a56a39a871f96b1509')
+
+check() {
+  #make -k check -C $pkgname
+  :
+}
+
+prepare() {
+  cd $pkgname
+  git apply ../0001-Adapt-to-how-demolinux-works.patch
+}
+
+package() {
+  make DESTDIR="$pkgdir/" PREFIX=/usr install -C $pkgname
+}

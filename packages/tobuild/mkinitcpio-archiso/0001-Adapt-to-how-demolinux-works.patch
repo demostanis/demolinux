@@ -1,0 +1,100 @@
+From 4357a73dc6a4c4cad36c06d5df2fa3489ba268aa Mon Sep 17 00:00:00 2001
+From: demostanis <demostanis@protonmail.com>
+Date: Fri, 30 Jun 2023 14:12:20 +0200
+Subject: [PATCH] Adapt to how demolinux works
+
+---
+ hooks/archiso | 41 ++++++++++++++++++++++++++---------------
+ 1 file changed, 26 insertions(+), 15 deletions(-)
+
+diff --git a/hooks/archiso b/hooks/archiso
+index d2c600e..069e5ce 100644
+--- a/hooks/archiso
++++ b/hooks/archiso
+@@ -45,13 +45,13 @@ _mnt_dmsnapshot() {
+ 
+ # args: source, newroot, mountpoint
+ _mnt_overlayfs() {
+-    local src="${1}"
+-    local newroot="${2}"
+-    local mnt="${3}"
+-    mkdir -p "/run/archiso/cowspace/${cow_directory}/upperdir" "/run/archiso/cowspace/${cow_directory}/workdir"
++    local lowerdir="${1##lowerdir=}"
++    local upperdir="${2##upperdir=}"
++    local workdir="${3##workdir=}"
++    local mountpoint="${4##mountpoint=}"
+     mount -t overlay -o \
+-        "lowerdir=${src},upperdir=/run/archiso/cowspace/${cow_directory}/upperdir,workdir=/run/archiso/cowspace/${cow_directory}/workdir" \
+-        airootfs "${newroot}${mnt}"
++        "lowerdir=${lowerdir},upperdir=${upperdir},workdir=${workdir}" \
++        airootfs "${mountpoint}"
+ }
+ 
+ # args: /path/to/image_file, mountpoint
+@@ -211,20 +211,24 @@ archiso_mount_handler() {
+     local sigfile cms_sigfile fs_img fs_img_size iso_blockdev
+ 
+     if ! mountpoint -q "/run/archiso/bootmnt"; then
+-        _mnt_dev "${archisodevice}" "/run/archiso/bootmnt" "-r" "defaults"
++        _mnt_dev /dev/disk/by-partlabel/boot "/run/archiso/bootmnt" "-r" "defaults"
+     fi
+ 
+     # We need this block at the top for early failure
+     # but also to be able to give the fs_img to CMS verification.
+     # (sha512sum files contain the image, CMS files does not)
+-    if [ -f "/run/archiso/bootmnt/${archisobasedir}/${arch}/airootfs.sfs" ]; then
+-        fs_img="/run/archiso/bootmnt/${archisobasedir}/${arch}/airootfs.sfs"
+-    elif [ -f "/run/archiso/bootmnt/${archisobasedir}/${arch}/airootfs.erofs" ]; then
+-        fs_img="/run/archiso/bootmnt/${archisobasedir}/${arch}/airootfs.erofs"
++    if [ -e "/dev/disk/by-partlabel/system" ]; then
++        fs_img="/dev/disk/by-partlabel/system"
+     else
+         echo "ERROR: no root file system image found"
+         launch_interactive_shell
+     fi
++    if [ -e "/dev/disk/by-partlabel/persist" ]; then
++        persist_img="/dev/disk/by-partlabel/persist"
++    else
++        echo "ERROR: no persist file system found"
++        launch_interactive_shell
++    fi
+ 
+     # shellcheck disable=SC2154
+     # defined via initcpio's parse_cmdline()
+@@ -292,7 +296,7 @@ archiso_mount_handler() {
+     # * the root file system image size is less than 4 GiB,
+     # * the estimated available memory is more than the root file system image size + 2 GiB.
+     if [ "${copytoram}" = "auto" ]; then
+-        iso_blockdev="$(realpath "$(resolve_device "$archisodevice")")"
++        iso_blockdev="$(realpath "$(resolve_device /dev/disk/by-partlabel/system)")"
+         if [ "$iso_blockdev" = "${iso_blockdev##/dev/sr}" ]; then
+             fs_img_size="$(du -bsk "$fs_img" | cut -f 1)"
+             if [ "$fs_img_size" -lt 4194304 ] && [ "$(awk '$1 == "MemAvailable:" { print $2 }' /proc/meminfo)" -gt $((fs_img_size + 2097152)) ]; then
+@@ -314,14 +318,21 @@ archiso_mount_handler() {
+         msg ":: Mounting /run/archiso/cowspace (tmpfs) filesystem, size=${cow_spacesize}..."
+         mount --mkdir -t tmpfs -o "size=${cow_spacesize}",mode=0755 cowspace /run/archiso/cowspace
+     fi
+-    mkdir -p "/run/archiso/cowspace/${cow_directory}"
+-    chmod 0700 "/run/archiso/cowspace/${cow_directory}"
+ 
+     _mnt_fs "${fs_img}" "/run/archiso/airootfs"
++    _mnt_dev "${persist_img}" "/run/archiso/persistfs" "-w" "defaults"
+     if [ -f "/run/archiso/airootfs/airootfs.img" ]; then
+         _mnt_dmsnapshot "/run/archiso/airootfs/airootfs.img" "${newroot}" "/"
+     else
+-        _mnt_overlayfs "/run/archiso/airootfs" "${newroot}" "/"
++        # why doesnt {cowspace,persistfs} work...
++        mkdir -p /run/archiso/cowspace/upperdir
++        mkdir -p /run/archiso/cowspace/workdir
++        mkdir -p /run/archiso/persistfs/upperdir
++        mkdir -p /run/archiso/persistfs/workdir
++        mkdir -p /run/archiso/cowspace/lowerdir
++
++        _mnt_overlayfs lowerdir=/run/archiso/airootfs upperdir=/run/archiso/persistfs/upperdir workdir=/run/archiso/persistfs/workdir mountpoint=/run/archiso/cowspace/lowerdir
++        _mnt_overlayfs lowerdir=/run/archiso/cowspace/lowerdir upperdir=/run/archiso/cowspace/upperdir workdir=/run/archiso/cowspace/workdir mountpoint="$newroot/"
+     fi
+ 
+     if [ "${copytoram}" = "y" ]; then
+-- 
+2.41.0
+

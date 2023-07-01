@@ -11,6 +11,8 @@ clean(){
 	elevate
 	pkill archiso
 	mount | grep $PWD | cut -d\  -f3 | xargs -r umount -l
+	umount -fl /mnt/demolinux/* 2>/dev/null
+	losetup -d /dev/loop0 2>/dev/null
 	rm -rf work/
 }
 

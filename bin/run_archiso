@@ -98,9 +98,7 @@ run_image() {
         -m "size=3072,slots=0,maxmem=$((3072*1024*1024))" \
         -k en-us \
         -name archiso,process=archiso_0 \
-        -device virtio-scsi-pci,id=scsi0 \
-        -device "scsi-${mediatype%rom},bus=scsi0.0,drive=${mediatype}0" \
-        -drive "id=${mediatype}0,if=none,format=raw,media=${mediatype/hd/disk},read-only=on,file=${image}" \
+        -drive "format=raw,file=${image}" \
         -display "${display}" \
         -vga virtio \
         -audiodev pa,id=snd0 \

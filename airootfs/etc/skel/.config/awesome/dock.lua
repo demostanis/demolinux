@@ -14,7 +14,7 @@ local tasklist_buttons = gears.table.join(
     end)
 )
 
-local iconpath = "/usr/share/icons/la-capitaine/apps/scalable/"
+local iconpath = "/usr/share/icons/"..beautiful.icon_theme.."/apps/scalable/"
 
 local function makelauncher(app)
     local mylauncher = wibox.widget {

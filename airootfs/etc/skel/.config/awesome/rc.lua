@@ -75,7 +75,7 @@ globalkeys = gears.table.join(
                 "urxvt", "Nemo", "Neovim",
                 "scrcpy"
             },
-            icon_theme = "la-capitaine",
+            icon_theme = beautiful.icon_theme,
             apps_per_row = 2,
         }:toggle()
     end),
@@ -109,8 +109,7 @@ root.keys(globalkeys)
 client.connect_signal("manage", function(c)
     if not c.icon and not c.transient_for then
         -- default icon
-        -- -- todo put in theme.lua
-        local icon = gears.surface("/usr/share/icons/la-capitaine/status/scalable-dark/dialog-question.svg")._native
+        local icon = gears.surface(beautiful.default_icon)._native
         c.icon = icon
     end
 

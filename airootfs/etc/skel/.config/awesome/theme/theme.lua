@@ -13,6 +13,9 @@ theme.font = "CaskaydiaCove Nerd Font Mono 10"
 theme.baseiconfont =  "Font Awesome 6 Pro"
 theme.iconfont = theme.baseiconfont .. " 8"
 
+theme.default_icon = "/usr/share/icons/la-capitaine/status/scalable-dark/dialog-question.svg"
+theme.icon_theme = "la-capitaine"
+
 theme.wallpaper = theme.color0
 
 theme.bg_normal = theme.color10

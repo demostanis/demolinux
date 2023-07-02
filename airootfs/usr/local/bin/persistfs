@@ -1,7 +1,7 @@
 #!/bin/sh
 
 if [ $(id -u) -ne 0 ]; then
-	echo You need root
+	echo You need root >&2
 	exit 1
 fi
 
@@ -9,7 +9,7 @@ case $1 in
 	add)
 		file=${2:?Missing file to add}
 		if [ ! -f "$file" ]; then
-			echo File does not exist: $file
+			echo File does not exist: $file >&2
 			exit 1
 		fi
 
@@ -30,7 +30,7 @@ case $1 in
 	remove)
 		file=${2:?Missing file to remove}
 		if [ ! -f "$file" ]; then
-			echo File does not exist: $file
+			echo File does not exist: $file >&2
 			exit 1
 		fi
 
@@ -39,11 +39,17 @@ case $1 in
 		e=$(echo "$file" | sed 's,/,\\\/,g')
 		sed /"$e"/d -i /run/archiso/persistfs/upperdir/index
 		;;
+	pkg)
+		pacman -Ql $2 | cut -d\  -f2 | xargs -n1 "$0" add 2>/dev/null
+		;;
+	ipkg)
+		pacman -S $2 && "$0" pkg "$2"
+		;;
 	list)
 		cat /run/archiso/persistfs/upperdir/index
 		;;
 	*)
-		echo Unknown subcommand
+		echo Unknown subcommand >&2
 		exit 1
 		;;
 esac

@@ -1,0 +1,17 @@
+#!/bin/sh
+
+jargon_dir=/usr/share/jargon
+query=${1:?Missing term or query}
+if [ -e "$jargon_dir/$query" ]; then
+	cat "$jargon_dir/$query"
+else
+	results=$(fd "$query" "$jargon_dir")
+	if [ -z "$results" ]; then
+		echo No results 2>&1
+		exit 1
+	elif (( $( echo "$results" | wc -l ) == 1 )); then
+		cat "$results"
+	else
+		cat "$(echo "$results" | fzf)" 2>/dev/null
+	fi
+fi

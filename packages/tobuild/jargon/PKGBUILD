@@ -1,0 +1,18 @@
+pkgname=jargon
+pkgver=447
+pkgrel=1
+pkgdesc="The Jargon file"
+arch=(any)
+license=(custom) # tbh i dont know and im too lazy to search
+makedepends=(git)
+url=https://github.com/mjg59/$pkgname
+source=(git+$url.git jargon.bin)
+sha256sums=('SKIP'
+            '56680611d52a489a2901c7f9db3665dc2cedae565e52564b265ff91081a2a5e3')
+options=(!strip)
+
+package() {
+	cd $pkgname
+	install -Dm 644 -t "$pkgdir/usr/share/jargon" -- *
+	install -Dm 755 ../jargon.bin "$pkgdir/usr/bin/jargon"
+}

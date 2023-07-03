@@ -79,6 +79,9 @@ local function update_tabs(master)
             else
                 child_background:set_bg(beautiful.bg_focus)
             end
+            local textw = child
+                :get_children_by_id("text")[1]
+            textw.markup = tabs[i].name
         end
 
         drawn_tabs_count = drawn_tabs_count + 1
@@ -164,7 +167,7 @@ local function spawn_new_tab_in(master)
     local tabs = master.tabs
     deactivate(tabs)
     local tab =  {
-        name = "Untitled #"..#tabs,
+        name = "Untitled",
         active = true,
     }
     table.insert(tabs, tab)
@@ -194,8 +197,10 @@ local function spawn_new_tab_in(master)
         new_client:connect_signal("property::y", function() last.y = new_client.y end)
         new_client:connect_signal("property::width", function() last.width = new_client.width end)
         new_client:connect_signal("property::height", function() last.height = new_client.height end)
-        new_client:connect_signal("unmanage", function()
-            delete_tab_in(master, tab)
+        new_client:connect_signal("unmanage", function() delete_tab_in(master, tab) end)
+        new_client:connect_signal("property::name", function()
+            tab.name = new_client.name
+            update_tabs(master)
         end)
     end)
 end
@@ -236,6 +241,10 @@ return function(c)
 
             c:connect_signal("unmanage", function()
                 delete_tab_in(master, tabs[1])
+            end)
+            c:connect_signal("property::name", function()
+                tabs[1].name = c.name
+                update_tabs(master)
             end)
 
             update_tabs(master)

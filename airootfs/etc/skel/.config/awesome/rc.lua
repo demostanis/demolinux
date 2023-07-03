@@ -21,6 +21,8 @@ require"startup"
 terminal = "urxvt"
 modkey = "Mod4"
 
+require"globalkeys"
+
 awful.screen.connect_for_each_screen(function(s)
     gears.wallpaper.set(beautiful.wallpaper)
 
@@ -29,103 +31,6 @@ awful.screen.connect_for_each_screen(function(s)
     s.mywibar = require"wibar"(s)
     s.mydock = require"dock"(s)
 end)
-
-function moveclient(direction)
-    local c = client.focus
-    if not c then return end
-    local s = c.screen
-    local index = s.selected_tag.index
-    local wanted_index = index - 1
-    if direction == "down" then
-        wanted_index = index + 1
-    end
-    local tag = s.tags[gears.math.cycle(#s.tags, wanted_index)]
-    c:move_to_tag(tag)
-    if direction == "down" then
-        awful.tag.viewnext()
-    else
-        awful.tag.viewprev()
-    end
-    client.focus = c
-end
-
-local should_spawn_with_selection = false
-local function spawn_with_selection_if_needed(...)
-    if should_spawn_with_selection then
-        spawn_with_selection(...)
-    else
-        awful.spawn(...)
-    end
-end
-
-globalkeys = gears.table.join(
-    awful.key({ modkey,           }, "j",  awful.tag.viewnext,
-              {description = "view next", group = "tag"}),
-    awful.key({ modkey,           }, "k",   awful.tag.viewprev,
-              {description = "view previous", group = "tag"}),
-
-    awful.key({ modkey, "Shift"   }, "j",  function() moveclient("down") end,
-              {description = "view next", group = "tag"}),
-    awful.key({ modkey, "Shift"   }, "k", function() moveclient("up") end,
-              {description = "view previous", group = "tag"}),
-
-    awful.key({ modkey,           }, "Return", function () spawn_with_selection_if_needed(terminal) end,
-              {description = "open a terminal", group = "launcher"}),
-    awful.key({ modkey,           }, "f", function () spawn_with_selection_if_needed("firefox") end,
-              {description = "open firefox", group = "launcher"}),
-
-    awful.key({ modkey }, "r", awesome.restart,
-              {description = "reload awesome", group = "awesome"}),
-
-    awful.key({ modkey }, "x", function()
-        should_spawn_with_selection = true
-        gears.timer{
-            timeout = 1000,
-            single_shot = true,
-            callback = function()
-                should_spawn_with_selection = false
-            end
-        }
-    end),
-
-    awful.key({ modkey, }, "space", function()
-        bling.widget.app_launcher{
-            terminal = "urxvt -e",
-            whitelist = {
-                "Firefox Web Browser",
-                "urxvt", "Nemo", "Neovim",
-                "scrcpy"
-            },
-            icon_theme = beautiful.icon_theme,
-            apps_per_row = 2,
-        }:toggle()
-    end),
-
-    awful.key({ modkey }, "o", require"overview")
-)
-
-clientkeys = gears.table.join(
-    awful.key({ modkey,  }, "q",      function (c) c:kill()                         end,
-              {description = "close", group = "client"}),
-    awful.key({ modkey,           }, "o",      function (c) c:move_to_screen()               end,
-              {description = "move to screen", group = "client"}),
-    awful.key({ modkey,           }, "m",
-        function (c)
-            -- The client currently has the input focus, so it cannot be
-            -- minimized, since minimized clients can't have the focus.
-            c.minimized = true
-        end ,
-        {description = "minimize", group = "client"}),
-    awful.key({ modkey,           }, "f",
-        function (c)
-            c.maximized = not c.maximized
-            c:raise()
-        end ,
-        {description = "(un)maximize", group = "client"})
-)
-
--- Set keys
-root.keys(globalkeys)
 
 client.connect_signal("manage", function(c)
     if not c.icon and not c.transient_for then
@@ -147,7 +52,7 @@ awful.rules.rules = {
     { rule = { },
       properties = { focus = awful.client.focus.filter,
                      raise = true,
-                     keys = clientkeys,
+                     keys = require"clientkeys",
                      buttons = require"windowcontrols",
                      screen = awful.screen.preferred,
                      placement = awful.placement.no_overlap+awful.placement.no_offscreen,
@@ -198,60 +103,7 @@ awful.rules.rules = {
 -- }}}
 
 client.connect_signal("request::titlebars", function(c)
-    local buttons = gears.table.join(
-        awful.button({ }, 1, function()
-            awful.mouse.client.move(c)
-        end),
-        awful.button({ }, 2, function()
-            c.maximized = not c.maximized
-        end)
-    )
-
-    awful.titlebar(c):setup{
-        {
-            {
-                awful.titlebar.widget.iconwidget(c),
-                layout  = wibox.layout.fixed.horizontal
-            },
-            widget = wibox.container.margin,
-            margins = 4
-        },
-        {
-            {
-                align  = "center",
-                widget = awful.titlebar.widget.titlewidget(c)
-            },
-            buttons = buttons,
-            layout  = wibox.layout.flex.horizontal
-        },
-        {
-            {
-                -- a bunch of random margins because these images' size suck...
-                {
-                    awful.titlebar.widget.ontopbutton(c),
-                    widget = wibox.container.margin,
-                    right = 8,
-                    top = 2
-                },
-                {
-                    awful.titlebar.widget.maximizedbutton(c),
-                    widget = wibox.container.margin,
-                    top = 1,
-                    bottom = 4,
-                },
-                {
-                    awful.titlebar.widget.closebutton(c),
-                    widget = wibox.container.margin,
-                    bottom = 2.5
-                },
-                layout = wibox.layout.flex.horizontal,
-            },
-            widget = wibox.container.margin,
-            top = 6,
-        },
-        layout = wibox.layout.align.horizontal
-    }
-
+    require"titlebar"(c)
     require"tabs"(c)
 end)
 

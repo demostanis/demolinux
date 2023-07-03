@@ -94,7 +94,7 @@ return function(s)
 
                 pos = 6
                 target = 2
-                if c == client.focus or c.active_slave == client.focus then
+                if c == client.focus or (c.master and c.master.active_slave == client.focus) then
                     pos = 2
                     target = 6
                 end

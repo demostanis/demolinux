@@ -116,7 +116,7 @@ local function update_tabs(master)
                     client.focus = tab.client
                     previous_active_slave.minimized = true
                     previous_active_slave.is_minimized_tab = true
-                    master:set_active_slave(tab.client)
+                    master.active_slave = tab.client
                 end)
 
                 update_tabs(master)
@@ -140,7 +140,7 @@ local function delete_tab_in(master, tab_to_delete)
     end
     if #tabs > 1 then
         local previous_tab = tabs[tab_index-1] or tabs[tab_index+1]
-        master:set_active_slave(previous_tab.client)
+        master.active_slave = previous_tab.client
         previous_tab.active = true
 
         delayed(function()
@@ -154,7 +154,7 @@ local function delete_tab_in(master, tab_to_delete)
             previous_tab.client:raise()
         end)
     else
-        master:set_active_slave(nil)
+        master.active_slave = nil
     end
 
     update_tabs(master)
@@ -183,7 +183,7 @@ local function spawn_new_tab_in(master)
         is_launching_tab = false
         tab.client = new_client
         new_client.is_tab = true
-        master:set_active_slave(new_client)
+        master.active_slave = new_client
 
         delayed(function()
             c.minimized = true
@@ -197,10 +197,15 @@ local function spawn_new_tab_in(master)
         new_client:connect_signal("property::y", function() last.y = new_client.y end)
         new_client:connect_signal("property::width", function() last.width = new_client.width end)
         new_client:connect_signal("property::height", function() last.height = new_client.height end)
-        new_client:connect_signal("unmanage", function() delete_tab_in(master, tab) end)
         new_client:connect_signal("property::name", function()
             tab.name = new_client.name
             update_tabs(master)
+        end)
+        new_client:connect_signal("unmanage", function()
+            delete_tab_in(master, tab)
+            if #tabs > 0 then
+                master.tabs[1].client.is_tab = false
+            end
         end)
     end)
 end
@@ -222,13 +227,8 @@ return function(c)
                 last = {}
             }
             local master = tab_masters[c]
-            function master.set_active_slave(self, s)
-                self.active_slave = s
-                pcall(function()
-                    c.active_slave = s
-                end)
-            end
-            master:set_active_slave(c)
+            master.active_slave = c
+            c.master = master
 
             local plus_button = mktabw("+")
             plus_button.is_plus_button = true
@@ -241,6 +241,9 @@ return function(c)
 
             c:connect_signal("unmanage", function()
                 delete_tab_in(master, tabs[1])
+                if #tabs > 0 then
+                    tabs[1].client.is_tab = false
+                end
             end)
             c:connect_signal("property::name", function()
                 tabs[1].name = c.name

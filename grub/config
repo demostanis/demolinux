@@ -54,7 +54,7 @@ GRUB_BACKGROUND="/grub/splash.png"
 #GRUB_SAVEDEFAULT=true
 
 # Uncomment to disable submenus in boot menu
-#GRUB_DISABLE_SUBMENU=y
+GRUB_DISABLE_SUBMENU=y
 
 # Probing for other operating systems is disabled for security reasons. Read
 # documentation on GRUB_DISABLE_OS_PROBER, if still want to enable this

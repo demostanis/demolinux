@@ -18,7 +18,6 @@ efibootmgr
 fd
 firefox
 firefox-dark-reader
-flameshot
 fzf
 git
 grub
@@ -36,6 +35,7 @@ local firefox-sponsorblock
 local firefox-ublock-origin
 local firefox-vimfx
 local firefox-ytarb
+local flameshot
 local jargon
 local lsb-release
 local mkinitcpio-archiso

@@ -45,6 +45,8 @@ local globalkeys = gears.table.join(
     awful.key({ modkey, "Shift" }, "j",  function() moveclient("down") end),
     awful.key({ modkey, "Shift" }, "k", function() moveclient("up") end),
 
+    awful.key({ modkey }, "s", function() awful.spawn("flameshot gui") end),
+
     app_shortcut(terminal, "Return"),
     app_shortcut("firefox", "f"),
 

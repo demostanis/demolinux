@@ -1,0 +1,24 @@
+From c90db22416aa7ef74928ffed1518b633f3cec526 Mon Sep 17 00:00:00 2001
+From: demostanis <demostanis@protonmail.com>
+Date: Wed, 5 Jul 2023 18:08:56 +0200
+Subject: [PATCH] Expose surface
+
+---
+ lib/awful/widget/clienticon.lua | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/lib/awful/widget/clienticon.lua b/lib/awful/widget/clienticon.lua
+index 3076256fa..7691abf97 100644
+--- a/lib/awful/widget/clienticon.lua
++++ b/lib/awful/widget/clienticon.lua
+@@ -49,6 +49,7 @@ function clienticon:draw(_, cr, width, height)
+     cr:scale(aspect, aspect)
+ 
+     local s = surface(c:get_icon(index))
++    self._private.image = s
+     cr:set_source_surface(s, 0, 0)
+     cr:paint()
+ end
+-- 
+2.41.0
+

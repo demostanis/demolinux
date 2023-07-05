@@ -14,12 +14,43 @@ local tasklist_buttons = gears.table.join(
     end)
 )
 
+local function hook_icon_draw(icon)
+    local should_lighten = false
+    local initial_draw = icon.draw
+    function icon.draw(self, _, cr, ...)
+        initial_draw(self, _, cr, ...)
+        if should_lighten then
+            local s = nil
+            if self._private.handle then
+                s = awesome.pixbuf_to_surface(self._private.handle:get_pixbuf()._native)
+            else
+                s = self._private.image
+            end
+
+            cr:set_source_rgba(1, 1, 1, 0.15)
+            cr:mask_surface(gears.surface(s), 0, 0)
+            cr:fill()
+        end
+    end
+    icon:connect_signal("mouse::enter", function()
+        should_lighten = true
+        icon:emit_signal(
+            "widget::redraw_needed")
+    end)
+    icon:connect_signal("mouse::leave", function()
+        should_lighten = false
+        icon:emit_signal(
+            "widget::redraw_needed")
+    end)
+end
+
 local iconpath = "/usr/share/icons/"..beautiful.icon_theme.."/apps/scalable/"
 
 local function makelauncher(app)
     local mylauncher = wibox.widget {
         {
             {
+                id = "icon",
                 image = iconpath .. app .. ".svg",
                 widget = wibox.widget.imagebox,
                 forced_width = 28,
@@ -37,6 +68,10 @@ local function makelauncher(app)
         if overview_shown then return end
         awful.spawn(app)
     end)
+
+    local icon = mylauncher:get_children_by_id("icon")[1]
+    hook_icon_draw(icon)
+
     return mylauncher
 end
 
@@ -114,7 +149,9 @@ return function(s)
                 }.target = target
             end,
             create_callback = function(self, c)
-                self:get_children_by_id("icon")[1].client = c
+                local icon = self:get_children_by_id("icon")[1]
+                hook_icon_draw(icon)
+                icon.client = c
                 self:update_callback(c)
             end
         },

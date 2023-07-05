@@ -1,7 +1,6 @@
 alsa-utils
 amd-ucode
 arch-install-scripts
-aur awesome-git
 aur awesome-rubato-git
 aur ff2mpv-native-messaging-host-git
 aur firefox-userchromejs
@@ -28,6 +27,7 @@ irssi
 jq
 linux-firmware
 linux-hardened
+local awesome
 local bling
 local firefox-canvasblocker
 local firefox-ff2mpv

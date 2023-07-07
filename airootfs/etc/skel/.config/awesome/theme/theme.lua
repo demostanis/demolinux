@@ -9,7 +9,8 @@ local xrdb = xresources.get_current_theme()
 theme.mt = {__index = xrdb}
 setmetatable(theme, theme.mt)
 
-theme.font = "CaskaydiaCove Nerd Font Mono 10"
+theme.basefont = "CaskaydiaCove Nerd Font Mono"
+theme.font = theme.basefont .. " 10"
 theme.baseiconfont =  "Font Awesome 6 Pro"
 theme.iconfont = theme.baseiconfont .. " 8"
 

@@ -53,7 +53,7 @@ local globalkeys = gears.table.join(
     awful.key({ modkey }, "r", awesome.restart),
 
     awful.key({ modkey }, "o", require"overview"),
-    awful.key({ modkey, }, "space", function()
+    awful.key({ modkey }, "space", function()
         bling.widget.app_launcher{
             terminal = terminal.." -e",
             icon_theme = beautiful.icon_theme,
@@ -61,6 +61,8 @@ local globalkeys = gears.table.join(
             apps_per_row = 2,
         }:toggle()
     end),
+    -- God, why is it trying to call some on_release when I don't specify nil??
+    awful.key({ modkey }, "e", require"emojipicker", nil),
 
     awful.key({ modkey }, "x", function()
         should_spawn_with_selection = true

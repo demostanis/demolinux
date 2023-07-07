@@ -29,6 +29,7 @@ linux-firmware
 linux-hardened
 local awesome
 local bling
+local emoji-test
 local firefox-canvasblocker
 local firefox-ff2mpv
 local firefox-sponsorblock
@@ -74,6 +75,7 @@ ttf-cascadia-code-nerd
 ttf-fira-code
 ttf-font-awesome
 websocat
+xdotool
 xorg
 xorg-xinit
 xterm

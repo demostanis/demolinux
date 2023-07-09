@@ -47,7 +47,7 @@ return function(s)
                     widget = wibox.container.background,
                     id = "circle"
                 },
-                left = 6,
+                left = 7,
                 top = 3.5,
                 widget = wibox.container.margin,
             },

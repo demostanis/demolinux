@@ -23,7 +23,8 @@ local popup, textw = table.unpack(tpopup())
 local myvolwidget = wibox.widget{
     text = mutedicon,
     widget = wibox.widget.textbox,
-    font = beautiful.baseiconfont .. " 7"
+    font = beautiful.baseiconfont .. " 7",
+    halign = "center"
 }
 
 function fmt(text)
@@ -70,7 +71,7 @@ myvolwidget:connect_signal("mouse::leave", function()
     myvolwidget.markup = fmt(myvolwidget.text)
 end)
 
-local mycontainer = wibox.container.margin(myvolwidget, 2.5) 
+local mycontainer = wibox.container.margin(myvolwidget, 0)
 
 vicious.cache(vicious.widgets.volume)
 vicious.register(myvolwidget,
@@ -80,10 +81,10 @@ vicious.register(myvolwidget,
         muted = args[2] == "🔈" or percentage == 0
         if textw then textw.text = widgettext() end
         if muted then
-            mycontainer.left = 2.5
+            mycontainer.left = 1
             return fmt(mutedicon)
         else
-            mycontainer.left = 2
+            mycontainer.left = -0.5
             return fmt(unmutedicon)
         end
     end, 1, mixer)

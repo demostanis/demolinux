@@ -3,14 +3,14 @@ return function(s)
         screen = s,
         y = 4, x = 4,
         ontop = true,
-	visible = true,
+        visible = true,
         bg = beautiful.bg_focus,
         width = beautiful.wibar_width-6,
         height = s.geometry.height-8,
     }
     mywibar:struts{
         top = 10, right = 10,
-	bottom = beautiful.dock_width+10,
+        bottom = beautiful.dock_width+10,
         left = beautiful.wibar_width+5,
     }
 
@@ -32,6 +32,8 @@ return function(s)
                             mycpuwidget,
                             mybatwidget,
                             myvolwidget,
+                            widget = wibox.container.margin,
+                            left = -2,
                             layout = wibox.layout.flex.vertical,
                             spacing = 5
                         },
@@ -41,7 +43,6 @@ return function(s)
                     mytimewidget,
                     layout = wibox.layout.fixed.vertical
                 },
-                left = 6,
                 bottom = 3.5,
                 widget = wibox.container.margin
             },
@@ -55,3 +56,5 @@ return function(s)
 
     return mywibar
 end
+
+-- vim:set et sw=4 ts=4:

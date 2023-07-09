@@ -9,13 +9,15 @@ local popup, textw = table.unpack(tpopup())
 local mybatwidget = wibox.widget{
     text = "\u{f240}",
     widget = wibox.widget.textbox,
-    font = beautiful.iconfont
+    font = beautiful.iconfont,
+    halign = "center"
 }
 
 mybatwidget:connect_signal("mouse::enter", function()
     local geo = mouse.current_widget_geometry
     if overview_shown or not geo then return end
     geo.x = geo.x + 3
+    geo.y = geo.y + 7
 
     popup:move_next_to(geo)
     popup.visible = true
@@ -51,7 +53,7 @@ vicious.register(textw, vicious.widgets.bat, function(widget, args)
 end, 1, "BAT0")
 
 if vicious.call(vicious.widgets.bat, "$1", "BAT0") ~= "⌁" then -- unknown state
-    return wibox.container.margin(mybatwidget, 2)
+    return wibox.container.margin(mybatwidget, 0, 0, -2, 0)
 end
 return {_absent = true}
 

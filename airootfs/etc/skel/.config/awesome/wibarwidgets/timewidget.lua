@@ -18,7 +18,7 @@ timewidget:connect_signal("mouse::enter", function()
     if overview_shown or not geo then return end
 
     textw:set_markup(DateTime.new_now(TimeZone.new_local()):format"%c")
-    popup.x = geo.x + geo.width + 10
+    popup.x = geo.x + geo.width + 15
     popup.y = geo.y + geo.height / 4
     popup.visible = true
 
@@ -31,6 +31,6 @@ timewidget:connect_signal("mouse::leave", function()
     timewidget:get_children_by_id("background")[1].fg = beautiful.fg_focus
 end)
 
-return timewidget
+return wibox.container.margin(timewidget, 6.5, 6.5)
 
 -- vim:set et sw=4 ts=4:

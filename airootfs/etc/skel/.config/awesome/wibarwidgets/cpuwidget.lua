@@ -9,7 +9,8 @@ local popup, textw = table.unpack(tpopup())
 local mycpuwidget = wibox.widget{
     text = "\u{f2db}",
     widget = wibox.widget.textbox,
-    font = beautiful.baseiconfont .. " 9"
+    font = beautiful.baseiconfont .. " 9",
+    halign = "center"
 }
 
 mycpuwidget:connect_signal("mouse::enter", function()
@@ -32,6 +33,6 @@ end)
 
 vicious.register(textw, vicious.widgets.cpu, "CPU: $1%", 1)
 
-return wibox.container.margin(mycpuwidget, 2)
+return mycpuwidget
 
 -- vim:set et sw=4 ts=4:

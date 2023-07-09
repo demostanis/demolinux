@@ -9,7 +9,8 @@ local popup, textw = table.unpack(tpopup())
 local mymemwidget = wibox.widget{
     text = "\u{f538}",
     widget = wibox.widget.textbox,
-    font = beautiful.iconfont
+    font = beautiful.iconfont,
+    halign = "center",
 }
 
 mymemwidget:connect_signal("mouse::enter", function()
@@ -32,6 +33,7 @@ end)
 
 vicious.register(textw, vicious.widgets.mem, "RAM: $2/$3MiB", 1)
 
-return wibox.container.margin(mymemwidget, 2)
+--return wibox.container.margin(mymemwidget, 2)
+return mymemwidget
 
 -- vim:set et sw=4 ts=4:

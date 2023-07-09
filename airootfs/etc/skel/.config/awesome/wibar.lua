@@ -14,9 +14,10 @@ return function(s)
         left = beautiful.wibar_width+5,
     }
 
-    local myvolwidget = optional"wibarwidgets/volwidget"
     local mycpuwidget = optional"wibarwidgets/cpuwidget"
     local mymemwidget = optional"wibarwidgets/memwidget"
+    local mybrightnesswidget = optional"wibarwidgets/brightnesswidget"
+    local myvolwidget = optional"wibarwidgets/volwidget"
     local mybatwidget = optional"wibarwidgets/batwidget"
     local mytimewidget = optional"wibarwidgets/timewidget"
 
@@ -30,8 +31,9 @@ return function(s)
                         {
                             mymemwidget,
                             mycpuwidget,
-                            mybatwidget,
+                            mybrightnesswidget,
                             myvolwidget,
+                            mybatwidget,
                             widget = wibox.container.margin,
                             left = -2,
                             layout = wibox.layout.flex.vertical,

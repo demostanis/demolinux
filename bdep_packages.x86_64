@@ -2,3 +2,4 @@ arch-install-scripts
 base
 devtools
 git
+pv

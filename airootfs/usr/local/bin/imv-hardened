@@ -1,0 +1,22 @@
+#!/bin/sh
+
+exec bwrap \
+	`# For dynamically linked executables` \
+	--ro-bind /usr/bin /usr/bin --symlink /usr/bin /bin \
+	--ro-bind /usr/lib /usr/lib --symlink /usr/lib /lib \
+	--ro-bind /usr/lib64 /usr/lib64 --symlink /usr/lib64 /lib64 \
+	--ro-bind /usr/share /usr/share \
+	--ro-bind /etc /etc \
+	--proc /proc --dev /dev \
+	`# OpenGL` \
+	--dev-bind /dev/dri /dev/dri \
+	--bind /sys/dev /sys/dev \
+	--bind /sys/devices /sys/devices \
+	`# X11` \
+	--ro-bind ~/.Xauthority ~/.Xauthority \
+	--bind /tmp/.X11-unix/X${DISPLAY##:} /tmp/.X11-unix/X${DISPLAY##:} \
+	`# Media to display` \
+	--ro-bind-try "${@: -1}" "$(realpath -- "${@: -1}")" \
+	--unshare-all --new-session \
+	/usr/bin/imv-x11 "$@"
+

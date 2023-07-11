@@ -1,0 +1,28 @@
+From ade51250ee8f5434394347d5c1e51bb82d53c0b1 Mon Sep 17 00:00:00 2001
+From: demostanis <demostanis@protonmail.com>
+Date: Wed, 12 Jul 2023 01:08:29 +0200
+Subject: [PATCH 1/2] Allow specifying a y-offset for notifications
+
+---
+ lib/naughty/layout/box.lua | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/lib/naughty/layout/box.lua b/lib/naughty/layout/box.lua
+index dd7fe8f3f..35be26f76 100644
+--- a/lib/naughty/layout/box.lua
++++ b/lib/naughty/layout/box.lua
+@@ -81,9 +81,9 @@ local function get_offset(position, preset)
+     preset = preset or {}
+     local margin = preset.padding or beautiful.notification_spacing or dpi(4)
+     if position:match('_right') then
+-        return {x = -margin}
++        return {x = -margin, y = beautiful.notification_offset_y or 0}
+     elseif position:match('_left') then
+-        return {x = margin}
++        return {x = margin, y = beautiful.notification_offset_y or 0}
+     end
+     return {}
+ end
+-- 
+2.41.0
+

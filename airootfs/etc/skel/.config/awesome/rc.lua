@@ -107,6 +107,18 @@ awful.rules.rules = {
 }
 -- }}}
 
+naughty.connect_signal("request::display", function(n)
+    naughty.layout.box {
+        notification = n,
+        widget_template = {
+            require"naughty.widget._default",
+            widget = wibox.container.place,
+            valign = "center",
+            halign = "center",
+        }
+    }
+end)
+
 client.connect_signal("request::titlebars", function(c)
     require"titlebar"(c)
     require"tabs"(c)

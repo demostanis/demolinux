@@ -60,6 +60,9 @@ theme.app_launcher_prompt_icon_color = theme.color7
 theme.app_launcher_app_name_selected_color = theme.color7
 theme.app_launcher_app_selected_color = theme.color8
 
+theme.notification_spacing = 5
+theme.notification_max_width = 400
+theme.notification_offset_y = 55
 theme.notification_border_color = theme.color11
 theme.notification_bg = theme.color11
 

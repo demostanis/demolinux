@@ -32,6 +32,7 @@ linux-hardened
 local awesome
 local bling
 local emoji-test
+local firefox-base16
 local firefox-canvasblocker
 local firefox-ff2mpv
 local firefox-sponsorblock

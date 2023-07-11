@@ -1,0 +1,24 @@
+_themename=mellow-purple
+pkgname=firefox-base16
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Firefox theme with base16 colors"
+url="https://github.com/TeddyDD/firefox-base16"
+license=('Unlicense')
+arch=('any')
+depends=(firefox)
+source=("$_themename.xpi")
+noextract=("$_themename.xpi")
+
+# TO REPRODUCE THE .XPI:
+#  Choose a theme from TeddyDD/firefox-base-16 (or create your own on Firefox Color)
+#  Click on export -> Choose a name -> Export as ZIP
+#  Unzip the ZIP
+#  Modify the manifest.json, and add a browser_specific.gecko.id (https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/browser_specific_settings)
+#  Rezip the file and move it in this directory
+
+package() {
+    install -Dm644 "$_themename.xpi" \
+        "${pkgdir}/usr/lib/firefox/browser/extensions/$_themename@demostanis.xpi"
+}
+sha256sums=('8b282b650a068cfab4e45b63ade4d5d6729a071250a4d4328250b1987799a246')

@@ -2,10 +2,10 @@
 
 f=$(mktemp)
 trap 'rm $f && kill $p 2>/dev/null' EXIT
-( (websocat -n wss://www.wolframalpha.com/n/v1/api/fetcher/results <<DATA | grep '"type":"pods"' | head
+( (websocat -n wss://www.wolframalpha.com/n/v1/api/fetcher/results <<DATA 2>/dev/null | grep '"type":"pods"' | grep -v asyncPod.jsp | head
 {"type":"newQuery","locationId":"xulcz","language":"en","category":"results","input":"$@"}
 DATA
 ) > $f )& p=$!
-tail -f $f | sed q |\
+tail -f $f | sed q | \
   jq -r '.pods[] | select(.id == "Result").subpods[].plaintext'
 

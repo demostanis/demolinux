@@ -1,5 +1,5 @@
 pkgname=firefox-vimfx
-pkgver=0.25.0
+pkgver=0.26.3
 pkgrel=1
 pkgdesc="Vim keyboard shortcuts for Firefox"
 url="https://github.com/akhodakivskiy/VimFx"
@@ -13,4 +13,4 @@ package() {
     install -Dm644 "$pkgname-$pkgver.xpi" \
         "${pkgdir}/usr/lib/firefox/browser/extensions/VimFx-unlisted@akhodakivskiy.github.com.xpi"
 }
-sha256sums=('5bdadd1b627e7ac3271f7d7c59cae11a99730b6cd87c26da07ce2710b1c5f7ef')
+sha256sums=('77a029902c3f21785a6e4a64ea8f5e1d0742c4e2f759aca4f52d64d6a7687ef9')

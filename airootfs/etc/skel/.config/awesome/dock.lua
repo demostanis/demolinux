@@ -46,7 +46,7 @@ end
 
 local iconpath = "/usr/share/icons/"..beautiful.icon_theme.."/apps/scalable/"
 
-local function makelauncher(app)
+local function makelauncher(app, opts)
     local mylauncher = wibox.widget {
         {
             {
@@ -66,7 +66,11 @@ local function makelauncher(app)
     }
     mylauncher:connect_signal("button::press", function()
         if overview_shown then return end
-        awful.spawn(app)
+        app_name = app
+        if opts and opts.hardened then
+            app_name = app.."-hardened"
+        end
+        awful.spawn(app_name)
     end)
 
     local icon = mylauncher:get_children_by_id("icon")[1]
@@ -78,7 +82,7 @@ end
 local mylaunchers = wibox.widget {
     makelauncher("nemo"),
     makelauncher("urxvt"),
-    makelauncher("firefox"),
+    makelauncher("firefox", {hardened = true}),
     layout = wibox.layout.fixed.horizontal,
 }
 

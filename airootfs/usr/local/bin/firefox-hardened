@@ -1,0 +1,93 @@
+#!/bin/bash
+
+# This breaks native notifications.
+# But who needs browser notifications anyway?
+mkdir -p "$XDG_RUNTIME_DIR"/dbus-proxy
+xdg-dbus-proxy "$DBUS_SESSION_BUS_ADDRESS" \
+	"$XDG_RUNTIME_DIR"/dbus-proxy/firefox \
+	--filter \
+	`# Could this be shortened? Maybe. Who knows.` \
+	--own="org.mozilla.firefox.*" \
+	--see="org.mozilla.firefox.*" \
+	--talk="org.mozilla.firefox.*" &
+
+mkdir -p "$XDG_RUNTIME_DIR"/$$
+fifo="$XDG_RUNTIME_DIR"/$$/fifo
+mkfifo "$fifo"
+cat >"$XDG_RUNTIME_DIR"/$$/mpv-launcher<<EOF
+#!/bin/sh
+echo "\$3" >> "$fifo"
+EOF
+chmod +x "$XDG_RUNTIME_DIR"/$$/mpv-launcher
+
+while true; do
+	curl "$(cat "$fifo")" | \
+		/usr/local/bin/mpv-hardened /dev/stdin
+done &
+
+cookie=~/.cookies/$$
+mkdir -p "$(dirname "$cookie")"
+touch "$cookie"
+
+xauth -f "$cookie" generate $DISPLAY . untrusted
+export XAUTHORITY="$cookie"
+
+# Sometimes xdg-dbus-proxy takes a little while to start...
+while [ ! -e "$XDG_RUNTIME_DIR"/dbus-proxy/firefox ]; do sleep 0.1; done
+
+trap 'jobs -p | xargs -I@ kill -- -@' EXIT
+
+exec bwrap \
+	`# For dynamically linked executables` \
+	--ro-bind /usr/lib /usr/lib --symlink /usr/lib /lib \
+	--ro-bind /usr/lib64 /usr/lib64 --symlink /usr/lib64 /lib64 \
+	--ro-bind /usr/bin /usr/bin --symlink /usr/bin /bin \
+	`# Libraries` \
+	--ro-bind /usr/lib/firefox /usr/lib/firefox \
+	--ro-bind /usr/share/applications /usr/share/applications \
+	--ro-bind /usr/share/gtk-3.0 /usr/share/gtk-3.0 \
+	--ro-bind /usr/share/fontconfig /usr/share/fontconfig \
+	--ro-bind /usr/share/icu /usr/share/icu \
+	--ro-bind /usr/share/drirc.d /usr/share/drirc.d \
+	--ro-bind /usr/share/fonts /usr/share/fonts \
+	--ro-bind /usr/share/glib-2.0 /usr/share/glib-2.0 \
+	--ro-bind /usr/share/glvnd /usr/share/glvnd \
+	--ro-bind /usr/share/libdrm /usr/share/libdrm \
+	--ro-bind /usr/share/mime /usr/share/mime \
+	--ro-bind /usr/share/X11/xkb /usr/share/X11/xkb \
+	--ro-bind /usr/share/icons /usr/share/icons \
+	--ro-bind /usr/share/mime /usr/share/mime \
+	--ro-bind /etc/fonts /etc/fonts \
+	`# Restricted IPC with DBus` \
+	--ro-bind "$XDG_RUNTIME_DIR"/dbus-proxy/firefox "$XDG_RUNTIME_DIR"/bus \
+	--ro-bind ~/.config/gtk-3.0/settings.ini /firefox/.config/gtk-3.0/settings.ini \
+	--ro-bind "$XDG_RUNTIME_DIR"/$$ "$XDG_RUNTIME_DIR"/$$ \
+	--ro-bind "$XDG_RUNTIME_DIR"/$$/mpv-launcher /usr/bin/mpv \
+	--ro-bind /usr/share/ff2mpv/ff2mpv.py /usr/share/ff2mpv/ff2mpv.py \
+	`# Networking` \
+	--ro-bind /etc/resolv.conf /etc/resolv.conf \
+	--ro-bind /usr/share/ca-certificates /usr/share/ca-certificates \
+	--ro-bind /etc/ssl /etc/ssl \
+	--ro-bind /etc/ca-certificates /etc/ca-certificates \
+	`# PulseAudio` \
+	--ro-bind /run/user/"$(id -u)"/pulse /run/user/"$(id -u)"/pulse \
+	--ro-bind "$cookie" "$cookie" \
+	`# X11` \
+	--bind /tmp/.X11-unix/X${DISPLAY##:} /tmp/.X11-unix/X${DISPLAY##:} \
+	--proc /proc --tmpfs /tmp \
+	`# Graphics` \
+	--dev /dev \
+	--dev-bind /dev/dri /dev/dri \
+	--ro-bind /sys/dev/char /sys/dev/char \
+	--ro-bind /sys/bus/pci /sys/bus/pci \
+	--ro-bind /sys/devices/pci0000:00 /sys/devices/pci0000:00 \
+	--bind $HOME/.mozilla /firefox/.mozilla \
+	--bind $HOME/downloads /firefox/downloads \
+	--setenv HOME /firefox \
+	--setenv GTK_THEME Adwaita:dark \
+	--setenv PATH /usr/bin \
+	--unshare-all \
+	--share-net \
+	--die-with-parent \
+	--new-session /usr/bin/firefox $@
+

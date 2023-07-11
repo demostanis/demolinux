@@ -78,9 +78,11 @@ ttf-cascadia-code-nerd
 ttf-fira-code
 ttf-font-awesome
 websocat
+xdg-dbus-proxy
 xdg-user-dirs
 xdotool
 xorg
 xorg-xinit
 xterm
+yt-dlp
 zsh

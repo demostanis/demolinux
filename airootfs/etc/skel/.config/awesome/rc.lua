@@ -43,6 +43,11 @@ client.connect_signal("manage", function(c)
         awful.placement.centered(c, {parent = c.transient_for})
         awful.placement.no_offscreen(c)
     end
+
+    c:connect_signal("property::fullscreen", function()
+        c.screen.mywibar.visible = not c.fullscreen
+        c.screen.mydock.visible = not c.fullscreen
+    end)
 end)
 
 -- {{{ Rules

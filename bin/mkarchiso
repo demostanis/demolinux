@@ -1033,6 +1033,13 @@ _make_bootmode_hybrid.grub.gpt() {
     # data
     mkfs.btrfs /dev/loop0p6
 
+    # Create common directories
+    mkdir -p /mnt/demolinux/data
+    mount /dev/loop0p6 /mnt/demolinux/data
+    mkdir -p /mnt/demolinux/data/{downloads,music}
+    chown 1000:1000 /mnt/demolinux/data/{downloads,music}
+    umount /mnt/demolinux/data
+
     # Copy the system image to the system partition
     cp "${isofs_dir}/${install_dir}/${arch}/airootfs.sfs" /dev/loop0p3
 

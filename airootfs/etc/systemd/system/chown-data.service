@@ -1,0 +1,11 @@
+[Unit]
+Description=Prepare /data
+Requires=data.mount
+After=data.mount
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/chown demostanis:demostanis /data
+
+[Install]
+WantedBy=multi-user.target

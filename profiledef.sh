@@ -2,10 +2,7 @@
 # shellcheck disable=SC2034
 
 iso_name="demolinux"
-iso_label="DEMOLINUX_$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y%m)"
-iso_publisher="demolinux"
-iso_application="demolinux ISO"
-iso_version="$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y.%m.%d)"
+iso_version="$(date +%Y.%m.%d)"
 install_dir="booya"
 buildmodes=('disk_image')
 bootmodes=('hybrid.grub.gpt')

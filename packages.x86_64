@@ -11,6 +11,7 @@ base-devel
 bat
 bind
 btrfs-progs
+bubblewrap-suid
 cryptsetup
 e2fsprogs
 edk2-shell

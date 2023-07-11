@@ -1,0 +1,29 @@
+#!/bin/sh
+#
+# TODO: --share-net?
+
+cookie=~/.cookies/$$
+mkdir -p "$(dirname "$cookie")"
+touch "$cookie"
+
+xauth -f "$cookie" generate $DISPLAY . untrusted
+export XAUTHORITY="$cookie"
+exec bwrap \
+	`# For dynamically linked executables` \
+	--ro-bind /usr/bin /usr/bin --symlink /usr/bin /bin \
+	--ro-bind /usr/lib /usr/lib --symlink /usr/lib /lib \
+	--ro-bind /usr/lib64 /usr/lib64 --symlink /usr/lib64 /lib64 \
+	`# Configs` \
+	--ro-bind /usr/share /usr/share \
+	--ro-bind /etc /etc --ro-bind ~/.config/mpv ~/.config/mpv \
+	--dev /dev --proc /proc \
+	`# X11` \
+	--ro-bind "$cookie" "$cookie" \
+	--bind /tmp/.X11-unix/X${DISPLAY##:} /tmp/.X11-unix/X${DISPLAY##:} \
+	`# PulseAudio` \
+	--tmpfs /run --ro-bind /run/user/"$(id -u)"/pulse /run/user/"$(id -u)"/pulse \
+	`# Media to play` \
+	--ro-bind-try "${@: -1}" "$(realpath "${@: -1}")" \
+	--unshare-all --new-session \
+	/usr/bin/mpv --no-terminal "$@"
+

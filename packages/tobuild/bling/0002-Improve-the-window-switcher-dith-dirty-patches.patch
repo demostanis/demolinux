@@ -1,0 +1,103 @@
+From 1ffdb79a256e632d65a32ee4dade4d0eb7ca9ad8 Mon Sep 17 00:00:00 2001
+From: demostanis <demostanis@protonmail.com>
+Date: Wed, 12 Jul 2023 14:27:24 +0200
+Subject: [PATCH 2/2] Improve the window switcher dith dirty patches
+
+---
+ widget/window_switcher.lua | 51 +++++++++++++++++---------------------
+ 1 file changed, 23 insertions(+), 28 deletions(-)
+
+diff --git a/widget/window_switcher.lua b/widget/window_switcher.lua
+index d7a35e0..69724c8 100644
+--- a/widget/window_switcher.lua
++++ b/widget/window_switcher.lua
+@@ -87,8 +87,17 @@ local function draw_widget(
+                     widget = wibox.container.background,
+                     id = "bg_role",
+                     forced_width = client_width,
+-                    forced_height = client_height,
++                    forced_height = client_height/1.3,
++		    update_callback = function(self, c)
++			    if c == client.focus then
++				    self:get_children_by_id("bg_role")[1]:set_bg(beautiful.bg_normal)
++			    else
++				    self:get_children_by_id("bg_role")[1]:set_bg(beautiful.bg_focus)
++			    end
++		    end,
+                     create_callback = function(self, c, _, __)
++			    self:update_callback(c)
++
+                         local content = gears.surface(c.content)
+                         local cr = cairo.Context(content)
+                         local x, y, w, h = cr:clip_extents()
+@@ -109,12 +118,6 @@ local function draw_widget(
+                     {
+                         {
+                             {
+-                                horizontal_fit_policy = thumbnail_scale == true
+-                                        and "fit"
+-                                    or "auto",
+-                                vertical_fit_policy = thumbnail_scale == true
+-                                        and "fit"
+-                                    or "auto",
+                                 id = "thumbnail",
+                                 widget = wibox.widget.imagebox,
+                             },
+@@ -123,13 +126,17 @@ local function draw_widget(
+                         },
+                         {
+                             {
+-                                {
+-                                    id = "icon_role",
+-                                    widget = wibox.widget.imagebox,
+-                                },
+-                                forced_width = icon_width,
+-                                valign = icon_valign,
+-                                widget = wibox.container.place,
++				    {
++					{
++					    id = "icon_role",
++					    widget = wibox.widget.imagebox,
++					},
++					forced_width = icon_width,
++					valign = icon_valign,
++					widget = wibox.container.place,
++				},
++				widget = wibox.container.margin,
++				left = 15
+                             },
+                             {
+                                 {
+@@ -144,7 +151,7 @@ local function draw_widget(
+                             spacing = client_icon_horizontal_spacing,
+                             layout = wibox.layout.fixed.horizontal,
+                         },
+-                        layout = wibox.layout.flex.vertical,
++                        layout = wibox.layout.align.vertical,
+                     },
+                 },
+             })
+@@ -266,19 +273,7 @@ local enable = function(opts)
+         ontop = true,
+         placement = awful.placement.centered,
+         screen = awful.screen.focused(),
+-        widget = wibox.container.background, -- A dummy widget to make awful.popup not scream
+-        widget = {
+-            {
+-                draw_widget(),
+-                margins = client_margins,
+-                widget = wibox.container.margin,
+-            },
+-            shape_border_width = border_width,
+-            shape_border_color = border_color,
+-            bg = background,
+-            shape = helpers.shape.rrect(border_radius),
+-            widget = wibox.container.background,
+-        },
++        widget = wibox.container.background,
+     })
+ 
+     local mouse_keys = gears.table.join(
+-- 
+2.41.0
+

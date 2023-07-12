@@ -1,21 +1,24 @@
 pkgname='bling'
 pkgdesc="Utilities for the AwesomeWM"
 pkgver=dev
-pkgrel=7
+pkgrel=8
 arch=(any)
 url='https://github.com/BlingCorp/bling'
 license=(MIT)
 makedepends=(git)
 depends=(awesome)
 source=(git+https://github.com/BlingCorp/bling.git
-	0001-Let-me-theme-my-app_launcher-with-beautiful-variable.patch)
+	0001-Let-me-theme-my-app-launcher-with-beautiful-variable.patch
+	0002-Improve-the-window-switcher-dith-dirty-patches.patch)
 sha256sums=('SKIP'
-            '15c8220223ac04f78442671e759b7b2a849e743120b7213fc95216b51be13909')
+            'a4554f0a979b05254df53f5450c4f12a300ef9ee9dca32df4accdec026a2fd09'
+            'e0d3e261e083bf99f4353de209216e7562bed348c07ee3ee5679cebfc8909c4c')
 _luaver=5.4
 
 prepare() {
 	cd $pkgname
-	git apply ../0001-Let-me-theme-my-app_launcher-with-beautiful-variable.patch
+	git apply <../0001-Let-me-theme-my-app-launcher-with-beautiful-variable.patch
+	git apply <../0002-Improve-the-window-switcher-dith-dirty-patches.patch
 }
 
 package() {

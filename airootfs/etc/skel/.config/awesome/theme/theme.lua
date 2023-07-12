@@ -60,6 +60,14 @@ theme.app_launcher_prompt_icon_color = theme.color7
 theme.app_launcher_app_name_selected_color = theme.color7
 theme.app_launcher_app_selected_color = theme.color8
 
+theme.window_switcher_widget_bg = theme.bg_focus
+theme.window_switcher_widget_border_width = 0
+theme.window_switcher_widget_border_radius = 5
+theme.window_switcher_client_width = 250
+theme.window_switcher_client_height = 300
+theme.window_switcher_name_normal_color = theme.color15
+theme.window_switcher_name_focus_color = theme.color7
+
 theme.notification_spacing = 5
 theme.notification_max_width = 400
 theme.notification_offset_y = 55

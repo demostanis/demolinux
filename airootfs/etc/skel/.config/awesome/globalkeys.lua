@@ -52,6 +52,9 @@ local globalkeys = gears.table.join(
 
     awful.key({ modkey }, "r", awesome.restart),
 
+    awful.key({ modkey }, "Tab", function()
+        awesome.emit_signal("bling::window_switcher::turn_on")
+    end),
     awful.key({ modkey }, "o", require"overview"),
     awful.key({ modkey }, "space", function()
         bling.widget.app_launcher{

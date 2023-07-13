@@ -981,6 +981,9 @@ _move_boot_to_temp_location() {
 _make_boot_on_disk_image() {
     local ucode_image
     _msg_info "Preparing kernel and initramfs for the disk image..."
+
+    # Way too many MBs wasted...
+    rm "${work_dir}/boot/"*"fallback"*".img"
     mv -- "${work_dir}/boot/initramfs-"*".img" /mnt/demolinux/boot
     mv -- "${work_dir}/boot/vmlinuz-"* /mnt/demolinux/boot
 

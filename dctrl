@@ -2,7 +2,7 @@
 # demolinux VM control script
 #  Usage: ./dctrl [shell|pull|push] [src [dest]]
 
-common_opts=( 60022 -o StrictHostKeyChecking=no )
+common_opts=( 60022 -o StrictHostKeyChecking=no -o LogLevel=quiet )
 
 shell(){
 	ssh -p ${common_opts[@]} demostanis@localhost

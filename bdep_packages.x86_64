@@ -3,3 +3,4 @@ base
 devtools
 git
 pv
+squashfs-tools

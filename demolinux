@@ -19,7 +19,7 @@ clean(){
 ensure_installed(){
 	pacman -Q $(<bdep_packages.x86_64) >/dev/null || {
 		echo Missing packages to build. Installing...
-		pacman -S $(<bdep_packages.x86_64)
+		pacman -S --noconfirm $(<bdep_packages.x86_64)
 	}
 }
 

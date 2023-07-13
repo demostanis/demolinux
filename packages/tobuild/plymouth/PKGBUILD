@@ -1,0 +1,85 @@
+# Maintainer: Taijian <taijian@posteo.de>
+# Contributors: Patrick Burroughs (Celti), Abbradar, Zephyr, Christian Autermann, Biginoz, Martin Lee, Ricardo Funke,
+#               PirateJonno, lh, Cilyan Olowen, Shaffer, Brcha, Lyle Putnam, Det, Boohbah,
+#               Lara Maia, Padfoot, Jorge Barroso, carstene1ns, Sebastian Lau
+
+pkgname=plymouth
+_pkgname=plymouth
+pkgver=22.02.122.r180.gb1d5aa9d
+pkgrel=6
+pkgdesc='Graphical boot splash screen (git version)'
+arch=('i686' 'x86_64')
+url='https://www.freedesktop.org/wiki/Software/Plymouth/'
+license=('GPL2')
+depends=('bash' 'cairo' 'cantarell-fonts' 'filesystem' 'glib2' 'glibc' 'libdrm' 'libpng' 'pango'
+         'systemd-libs' 'libevdev' 'libxkbcommon')
+makedepends=('gtk3' 'docbook-xsl' 'git' 'meson')
+optdepends=('gtk3: x11 renderer')
+provides=('plymouth')
+conflicts=('plymouth')
+backup=('etc/plymouth/plymouthd.conf')
+install='plymouth.install'
+source=("git+https://gitlab.freedesktop.org/$_pkgname/$_pkgname.git"
+       'plymouth.initcpio_hook'
+       'plymouth.initcpio_install'
+       'plymouthd.conf.patch'
+       '0001-Change-default-boot-duration.patch'
+)
+
+sha256sums=('SKIP'
+            'de852646e615e06d4125eb2e646d0528d1e349bd9e9877c08c5d32c43d288b6f'
+            'b480575752c3db04c90bc4d604da154eac2577c621a8812f38c6ffe1fd63ed50'
+            'bcf27e3c6f4539b328da304a7d99fefdb60459b483fddb7fd939be092a7f84c8'
+            'b5e332f2825bbf9dc6dd1af1830b2f4f0976e4bbbcc5b0f3620cb61045b5e713')
+
+pkgver() {
+  cd $_pkgname
+  git describe --long | sed 's/-/.r/;s/-/./'
+}
+
+prepare() {
+  cd $_pkgname
+
+  # Use mkinitcpio to update initrd
+  sed -i 's/dracut -f/mkinitcpio -P/' scripts/plymouth-update-initrd
+
+  # Patch config file
+  patch -p1 -i $srcdir/plymouthd.conf.patch
+
+  patch -p1 -i $srcdir/0001-Change-default-boot-duration.patch
+}
+
+build() {
+  local meson_options=(
+    -D logo=/usr/share/pixmaps/archlinux-logo.png
+    -D background-color=0x000000
+    -D background-start-color-stop=0x000000
+    -D background-end-color-stop=0x4D4D4D
+  )
+
+  arch-meson $_pkgname build "${meson_options[@]}"
+  meson compile -C build
+
+  # Convert logo for the spinner theme
+  rsvg-convert '/usr/share/pixmaps/archlinux-logo-text-dark.svg' -o $srcdir/archlinux-logo-text-dark.png
+}
+
+check() {
+  meson test -C build --print-errorlogs
+}
+
+package() {
+  meson install -C build --destdir "$pkgdir"
+  
+  # Install mkinitcpio hook
+  install -Dm644 $srcdir/plymouth.initcpio_hook "$pkgdir/usr/lib/initcpio/hooks/$_pkgname"
+  install -Dm644 $srcdir/plymouth.initcpio_install "$pkgdir/usr/lib/initcpio/install/$_pkgname"
+  
+  # Install logo for the spinner theme
+  install -Dm644 $srcdir/archlinux-logo-text-dark.png "$pkgdir/usr/share/$_pkgname/themes/spinner/watermark.png"
+  install -Dm644 "$pkgdir/usr/share/$_pkgname/plymouthd.defaults" "$pkgdir/etc/$_pkgname/plymouthd.conf"
+
+  # AwesomeWM quits Plymouth itself
+  rm "$pkgdir/usr/lib/systemd/system/plymouth-quit.service"
+  rm "$pkgdir/usr/lib/systemd/system/plymouth-quit-wait.service"
+}

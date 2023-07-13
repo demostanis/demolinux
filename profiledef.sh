@@ -16,6 +16,8 @@ file_permissions=(
   ["/etc/shadow"]="0:0:400"
   ["/etc/sudoers"]="0:0:400"
   ["/root"]="0:0:750"
+
+  ["/usr/lib/boot/finishboot"]="0:0:+s+x"
 )
 for file in $(find airootfs/usr/local/bin -type f); do
   file_permissions+=( ["${file##airootfs}"]="0:0:755" )

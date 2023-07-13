@@ -42,9 +42,11 @@ local firefox-ytarb
 local flameshot
 local jargon
 local lsb-release
+local mkinitcpio
 local mkinitcpio-archiso
 local phosphoricons
 local picom-sdhand
+local plymouth
 local rxvt-unicode-pixbuf
 local slop
 local ttf-font-awesome-pro
@@ -54,7 +56,6 @@ luarocks
 lynx
 man-db
 man-pages
-mkinitcpio
 mkinitcpio-nfs-utils
 mpv
 nbd

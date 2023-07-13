@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=demolinux
+Description=Fork of Apple Mac Plymouth theme by - Navis Michael Bearly J
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/demolinux
+ScriptFile=/usr/share/plymouth/themes/demolinux/demolinux.script

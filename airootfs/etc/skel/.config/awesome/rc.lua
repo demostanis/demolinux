@@ -23,13 +23,21 @@ modkey = "Mod4"
 
 require"globalkeys"
 
+local c = 0
 awful.screen.connect_for_each_screen(function(s)
+    c = c + 1
+
     gears.wallpaper.centered(beautiful.wallpaper, s, beautiful.color0, 0.1)
 
     awful.tag({ "1", "2", "3", "4", "5" }, s, awful.layout.suit.floating)
 
     s.mywibar = require"wibar"(s)
     s.mydock = require"dock"(s)
+
+    if c == screen.count() then
+        -- Hide the boot splash when last screen is ready
+        awful.spawn("/usr/lib/boot/finishboot", false)
+    end
 end)
 
 client.connect_signal("manage", function(c)

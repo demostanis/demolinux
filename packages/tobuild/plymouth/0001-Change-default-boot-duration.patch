@@ -1,0 +1,26 @@
+From d424748a5044479150715ed0bc793eb66e0b0a85 Mon Sep 17 00:00:00 2001
+From: demostanis <demostanis@protonmail.com>
+Date: Thu, 13 Jul 2023 22:19:12 +0200
+Subject: [PATCH] Change default boot duration
+
+Is this really how the progress bar works...?
+---
+ src/libply/ply-progress.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/libply/ply-progress.c b/src/libply/ply-progress.c
+index 8bee143e..7b95a498 100644
+--- a/src/libply/ply-progress.c
++++ b/src/libply/ply-progress.c
+@@ -47,7 +47,7 @@
+ #endif
+ 
+ #ifndef DEFAULT_BOOT_DURATION
+-#define DEFAULT_BOOT_DURATION 60.0
++#define DEFAULT_BOOT_DURATION 20.0
+ #endif
+ 
+ 
+-- 
+2.41.0
+

@@ -17,7 +17,7 @@ theme.iconfont = theme.baseiconfont .. " 8"
 theme.default_icon = "/usr/share/icons/la-capitaine/status/scalable-dark/dialog-question.svg"
 theme.icon_theme = "la-capitaine"
 
-theme.wallpaper = theme.color0
+theme.wallpaper = "/usr/share/backgrounds/nyarch.jpg"
 
 theme.bg_normal = theme.color10
 theme.bg_focus = theme.color11

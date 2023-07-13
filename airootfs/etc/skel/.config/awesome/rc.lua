@@ -24,7 +24,7 @@ modkey = "Mod4"
 require"globalkeys"
 
 awful.screen.connect_for_each_screen(function(s)
-    gears.wallpaper.set(beautiful.wallpaper)
+    gears.wallpaper.centered(beautiful.wallpaper, s, beautiful.color0, 0.1)
 
     awful.tag({ "1", "2", "3", "4", "5" }, s, awful.layout.suit.floating)
 

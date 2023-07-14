@@ -12,6 +12,7 @@ bat
 bind
 btrfs-progs
 bubblewrap-suid
+clipnotify
 cryptsetup
 e2fsprogs
 edk2-shell
@@ -79,6 +80,7 @@ ttf-cascadia-code-nerd
 ttf-fira-code
 ttf-font-awesome
 websocat
+xclip
 xdg-dbus-proxy
 xdg-user-dirs
 xdotool

@@ -1,43 +1,72 @@
 #!/bin/bash
 
+pid=$$
+
 # This breaks native notifications.
 # But who needs browser notifications anyway?
 mkdir -p "$XDG_RUNTIME_DIR"/dbus-proxy
 xdg-dbus-proxy "$DBUS_SESSION_BUS_ADDRESS" \
 	"$XDG_RUNTIME_DIR"/dbus-proxy/firefox \
 	--filter \
-	`# Could this be shortened? Maybe. Who knows.` \
-	--own="org.mozilla.firefox.*" \
-	--see="org.mozilla.firefox.*" \
-	--talk="org.mozilla.firefox.*" &
+	`# For reference: https://hg.mozilla.org/mozilla-central/file/tip/taskcluster/docker/firefox-flatpak/runme.sh#l156` \
+	--{see,talk}="org.mozilla.firefox.*" \
+	--talk=org.freedesktop.Notifications &
 
-mkdir -p "$XDG_RUNTIME_DIR"/$$
-fifo="$XDG_RUNTIME_DIR"/$$/fifo
+mkdir -p "$XDG_RUNTIME_DIR"/ffhardened-$pid
+fifo="$XDG_RUNTIME_DIR"/ffhardened-$pid/fifo
 mkfifo "$fifo"
-cat >"$XDG_RUNTIME_DIR"/$$/mpv-launcher<<EOF
+cat >"$XDG_RUNTIME_DIR"/ffhardened-$pid/mpv-launcher<<EOF
 #!/bin/sh
 echo "\$3" >> "$fifo"
 EOF
-chmod +x "$XDG_RUNTIME_DIR"/$$/mpv-launcher
+chmod +x "$XDG_RUNTIME_DIR"/ffhardened-$pid/mpv-launcher
 
 while true; do
-	curl "$(cat "$fifo")" | \
+	curl -s "$(cat "$fifo")" | \
 		/usr/local/bin/mpv-hardened /dev/stdin
 done &
 
-cookie=~/.cookies/$$
+cookie=~/.cookies/$pid
 mkdir -p "$(dirname "$cookie")"
 touch "$cookie"
 
 xauth -f "$cookie" generate $DISPLAY . untrusted
 export XAUTHORITY="$cookie"
 
+while XAUTHORITY=~/.Xauthority clipnotify; do
+	if [ "$(env XAUTHORITY=~/.Xauthority xdotool getactivewindow getwindowclassname)" != firefox ]; then continue; fi
+
+	# Sync clipboards
+	xclip \
+		-selection primary -o | \
+		XAUTHORITY=~/.Xauthority xclip \
+		-selection primary -i
+	xclip \
+		-selection clipboard -o | \
+		XAUTHORITY=~/.Xauthority xclip \
+		-selection clipboard -i
+done &
+
 # Sometimes xdg-dbus-proxy takes a little while to start...
 while [ ! -e "$XDG_RUNTIME_DIR"/dbus-proxy/firefox ]; do sleep 0.1; done
 
-trap 'jobs -p | xargs -I@ kill -- -@' EXIT
+trap '
+	kill $(jobs -p)
+	rm -rf "$cookie"
+	rm -rf "$XDG_RUNTIME_DIR"/ffhardened-$pid
+	# So. For some reason, when launching hardened-firefox,
+	# two cookies are being created in ~/.cookies. I have no
+	# fucking idea why. But well. This is a hacky way to
+	# ensure we do not get too many unused cookies in the
+	# memory...
+	if ! pgrep -f /usr/lib/firefox/firefox; then
+		rm -rf ~/.cookies
+		pkill -f firefox-hardened
+	fi
+	exit 0
+' EXIT
 
-exec bwrap \
+bwrap \
 	`# For dynamically linked executables` \
 	--ro-bind /usr/lib /usr/lib --symlink /usr/lib /lib \
 	--ro-bind /usr/lib64 /usr/lib64 --symlink /usr/lib64 /lib64 \
@@ -61,8 +90,8 @@ exec bwrap \
 	`# Restricted IPC with DBus` \
 	--ro-bind "$XDG_RUNTIME_DIR"/dbus-proxy/firefox "$XDG_RUNTIME_DIR"/bus \
 	--ro-bind ~/.config/gtk-3.0/settings.ini /firefox/.config/gtk-3.0/settings.ini \
-	--ro-bind "$XDG_RUNTIME_DIR"/$$ "$XDG_RUNTIME_DIR"/$$ \
-	--ro-bind "$XDG_RUNTIME_DIR"/$$/mpv-launcher /usr/bin/mpv \
+	--ro-bind "$XDG_RUNTIME_DIR"/ffhardened-$pid "$XDG_RUNTIME_DIR"/ffhardened-$pid \
+	--ro-bind "$XDG_RUNTIME_DIR"/ffhardened-$pid/mpv-launcher /usr/bin/mpv \
 	--ro-bind /usr/share/ff2mpv/ff2mpv.py /usr/share/ff2mpv/ff2mpv.py \
 	`# Networking` \
 	--ro-bind /etc/resolv.conf /etc/resolv.conf \

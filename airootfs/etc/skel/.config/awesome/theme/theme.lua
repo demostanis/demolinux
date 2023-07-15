@@ -69,7 +69,7 @@ theme.window_switcher_name_normal_color = theme.color15
 theme.window_switcher_name_focus_color = theme.color7
 
 theme.notification_spacing = 5
-theme.notification_max_width = 400
+theme.notification_width = 400
 theme.notification_offset_y = 55
 theme.notification_border_color = theme.color11
 theme.notification_bg = theme.color11

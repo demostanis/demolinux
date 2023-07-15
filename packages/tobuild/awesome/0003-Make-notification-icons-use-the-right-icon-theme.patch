@@ -1,0 +1,81 @@
+From 9eed24aceead07f9ca776fc6a8b5a1a62fed56b9 Mon Sep 17 00:00:00 2001
+From: demostanis <demostanis@protonmail.com>
+Date: Sat, 15 Jul 2023 15:08:14 +0200
+Subject: [PATCH 3/3] Make notification icons use the right icon theme
+
+---
+ lib/menubar/utils.lua           | 14 ++++++++------
+ lib/naughty/widget/_default.lua | 18 +++++++++++-------
+ 2 files changed, 19 insertions(+), 13 deletions(-)
+
+diff --git a/lib/menubar/utils.lua b/lib/menubar/utils.lua
+index 77945a398..cd2f67e46 100644
+--- a/lib/menubar/utils.lua
++++ b/lib/menubar/utils.lua
+@@ -185,12 +185,14 @@ local function get_icon_lookup_path()
+     local app_in_theme_paths = {}
+     for _, icon_theme_directory in ipairs(icon_theme_paths) do
+         for _, size in ipairs(all_icon_sizes) do
+-            table.insert(app_in_theme_paths,
+-                         glib.build_filenamev({ icon_theme_directory,
+-                                                size, 'apps' }))
+-            table.insert(app_in_theme_paths,
+-                         glib.build_filenamev({ icon_theme_directory,
+-                                                size, 'categories' }))
++            for _, directory in ipairs({'actions','apps','devices','emblems','emotes','mimetypes','places','status'}) do
++                table.insert(app_in_theme_paths,
++                             glib.build_filenamev({ icon_theme_directory,
++                                                    size, directory }))
++                table.insert(app_in_theme_paths,
++                             glib.build_filenamev({ icon_theme_directory,
++                                                    directory, size }))
++            end
+         end
+     end
+     add_if_readable(icon_lookup_path, app_in_theme_paths)
+diff --git a/lib/naughty/widget/_default.lua b/lib/naughty/widget/_default.lua
+index ebfd8ca07..ecd7b367a 100644
+--- a/lib/naughty/widget/_default.lua
++++ b/lib/naughty/widget/_default.lua
+@@ -18,8 +18,8 @@ local dpi        = require("beautiful").xresources.apply_dpi
+ -- It is not worth doing a special widget for this.
+ local function notif_size()
+     local constraint = wibox.container.constraint()
+-    constraint:set_strategy("max")
+-    constraint:set_width(beautiful.notification_max_width or dpi(500))
++    constraint:set_strategy("exact")
++    constraint:set_width(beautiful.notification_width or dpi(500))
+ 
+     rawset(constraint, "set_notification", function(_, notif)
+         constraint._private.notification = setmetatable({notif}, {__mode = "v"})
+@@ -34,7 +34,7 @@ local function notif_size()
+             s = true
+         end
+ 
+-        constraint.strategy = s and "exact" or "max"
++        --constraint.strategy = s and "exact" or "max"
+     end)
+ 
+     rawset(constraint, "get_notification", function()
+@@ -67,10 +67,14 @@ return {
+                 {
+                     wicon,
+                     {
+-                        wtitle,
+-                        wmessage,
+-                        spacing = 4,
+-                        layout  = wibox.layout.fixed.vertical,
++                        {
++                            wtitle,
++                            wmessage,
++                            spacing = 4,
++                            layout  = wibox.layout.fixed.vertical,
++                        },
++                        widget  = wibox.container.margin,
++                        margins = wicon and 5 or 0,
+                     },
+                     fill_space = true,
+                     spacing    = 4,
+-- 
+2.41.0
+

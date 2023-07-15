@@ -11,7 +11,7 @@
 _pkgname=awesome
 pkgname=${_pkgname}
 pkgver=4.3.1606.g0e5fc4575
-pkgrel=2
+pkgrel=3
 pkgdesc='Highly configurable framework window manager'
 arch=('i686' 'x86_64')
 url='http://awesome.naquadah.org/'
@@ -31,10 +31,12 @@ conflicts=('awesome')
 backup=('etc/xdg/awesome/rc.lua')
 source=("$pkgname::git+https://github.com/awesomeWM/awesome.git"
 	0001-Allow-specifying-a-y-offset-for-notifications.patch
-	0002-Expose-surface.patch)
+	0002-Expose-surface.patch
+	0003-Make-notification-icons-use-the-right-icon-theme.patch)
 md5sums=('SKIP'
-         'd34e1ab3b49f4fd79b9ddb3bb1637857'
-         '83773f337769d4c02bf1e6d4819ad06a')
+         'cc616056010adeec09962735ffcc87ec'
+         '4e36931befbcb4e37885a24855e9b53e'
+         'cda8f25b251ed62b718f81fca68ae793')
 _LUA_VER=5.4
 
 pkgver() {
@@ -46,6 +48,7 @@ prepare() {
   cd $pkgname
   git apply < ../0001-Allow-specifying-a-y-offset-for-notifications.patch
   git apply < ../0002-Expose-surface.patch
+  git apply < ../0003-Make-notification-icons-use-the-right-icon-theme.patch
 }
 
 build() {

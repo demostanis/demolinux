@@ -127,6 +127,21 @@ naughty.connect_signal("request::display", function(n)
     }
 end)
 
+-- TODO: move to a separate file
+-- TODO: if path := ... in pluto
+local function lookup_icon(icon)
+    return menubar.utils.lookup_icon(icon) or
+        menubar.utils.lookup_icon(icon:lower())
+end
+naughty.connect_signal("request::icon", function(n, context, hints)
+    local icon = hints.app_icon or n.app_name
+    local path = menubar.utils.lookup_icon(icon) or
+        menubar.utils.lookup_icon(icon:lower())
+    if path then
+        n.icon = path
+    end
+end)
+
 client.connect_signal("request::titlebars", function(c)
     require"titlebar"(c)
     require"tabs"(c)

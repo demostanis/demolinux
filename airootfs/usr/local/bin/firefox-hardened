@@ -9,7 +9,7 @@ xdg-dbus-proxy "$DBUS_SESSION_BUS_ADDRESS" \
 	"$XDG_RUNTIME_DIR"/dbus-proxy/firefox \
 	--filter \
 	`# For reference: https://hg.mozilla.org/mozilla-central/file/tip/taskcluster/docker/firefox-flatpak/runme.sh#l156` \
-	--{see,talk}="org.mozilla.firefox.*" \
+	--{own,talk}="org.mozilla.firefox.*" \
 	--talk=org.freedesktop.Notifications &
 
 mkdir -p "$XDG_RUNTIME_DIR"/ffhardened-$pid

@@ -15,13 +15,13 @@ bling = require"bling"
 utils = require"utils"
 cairo = require"lgi".cairo
 
-require"awful.autofocus"
-require"startup"
-
 terminal = "urxvt"
 modkey = "Mod4"
 
+require"awful.autofocus"
+require"startup"
 require"globalkeys"
+require"notifications"
 
 local c = 0
 awful.screen.connect_for_each_screen(function(s)
@@ -58,89 +58,24 @@ client.connect_signal("manage", function(c)
     end)
 end)
 
--- {{{ Rules
--- Rules to apply to new clients (through the "manage" signal).
-awful.rules.rules = {
-    -- All clients will match this rule.
-    { rule = { },
-      properties = { focus = awful.client.focus.filter,
-                     raise = true,
-                     keys = require"clientkeys",
-                     buttons = require"windowcontrols",
-                     screen = awful.screen.preferred,
-                     placement = awful.placement.no_overlap+awful.placement.no_offscreen,
-                     size_hints_honor = false
-     }
-    },
-
-    -- Floating clients.
-    { rule_any = {
-        instance = {
-          "DTA",  -- Firefox addon DownThemAll.
-          "copyq",  -- Includes session name in class.
-          "pinentry",
-        },
-        class = {
-          "Arandr",
-          "Blueman-manager",
-          "Gpick",
-          "Kruler",
-          "MessageWin",  -- kalarm.
-          "Sxiv",
-          "Tor Browser", -- Needs a fixed window size to avoid fingerprinting by screen size.
-          "Wpa_gui",
-          "veromix",
-          "xtightvncviewer"},
-
-        -- Note that the name property shown in xprop might be set slightly after creation of the client
-        -- and the name shown there might not match defined rules here.
-        name = {
-          "Event Tester",  -- xev.
-        },
-        role = {
-          "AlarmWindow",  -- Thunderbird's calendar.
-          "ConfigManager",  -- Thunderbird's about:config.
-          "pop-up",       -- e.g. Google Chrome's (detached) Developer Tools.
-        }
-      }, properties = { floating = true }},
-
-    -- Add titlebars to normal clients and dialogs
-    { rule_any = {type = { "normal", "dialog" }
-      }, properties = { titlebars_enabled = true }
-    },
-
-    -- Set Firefox to always map on the tag named "2" on screen 1.
-    -- { rule = { class = "Firefox" },
-    --   properties = { screen = 1, tag = "2" } },
-}
--- }}}
-
-naughty.connect_signal("request::display", function(n)
-    naughty.layout.box {
-        notification = n,
-        widget_template = {
-            require"naughty.widget._default",
-            widget = wibox.container.place,
-            valign = "center",
-            halign = "center",
-        }
+awful.rules.rules = {{
+    rule = { },
+    properties = {
+        focus = awful.client.focus.filter,
+        raise = true,
+        keys = require"clientkeys",
+        buttons = require"windowcontrols",
+        screen = awful.screen.preferred,
+        placement = awful.placement.no_overlap+awful.placement.no_offscreen,
+        size_hints_honor = false
     }
-end)
-
--- TODO: move to a separate file
--- TODO: if path := ... in pluto
-local function lookup_icon(icon)
-    return menubar.utils.lookup_icon(icon) or
-        menubar.utils.lookup_icon(icon:lower())
-end
-naughty.connect_signal("request::icon", function(n, context, hints)
-    local icon = hints.app_icon or n.app_name
-    local path = menubar.utils.lookup_icon(icon) or
-        menubar.utils.lookup_icon(icon:lower())
-    if path then
-        n.icon = path
-    end
-end)
+},
+{
+    rule_any = {type = {"normal", "dialog"}},
+    properties = {
+        titlebars_enabled = true
+    }
+}}
 
 client.connect_signal("request::titlebars", function(c)
     require"titlebar"(c)

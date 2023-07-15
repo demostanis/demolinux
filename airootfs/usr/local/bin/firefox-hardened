@@ -26,7 +26,7 @@ while true; do
 		/usr/local/bin/mpv-hardened /dev/stdin
 done &
 
-cookie=~/.cookies/$pid
+cookie="$XDG_RUNTIME_DIR"/ffhardened-$pid/cookie
 mkdir -p "$(dirname "$cookie")"
 touch "$cookie"
 
@@ -52,15 +52,11 @@ while [ ! -e "$XDG_RUNTIME_DIR"/dbus-proxy/firefox ]; do sleep 0.1; done
 
 trap '
 	kill $(jobs -p)
-	rm -rf "$cookie"
 	rm -rf "$XDG_RUNTIME_DIR"/ffhardened-$pid
-	# So. For some reason, when launching hardened-firefox,
-	# two cookies are being created in ~/.cookies. I have no
-	# fucking idea why. But well. This is a hacky way to
-	# ensure we do not get too many unused cookies in the
-	# memory...
+	# For some reason, two firefox-hardened instances
+	# exist. Kill the remaining ones if no browser is
+	# open.
 	if ! pgrep -f /usr/lib/firefox/firefox; then
-		rm -rf ~/.cookies
 		pkill -f firefox-hardened
 	fi
 	exit 0

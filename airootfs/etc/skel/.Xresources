@@ -6,6 +6,9 @@ URxvt.scrollstyle: plain
 URxvt.scrollBar_right: true
 URxvt.scrollTtyOutput: false
 URxvt.scrollTtyKeypress: true
+URxvt.keysym.Shift-Control-C: eval:selection_to_clipboard
+URxvt.keysym.Shift-Control-V: eval:paste_clipboard
+URxvt.iso14755: false
 
 ! hewwo pwease wepwace this
 ! Base16 Mellow Purple

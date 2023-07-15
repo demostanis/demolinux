@@ -1,0 +1,18 @@
+#!/bin/bash
+
+file=${1:?Missing user.js}
+url="https://searchfox.org/mozilla-central/search?q="
+
+IFS=$'\n'; for line in $(grep ^user_pref\( "$file"); do
+(
+	pref="$(printf %s "$line" | cut -d\" -f2)"
+	if [[ ! "$pref" = extensions.* ]]; then
+		if [ "$(curl -sH 'Accept: application/json' "$url$pref" | jq .normal)" = null ]; then
+			# no results found, the pref is not used in Firefox's codebase
+			echo "/$pref/d"
+		fi
+	fi
+) &
+done
+wait
+

@@ -116,9 +116,11 @@ if (Plymouth.GetMode () == "boot")
 
   fun progress_callback (duration, progress)
     {
-      if (progress_bar.image.GetWidth () != Math.Int (progress_bar.original_image.GetWidth () * progress*1.7) && progress*1.7 <= 1.0)
+      local.real_progress;
+      real_progress = Math.Min (1, progress*1.7);
+      if (progress_bar.image.GetWidth () != Math.Int (progress_bar.original_image.GetWidth () * real_progress))
         {
-          progress_bar.image = progress_bar.original_image.Scale(progress_bar.original_image.GetWidth(progress_bar.original_image) * progress*1.7, progress_bar.original_image.GetHeight());
+          progress_bar.image = progress_bar.original_image.Scale(progress_bar.original_image.GetWidth(progress_bar.original_image) * real_progress, progress_bar.original_image.GetHeight());
           progress_bar.sprite.SetImage (progress_bar.image);
         }
     }

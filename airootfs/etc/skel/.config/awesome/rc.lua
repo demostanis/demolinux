@@ -14,6 +14,7 @@ rubato = require"rubato"
 bling = require"bling"
 utils = require"utils"
 cairo = require"lgi".cairo
+glib = require"lgi".GLib
 
 terminal = "urxvt"
 modkey = "Mod4"

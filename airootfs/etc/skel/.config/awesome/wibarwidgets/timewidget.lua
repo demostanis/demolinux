@@ -1,5 +1,3 @@
-local wibox = require"wibox"
-local glib = require"lgi".GLib
 local DateTime = glib.DateTime
 local TimeZone = glib.TimeZone
 

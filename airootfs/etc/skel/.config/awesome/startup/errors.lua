@@ -1,4 +1,3 @@
-local naughty = require"naughty"
 
 local in_error = false
 awesome.connect_signal("debug::error", function (err)

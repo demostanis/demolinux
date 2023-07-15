@@ -1,5 +1,3 @@
-local gears = require"gears"
-local awful = require"awful"
 
 local cursors = {
     ["left"] = "sb_h_double_arrow",

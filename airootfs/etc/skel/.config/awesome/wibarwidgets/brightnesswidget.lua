@@ -1,9 +1,3 @@
-local beautiful = require"beautiful"
-local vicious = require"vicious"
-local gears = require"gears"
-local utils = require"utils"
-local wibox = require"wibox"
-local awful = require"awful"
 
 local icons = {
     low = "\u{e0ca}",

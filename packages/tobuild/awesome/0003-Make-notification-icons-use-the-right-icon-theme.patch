@@ -1,7 +1,7 @@
 From 9eed24aceead07f9ca776fc6a8b5a1a62fed56b9 Mon Sep 17 00:00:00 2001
 From: demostanis <demostanis@protonmail.com>
 Date: Sat, 15 Jul 2023 15:08:14 +0200
-Subject: [PATCH 3/3] Make notification icons use the right icon theme
+Subject: [PATCH 3/4] Make notification icons use the right icon theme
 
 ---
  lib/menubar/utils.lua           | 14 ++++++++------

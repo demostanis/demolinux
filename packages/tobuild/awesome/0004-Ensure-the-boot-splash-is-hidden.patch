@@ -1,0 +1,25 @@
+From 564f930cb1448395324d5a1badd4dc85462b6e35 Mon Sep 17 00:00:00 2001
+From: demostanis <demostanis@protonmail.com>
+Date: Sat, 15 Jul 2023 20:28:26 +0200
+Subject: [PATCH 4/4] Ensure the boot splash is hidden
+
+---
+ awesomerc.lua | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/awesomerc.lua b/awesomerc.lua
+index c598a3e08..7db9bbdf6 100644
+--- a/awesomerc.lua
++++ b/awesomerc.lua
+@@ -22,6 +22,8 @@ local hotkeys_popup = require("awful.hotkeys_popup")
+ -- when client with a matching name is opened:
+ require("awful.hotkeys_popup.keys")
+ 
++awful.spawn("/usr/lib/boot/finishboot", false)
++
+ -- {{{ Error handling
+ -- Check if awesome encountered an error during startup and fell back to
+ -- another config (This code will only ever execute for the fallback config)
+-- 
+2.41.0
+

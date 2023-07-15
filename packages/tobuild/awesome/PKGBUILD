@@ -32,11 +32,13 @@ backup=('etc/xdg/awesome/rc.lua')
 source=("$pkgname::git+https://github.com/awesomeWM/awesome.git"
 	0001-Allow-specifying-a-y-offset-for-notifications.patch
 	0002-Expose-surface.patch
-	0003-Make-notification-icons-use-the-right-icon-theme.patch)
+	0003-Make-notification-icons-use-the-right-icon-theme.patch
+	0004-Ensure-the-boot-splash-is-hidden.patch)
 md5sums=('SKIP'
-         'cc616056010adeec09962735ffcc87ec'
-         '4e36931befbcb4e37885a24855e9b53e'
-         'cda8f25b251ed62b718f81fca68ae793')
+         'bdf30656a639bd0d2e9ce740882dec59'
+         'c987300e07e58d6dbae37e40734a8f56'
+         '5ac3c933b78a7a77fa5d3d5b5c9e7268'
+         '953574a6594fea8ddb78f2d36fba5011')
 _LUA_VER=5.4
 
 pkgver() {
@@ -49,6 +51,7 @@ prepare() {
   git apply < ../0001-Allow-specifying-a-y-offset-for-notifications.patch
   git apply < ../0002-Expose-surface.patch
   git apply < ../0003-Make-notification-icons-use-the-right-icon-theme.patch
+  git apply < ../0004-Ensure-the-boot-splash-is-hidden.patch
 }
 
 build() {

@@ -69,6 +69,7 @@ openssh
 pacman-contrib
 pulseaudio
 pv
+qt5ct
 reflector
 ripgrep
 scrcpy

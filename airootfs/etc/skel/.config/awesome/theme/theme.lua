@@ -34,10 +34,6 @@ theme.fg_minimize = theme.color15
 theme.useless_gap = dpi(0)
 theme.border_width = dpi(0)
 
--- required by bling's app_launcher
-theme.prompt_bg_cursor = theme.color11
-theme.prompt_fg_cursor = theme.color15
-
 -- titlebar icons
 theme.titlebar_close_button_normal = cwd.."theme/window-close.png"
 theme.titlebar_close_button_focus  = cwd.."theme/window-close.png"
@@ -57,9 +53,10 @@ theme.tag_preview_widget_border_color = theme.color0
 
 theme.app_launcher_prompt_color = theme.bg_focus
 theme.app_launcher_prompt_text_color = theme.color7
-theme.app_launcher_prompt_icon_color = theme.color7
 theme.app_launcher_app_name_selected_color = theme.color7
-theme.app_launcher_app_selected_color = theme.color8
+theme.app_launcher_app_selected_color = theme.color14
+theme.app_launcher_app_normal_hover_color = theme.bg_focus
+theme.app_launcher_background = theme.bg_normal
 
 theme.window_switcher_widget_bg = theme.bg_focus
 theme.window_switcher_widget_border_width = 0

@@ -1,7 +1,7 @@
 pkgname='bling'
 pkgdesc="Utilities for the AwesomeWM"
 pkgver=dev
-pkgrel=8
+pkgrel=11
 arch=(any)
 url='https://github.com/BlingCorp/bling'
 license=(MIT)
@@ -9,16 +9,22 @@ makedepends=(git)
 depends=(awesome)
 source=(git+https://github.com/BlingCorp/bling.git
 	0001-Let-me-theme-my-app-launcher-with-beautiful-variable.patch
-	0002-Improve-the-window-switcher-dith-dirty-patches.patch)
+	0002-Improve-the-window-switcher-dith-dirty-patches.patch
+	0003-Remove-prompt-icon-and-cursor.patch
+	0004-Prevent-visual-glitch-in-app_launcher.patch)
 sha256sums=('SKIP'
-            'a4554f0a979b05254df53f5450c4f12a300ef9ee9dca32df4accdec026a2fd09'
-            'e0d3e261e083bf99f4353de209216e7562bed348c07ee3ee5679cebfc8909c4c')
+            'd74a9f8b86f4454073641223214938fd027065d4fd6a2db52acb03139112b0ae'
+            '46520421b503c558c63773c21198094b24890bcb3dbbae017fd35d92fdacd201'
+            '70a33c72e5d650111cf4f371fcba5b9d3c8031559660741623dc2356c90961f0'
+            '1082f79b54ae582b93125a87244d438515d2a491c77f7d78dac11d8d24fd5883')
 _luaver=5.4
 
 prepare() {
 	cd $pkgname
 	git apply <../0001-Let-me-theme-my-app-launcher-with-beautiful-variable.patch
 	git apply <../0002-Improve-the-window-switcher-dith-dirty-patches.patch
+	git apply <../0003-Remove-prompt-icon-and-cursor.patch
+	git apply <../0004-Prevent-visual-glitch-in-app_launcher.patch
 }
 
 package() {

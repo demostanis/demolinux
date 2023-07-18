@@ -1,7 +1,7 @@
-From 1ffdb79a256e632d65a32ee4dade4d0eb7ca9ad8 Mon Sep 17 00:00:00 2001
+From 4de3f05bfccfc31cd80af38cdf22318abc09a830 Mon Sep 17 00:00:00 2001
 From: demostanis <demostanis@protonmail.com>
 Date: Wed, 12 Jul 2023 14:27:24 +0200
-Subject: [PATCH 2/2] Improve the window switcher dith dirty patches
+Subject: [PATCH 2/4] Improve the window switcher dith dirty patches
 
 ---
  widget/window_switcher.lua | 51 +++++++++++++++++---------------------

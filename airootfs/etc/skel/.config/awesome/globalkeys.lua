@@ -61,6 +61,7 @@ local globalkeys = gears.table.join(
             terminal = terminal.." -e",
             icon_theme = beautiful.icon_theme,
             whitelist = app_whitelist,
+            app_shape = rrect(),
             apps_per_row = 2,
         }:toggle()
     end),

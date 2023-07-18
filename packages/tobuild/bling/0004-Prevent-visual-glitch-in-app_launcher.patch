@@ -1,0 +1,33 @@
+From 4076249f0f6682d5364e3309faa599e53aae0abd Mon Sep 17 00:00:00 2001
+From: demostanis <demostanis@protonmail.com>
+Date: Mon, 17 Jul 2023 18:20:53 +0200
+Subject: [PATCH 4/4] Prevent visual glitch in app_launcher
+
+---
+ widget/app_launcher/init.lua | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/widget/app_launcher/init.lua b/widget/app_launcher/init.lua
+index fb91440..30ee375 100755
+--- a/widget/app_launcher/init.lua
++++ b/widget/app_launcher/init.lua
+@@ -687,7 +687,15 @@ function app_launcher:show()
+             }
+         end
+     else
+-        screen.app_launcher.visible = true
++        gtimer {
++            timeout = 0.01,
++            call_now = false,
++            autostart = true,
++            single_shot = true,
++            callback = function()
++                screen.app_launcher.visible = true
++            end
++        }
+     end
+ 
+     self:emit_signal("bling::app_launcher::visibility", true)
+-- 
+2.41.0
+

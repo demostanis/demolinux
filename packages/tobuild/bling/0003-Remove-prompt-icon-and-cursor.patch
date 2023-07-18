@@ -1,0 +1,42 @@
+From b0e494f6edb14799ee8531e42721804e995b4282 Mon Sep 17 00:00:00 2001
+From: demostanis <demostanis@protonmail.com>
+Date: Mon, 17 Jul 2023 11:45:36 +0200
+Subject: [PATCH 3/4] Remove prompt icon and cursor
+
+---
+ widget/app_launcher/init.lua | 12 +-----------
+ 1 file changed, 1 insertion(+), 11 deletions(-)
+
+diff --git a/widget/app_launcher/init.lua b/widget/app_launcher/init.lua
+index 1bfffdd..fb91440 100755
+--- a/widget/app_launcher/init.lua
++++ b/widget/app_launcher/init.lua
+@@ -871,7 +871,6 @@ local function new(args)
+         text = ret.prompt_start_text,
+         font = ret.prompt_font,
+         reset_on_stop = ret.reset_on_hide,
+-        bg_cursor = ret.prompt_cursor_color,
+         history_path = ret.save_history == true and gfilesystem.get_cache_dir() .. "/history" or nil,
+         changed_callback = function(text)
+             if text == ret._private.text then
+@@ -963,16 +962,7 @@ local function new(args)
+                             widget = wibox.container.place,
+                             halign = ret.prompt_text_halign,
+                             valign = ret.prompt_text_valign,
+-                            {
+-                                layout = wibox.layout.fixed.horizontal,
+-                                spacing = ret.prompt_icon_text_spacing,
+-                                {
+-                                    widget = wibox.widget.textbox,
+-                                    font = ret.prompt_icon_font,
+-                                    markup = ret.prompt_icon_markup
+-                                },
+-                                ret._private.prompt.textbox
+-                            }
++                            ret._private.prompt.textbox
+                         }
+                     }
+                 }
+-- 
+2.41.0
+

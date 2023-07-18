@@ -370,9 +370,16 @@ _make_chroot() {
             _msg_info "Already built!"
         else
             chown -R $SUDO_USER:$SUDO_USER "${pkgdir}"
-            additional_opts=
+
+            if compgen -G "${profile}"/packages/db/*"$pkg"*pkg.tar*; then
+                rm "${profile}"/packages/db/*"$pkg"*pkg.tar*
+            fi
+
+            additional_opts=()
             if compgen -G "${profile}"/packages/db/*pkg.tar* >/dev/null; then
-                additional_opts=( -I "${profile}"/packages/db/*pkg.tar* )
+                for file in "${profile}"/packages/db/*pkg.tar*; do
+                    additional_opts+=( -I "$file" )
+                done
             fi
             "$correct_makechrootpkg" -U $SUDO_USER -c -r "${chroot_dir}" ${additional_opts[@]}
             repo-add "${profile}"/packages/db/packages.db.tar.gz *pkg.tar*

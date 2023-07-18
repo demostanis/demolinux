@@ -82,7 +82,9 @@ local function mkemojiw(emoji, name)
     }
     if name ~= "placeholder" then
         emojiw:connect_signal("mouse::enter", function()
-            emojiw.bg = beautiful.color3
+            if not emojiw.active then
+                emojiw.bg = beautiful.bg_normal
+            end
             print_emoji({symbol = emoji, name = name})
         end)
         emojiw:connect_signal("mouse::leave", function()
@@ -169,7 +171,7 @@ compute_grid()
 popup = awful.popup{
     ontop = true, visible = false,
     placement = awful.placement.centered,
-    bg = beautiful.bg_focus,
+    bg = beautiful.color8,
     widget = wibox.widget{
         {
             {
@@ -228,7 +230,7 @@ local function redraw_grid()
             if emoji.widget.active then
                 emoji.widget.bg = beautiful.color14
             else
-                emoji.widget.bg = beautiful.bg_focus
+                emoji.widget.bg = beautiful.color8
             end
 
             table.insert(grid._private.widgets, {
@@ -361,6 +363,10 @@ return function()
                 previously_active_emoji.active = false
 
                 currenty = currenty - 1
+                if currenty == cursor - 1 then
+                    cursor = cursor - 1
+                    redraw_grid()
+                end
 
                 local newly_active_emoji = lines[currenty][currentx].widget
                 newly_active_emoji:set_bg(beautiful.color14)
@@ -387,6 +393,10 @@ return function()
                 previously_active_emoji.active = false
 
                 currenty = currenty + 1
+                if currenty == cursor + grid_rows then
+                    cursor = cursor + 1
+                    redraw_grid()
+                end
 
                 if lines[currenty][currentx].name == "placeholder" then
                     currenty, currentx = table.unpack(last_emoji)

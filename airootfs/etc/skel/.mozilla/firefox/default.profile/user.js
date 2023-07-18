@@ -1,11 +1,23 @@
 // Disposition of addons in the toolbar
-user_pref("browser.uiCustomization.state", "{\"placements\":{\"widget-overflow-fixed-list\":[],\"unified-extensions-area\":[\"sponsorblocker_ajay_app-browser-action\"],\"nav-bar\":[\"back-button\",\"forward-button\",\"stop-reload-button\",\"customizableui-special-spring1\",\"urlbar-container\",\"customizableui-special-spring2\",\"save-to-pocket-button\",\"downloads-button\",\"fxa-toolbar-menu-button\",\"VimFxButton\",\"addon_darkreader_org-browser-action\",\"ublock0_raymondhill_net-browser-action\",\"unified-extensions-button\"],\"toolbar-menubar\":[\"menubar-items\"],\"TabsToolbar\":[\"firefox-view-button\",\"tabbrowser-tabs\",\"new-tab-button\",\"alltabs-button\"],\"PersonalToolbar\":[\"import-button\",\"personal-bookmarks\"]},\"seen\":[\"VimFxButton\",\"save-to-pocket-button\",\"addon_darkreader_org-browser-action\",\"sponsorblocker_ajay_app-browser-action\",\"ublock0_raymondhill_net-browser-action\",\"developer-button\"],\"dirtyAreaCache\":[\"unified-extensions-area\",\"nav-bar\",\"PersonalToolbar\"],\"currentVersion\":19,\"newElementCount\":4}");
+user_pref("browser.uiCustomization.state", "{\"placements\":{\"widget-overflow-fixed-list\":[],\"unified-extensions-area\":[\"sponsorblocker_ajay_app-browser-action\",\"ff2mpv_yossarian_net-browser-action\",\"simple-youtube-age-restriction-bypass_zerody_one-browser-action\",\"canvasblocker_kkapsner_de-browser-action\"],\"nav-bar\":[\"back-button\",\"forward-button\",\"stop-reload-button\",\"customizableui-special-spring1\",\"urlbar-container\",\"customizableui-special-spring2\",\"save-to-pocket-button\",\"downloads-button\",\"fxa-toolbar-menu-button\",\"VimFxButton\",\"addon_darkreader_org-browser-action\",\"ublock0_raymondhill_net-browser-action\",\"unified-extensions-button\"],\"toolbar-menubar\":[\"menubar-items\"],\"TabsToolbar\":[\"tabbrowser-tabs\",\"new-tab-button\",\"alltabs-button\"],\"PersonalToolbar\":[\"import-button\",\"personal-bookmarks\"]},\"seen\":[\"VimFxButton\",\"save-to-pocket-button\",\"addon_darkreader_org-browser-action\",\"sponsorblocker_ajay_app-browser-action\",\"ublock0_raymondhill_net-browser-action\",\"developer-button\",\"ff2mpv_yossarian_net-browser-action\",\"simple-youtube-age-restriction-bypass_zerody_one-browser-action\",\"canvasblocker_kkapsner_de-browser-action\"],\"dirtyAreaCache\":[\"unified-extensions-area\",\"nav-bar\",\"PersonalToolbar\",\"toolbar-menubar\",\"TabsToolbar\"],\"currentVersion\":19,\"newElementCount\":4}");
 
 // To use the parent-process Browser console
 user_pref("devtools.chrome.enabled",				false);
 
 // Don't ever show about:welcome
 user_pref("browser.aboutwelcome.enabled",                       false);
+
+// Hide search engines ads
+user_pref("browser.urlbar.suggest.topsites",                    false);
+
+user_pref("browser.tabs.searchclipboardfor.middleclick",        false);
+
+// Do not show "Show previous tabs" popup
+user_pref("browser.startup.couldRestoreSession.count",          2);
+
+// Disable Firefox Home
+user_pref("browser.startup.page",                               0);
+user_pref("browser.startup.homepage",               "about:blank");
 
 // Prefs stolen from https://github.com/pyllyukko/user.js
 

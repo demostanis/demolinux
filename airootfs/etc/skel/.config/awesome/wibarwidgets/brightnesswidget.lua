@@ -50,18 +50,21 @@ local brightness = { async = function(format, warg, callback)
     end)
 end }
 
+local mycontainer = wibox.container.margin(mybrightnesswidget, 0, 0, 0.5, 0.5)
 vicious.register(textw, brightness, function(widget, args)
     if args[1] >= 50 then
         mybrightnesswidget.text = icons.high
+        mycontainer.left = 0
     else
         mybrightnesswidget.text = icons.low
+        mycontainer.left = 1
     end
     return "Brightness: " .. args[1] .. "%"
 end, 1)
 
 -- check if there are any backlight devices
 if os.execute("ls /sys/class/backlight/* >/dev/null 2>&1") then
-    return mybrightnesswidget
+    return mycontainer
 end
 return {_absent = true}
 

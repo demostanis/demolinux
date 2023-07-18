@@ -65,7 +65,7 @@ myvolwidget:connect_signal("mouse::leave", function()
     myvolwidget.markup = fmt(myvolwidget.text)
 end)
 
-local mycontainer = wibox.container.margin(myvolwidget, 0)
+local mycontainer = wibox.container.margin(myvolwidget, 1)
 
 vicious.cache(vicious.widgets.volume)
 vicious.register(myvolwidget,

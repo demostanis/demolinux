@@ -4,8 +4,20 @@ local TimeZone = glib.TimeZone
 local popup, textw = table.unpack(tpopup())
 local timewidget = wibox.widget {
     {
-        wibox.widget.textclock"%H",
-        wibox.widget.textclock"%M",
+        {
+            {
+                widget = wibox.widget.textclock"%H",
+                font = beautiful.bold_font,
+            },
+            widget = wibox.container.place,
+        },
+        {
+            {
+                widget = wibox.widget.textclock"%M",
+                font = beautiful.bold_font,
+            },
+            widget = wibox.container.place,
+        },
         layout = wibox.layout.fixed.vertical
     },
     widget = wibox.container.background,
@@ -16,7 +28,7 @@ timewidget:connect_signal("mouse::enter", function()
     if overview_shown or not geo then return end
 
     textw:set_markup(DateTime.new_now(TimeZone.new_local()):format"%c")
-    popup.x = geo.x + geo.width + 15
+    popup.x = geo.x + geo.width + 10
     popup.y = geo.y + geo.height / 4
     popup.visible = true
 
@@ -29,6 +41,6 @@ timewidget:connect_signal("mouse::leave", function()
     timewidget:get_children_by_id("background")[1].fg = beautiful.fg_focus
 end)
 
-return wibox.container.margin(timewidget, 6.5, 6.5)
+return timewidget
 
 -- vim:set et sw=4 ts=4:

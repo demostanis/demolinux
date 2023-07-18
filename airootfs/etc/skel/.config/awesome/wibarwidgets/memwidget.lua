@@ -3,7 +3,7 @@ local popup, textw = table.unpack(tpopup())
 local mymemwidget = wibox.widget{
     text = "\u{f538}",
     widget = wibox.widget.textbox,
-    font = beautiful.iconfont,
+    font = beautiful.icon_font,
     halign = "center",
 }
 

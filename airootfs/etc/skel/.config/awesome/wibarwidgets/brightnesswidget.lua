@@ -1,4 +1,3 @@
-
 local icons = {
     low = "\u{e0ca}",
     high = "\u{e0c9}",
@@ -7,7 +6,7 @@ local icons = {
 local popup, textw = table.unpack(tpopup())
 local mybrightnesswidget = wibox.widget{
     widget = wibox.widget.textbox,
-    font = beautiful.iconfont,
+    font = beautiful.base_icon_font.." 9",
     text = icons.high,
     halign = "center"
 }

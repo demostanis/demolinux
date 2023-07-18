@@ -19,8 +19,9 @@ return function(c)
         },
         {
             {
-                align  = "center",
-                widget = awful.titlebar.widget.titlewidget(c)
+                widget = awful.titlebar.widget.titlewidget(c),
+                font = beautiful.bold_font,
+                align = "center",
             },
             buttons = buttons,
             layout  = wibox.layout.flex.horizontal

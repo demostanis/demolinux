@@ -9,10 +9,11 @@ local xrdb = xresources.get_current_theme()
 theme.mt = {__index = xrdb}
 setmetatable(theme, theme.mt)
 
-theme.basefont = "CaskaydiaCove Nerd Font Mono"
-theme.font = theme.basefont .. " 10"
-theme.baseiconfont =  "Font Awesome 6 Pro"
-theme.iconfont = theme.baseiconfont .. " 8"
+theme.base_font = "Fira Sans"
+theme.font = theme.base_font.." 10"
+theme.bold_font = theme.base_font .. ", ExtraBold 10"
+theme.base_icon_font = "Font Awesome 6 Pro"
+theme.icon_font = theme.base_icon_font.." 8"
 
 theme.default_icon = "/usr/share/icons/la-capitaine/status/scalable-dark/dialog-question.svg"
 theme.icon_theme = "la-capitaine"

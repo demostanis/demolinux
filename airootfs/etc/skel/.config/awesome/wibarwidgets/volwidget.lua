@@ -17,7 +17,7 @@ local popup, textw = table.unpack(tpopup())
 local myvolwidget = wibox.widget{
     text = mutedicon,
     widget = wibox.widget.textbox,
-    font = beautiful.baseiconfont .. " 7",
+    font = beautiful.base_icon_font .. " 7",
     halign = "center"
 }
 

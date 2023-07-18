@@ -76,8 +76,8 @@ scrcpy
 squashfs-tools
 sudo
 systemd-resolvconf
-ttf-cascadia-code-nerd
 ttf-fira-code
+ttf-fira-sans
 ttf-font-awesome
 websocat
 xclip

@@ -49,7 +49,7 @@ local function close()
     awful.keygrabber.stop(grabber)
 end
 
-local max_emoji_name_size = 25
+local max_emoji_name_size = 50
 local function print_emoji(emoji)
     local emojiw = popup.widget:get_children_by_id("emoji")[1]
     local name = popup.widget:get_children_by_id("name")[1]
@@ -74,7 +74,7 @@ local function mkemojiw(emoji, name)
     local emojiw = wibox.widget{
         {
             widget = wibox.widget.textbox,
-            font = beautiful.basefont.."20",
+            font = "Noto Color Emoji 20",
             text = emoji
         },
         shape = rrect(),
@@ -184,7 +184,7 @@ popup = awful.popup{
         {
             wibox.container.margin(grid, 5, 5, 5, 5),
             -- who didn't miss random margins?
-            wibox.container.margin(no_resultsw, 87.5, 87.5, 114, 113.5),
+            wibox.container.margin(no_resultsw, 161.5, 161.5, 179.5, 178),
             layout = wibox.layout.stack,
         },
         {
@@ -201,12 +201,12 @@ popup = awful.popup{
                         widget = wibox.widget.textbox,
                     },
                     widget = wibox.container.margin,
-                    left = 5
+                    bottom = 1, left = 5
                 },
                 layout = wibox.layout.align.horizontal,
             },
             widget = wibox.container.margin,
-            margins = 5
+            margins = 8
         },
         layout = wibox.layout.align.vertical
     }

@@ -45,7 +45,6 @@ local jargon
 local lsb-release
 local mkinitcpio
 local mkinitcpio-archiso
-local phosphoricons
 local picom-sdhand
 local plymouth
 local rxvt-unicode-pixbuf

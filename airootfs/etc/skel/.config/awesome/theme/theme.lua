@@ -1,6 +1,4 @@
-theme_assets = require"beautiful.theme_assets"
 xresources = require"beautiful.xresources"
-
 dpi = xresources.apply_dpi
 
 local theme = {}
@@ -80,4 +78,4 @@ theme.border_radius = 5
 
 return theme
 
--- vim: filetype=lua:expandtab:shiftwidth=4:tabstop=8:softtabstop=4:textwidth=80
+-- vim:set et sw=4 ts=4:

@@ -7,3 +7,5 @@ return gears.table.join(
         c:raise()
     end)
 )
+
+-- vim:set et sw=4 ts=4:

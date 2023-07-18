@@ -54,3 +54,5 @@ return function(c)
         layout = wibox.layout.align.horizontal
     }
 end
+
+-- vim:set et sw=4 ts=4:

@@ -1,0 +1,29 @@
+From 69bf6c2c90f22e5da928bfda4a0f4e78a8c946b5 Mon Sep 17 00:00:00 2001
+From: demostanis <demostanis@protonmail.com>
+Date: Tue, 18 Jul 2023 19:27:35 +0200
+Subject: [PATCH] Add margins to wicon
+
+---
+ lib/naughty/widget/_default.lua | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/lib/naughty/widget/_default.lua b/lib/naughty/widget/_default.lua
+index ecd7b367a..a4fa118f8 100644
+--- a/lib/naughty/widget/_default.lua
++++ b/lib/naughty/widget/_default.lua
+@@ -65,7 +65,11 @@ return {
+         {
+             {
+                 {
+-                    wicon,
++                    {
++                        wicon,
++                        widget = wibox.container.margin,
++                        left = 10, right = 10
++                    },
+                     {
+                         {
+                             wtitle,
+-- 
+2.41.0
+

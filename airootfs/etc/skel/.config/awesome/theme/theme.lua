@@ -20,14 +20,9 @@ theme.wallpaper = "/usr/share/backgrounds/nyarch.jpg"
 
 theme.bg_normal = theme.color10
 theme.bg_focus = theme.color11
--- TODO: change those
-theme.bg_urgent = "#ff0000"
-theme.bg_minimize = "#444444"
 
 theme.fg_normal = theme.color15
 theme.fg_focus = theme.color15
-theme.fg_urgent = theme.color15
-theme.fg_minimize = theme.color15
 
 theme.useless_gap = dpi(0)
 theme.border_width = dpi(0)

@@ -10,7 +10,6 @@ naughty.connect_signal("request::display", function(n)
     }
 end)
 
--- TODO: if path := ... in pluto
 local function lookup_icon(icon)
     return menubar.utils.lookup_icon(icon) or
         menubar.utils.lookup_icon(icon:lower())

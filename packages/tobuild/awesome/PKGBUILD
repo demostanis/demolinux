@@ -11,7 +11,7 @@
 _pkgname=awesome
 pkgname=${_pkgname}
 pkgver=4.3.1606.g0e5fc4575
-pkgrel=3
+pkgrel=4
 pkgdesc='Highly configurable framework window manager'
 arch=('i686' 'x86_64')
 url='http://awesome.naquadah.org/'
@@ -33,12 +33,14 @@ source=("$pkgname::git+https://github.com/awesomeWM/awesome.git"
 	0001-Allow-specifying-a-y-offset-for-notifications.patch
 	0002-Expose-surface.patch
 	0003-Make-notification-icons-use-the-right-icon-theme.patch
-	0004-Ensure-the-boot-splash-is-hidden.patch)
+	0004-Ensure-the-boot-splash-is-hidden.patch
+	0005-Add-margins-to-wicon.patch)
 md5sums=('SKIP'
          'bdf30656a639bd0d2e9ce740882dec59'
          'c987300e07e58d6dbae37e40734a8f56'
          '5ac3c933b78a7a77fa5d3d5b5c9e7268'
-         '953574a6594fea8ddb78f2d36fba5011')
+         '953574a6594fea8ddb78f2d36fba5011'
+         'a06a41d70750b3fdcdf5a111ac469f10')
 _LUA_VER=5.4
 
 pkgver() {
@@ -52,6 +54,7 @@ prepare() {
   git apply < ../0002-Expose-surface.patch
   git apply < ../0003-Make-notification-icons-use-the-right-icon-theme.patch
   git apply < ../0004-Ensure-the-boot-splash-is-hidden.patch
+  git apply < ../0005-Add-margins-to-wicon.patch
 }
 
 build() {

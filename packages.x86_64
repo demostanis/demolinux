@@ -1,3 +1,4 @@
+local awesome
 alsa-utils
 amd-ucode
 arch-install-scripts
@@ -30,7 +31,6 @@ irssi
 jq
 linux-firmware
 linux-hardened
-local awesome
 local bling
 local emoji-test
 local firefox-base16
@@ -48,6 +48,7 @@ local mkinitcpio-archiso
 local picom-sdhand
 local plymouth
 local rxvt-unicode-pixbuf
+local screencast
 local slop
 local ttf-font-awesome-pro
 local vicious

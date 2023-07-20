@@ -1,0 +1,26 @@
+pkgname=screencast
+pkgver=1.6.0
+pkgrel=1
+pkgdesc='Command line interface to record a X11 desktop (fork)'
+arch=('any')
+url='https://github.com/dbermond/screencast/'
+license=('GPL')
+depends=('ffmpeg' 'xorg-xdpyinfo' 'libnotify' 'oxygen-icons')
+optdepends=('imagemagick: watermark effect support'
+            'slop: graphical screen region selection support'
+            'sound-theme-freedesktop: sound notification support'
+            'optipng: watermark optimization support'
+            'oxipng: watermark optimization support'
+            'littleutils-full: watermark optimization support'
+            'truepng: watermark optimization support'
+            'pingo: watermark optimization support'
+            'advancecomp: watermark optimization support'
+            'bash-completion: bash-completion support')
+checkdepends=('xorg-server-xvfb' 'imagemagick' 'ttf-dejavu')
+source=("https://raw.githubusercontent.com/demostanis/screencast/main/screencast")
+sha256sums=('695f38756f13bb089d4a203961ed391dd02066b46c2899b5bb70991d62f600b1')
+
+package() {
+    install -Dm 755 screencast "$pkgdir"/usr/bin/screencast
+}
+

@@ -1,7 +1,7 @@
 local app_whitelist = {
     "Firefox Web Browser",
     "urxvt", "Nemo", "Neovim",
-    "scrcpy"
+    "scrcpy", "GNU Image Manipulation Program",
 }
 
 local should_spawn_with_selection = false

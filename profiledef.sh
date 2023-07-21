@@ -12,6 +12,7 @@ ssh_access=y
 pacman_conf="pacman.conf"
 airootfs_image_type="squashfs"
 airootfs_image_tool_options=('-comp' 'xz' '-Xbcj' 'x86' '-b' '1M' '-Xdict-size' '1M')
+data_directories=("downloads" "music" "programming")
 file_permissions=(
   ["/etc/shadow"]="0:0:400"
   ["/etc/sudoers"]="0:0:400"

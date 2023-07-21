@@ -24,6 +24,7 @@ pkg_list=()
 aur_pkg_list=()
 local_pkg_list=()
 bootstrap_pkg_list=()
+data_directories=()
 quiet=""
 ssh_access=""
 work_dir=""
@@ -483,6 +484,10 @@ _make_customize_airootfs() {
         cp -r "${pacstrap_dir}/usr/share/firefox-userchromejs/base/chrome/" "${fprofile_dir}"
         _msg_info "Done!"
     fi
+
+    for dir in ${data_directories[@]}; do
+        ln -sf "/data/$dir" "${pacstrap_dir}/etc/skel/$dir"
+    done
 
     if [[ -e "${profile}/airootfs/etc/passwd" ]]; then
         _msg_info "Copying /etc/skel/* to user homes..."
@@ -1046,8 +1051,10 @@ _make_bootmode_hybrid.grub.gpt() {
     # Create common directories
     mkdir -p /mnt/demolinux/data
     mount /dev/loop0p6 /mnt/demolinux/data
-    mkdir -p /mnt/demolinux/data/{downloads,music}
-    chown 1000:1000 /mnt/demolinux/data/{downloads,music}
+    for dir in ${data_directories[@]}; do
+        mkdir -p /mnt/demolinux/data/"$dir"
+        chown 1000:1000 /mnt/demolinux/data/"$dir"
+    done
     umount /mnt/demolinux/data
 
     # Copy the system image to the system partition

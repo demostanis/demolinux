@@ -48,7 +48,7 @@ local globalkeys = gears.table.join(
     awful.key({ modkey }, "s", function() awful.spawn("flameshot gui") end),
 
     app_shortcut(terminal, "Return"),
-    app_shortcut("firefox", "f"),
+    app_shortcut("firefox-hardened", "f"),
 
     awful.key({ modkey }, "r", awesome.restart),
 

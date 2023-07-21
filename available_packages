@@ -1,0 +1,108 @@
+# Graphical interface
+local awesome
+aur awesome-rubato-git
+aur la-capitaine-icon-theme
+local picom-sdhand
+local emoji-test
+local bling
+local vicious
+local flameshot
+local screencast
+local slop
+qt5ct
+xorg
+xorg-xinit
+
+# Graphical apps
+local rxvt-unicode-pixbuf
+scrcpy
+nemo
+imv
+mpv
+neovim
+xterm
+
+# Browser & addons
+firefox
+firefox-dark-reader
+aur ff2mpv-native-messaging-host-git
+aur legacyfox
+local firefox-base16
+local firefox-canvasblocker
+local firefox-ff2mpv
+local firefox-sponsorblock
+local firefox-ublock-origin
+local firefox-vimfx
+local firefox-ytarb
+
+# Fonts
+local ttf-font-awesome-pro
+ttf-fira-code
+ttf-fira-sans
+ttf-font-awesome
+noto-fonts
+noto-fonts-emoji
+
+# Boot
+linux-firmware
+linux-hardened
+local mkinitcpio
+local mkinitcpio-archiso
+mkinitcpio-nfs-utils
+nbd
+local plymouth
+edk2-shell
+efibootmgr
+intel-ucode
+amd-ucode
+grub
+
+# Filesystems
+squashfs-tools
+btrfs-progs
+e2fsprogs
+cryptsetup
+
+# System utilities
+alsa-utils
+arch-install-scripts
+aur brightnessctl-git
+inotify-tools
+local lsb-release
+luarocks
+pv
+reflector
+xdotool
+
+# Utilities
+bat
+bind
+fd
+fzf
+git
+local jargon
+man-db
+man-pages
+irssi
+jq
+lynx
+nmap
+sudo
+neofetch
+pacman-contrib
+ripgrep
+websocat
+xclip
+yt-dlp
+
+# System
+base
+base-devel
+systemd-resolvconf
+xdg-dbus-proxy
+pulseaudio
+xdg-user-dirs
+bubblewrap-suid
+clipnotify
+openssh
+zsh

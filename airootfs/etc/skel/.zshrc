@@ -8,7 +8,9 @@ compinit
 autoload run-help
 unalias run-help
 
-source .aliases
+source .zaliases
+source .zfunctions
+source .zpath
 
 preexec() {
 	# set window title
@@ -37,5 +39,3 @@ precmd() {
 
 	unset format_elapsed initial_seconds
 }
-
-eval "$(luarocks path)"

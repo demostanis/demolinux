@@ -1,0 +1,7 @@
+alias gap="git add --patch"
+
+alias -g DN='>/dev/null'
+alias -g DN2='2>/dev/null'
+alias -g QUIET='DN DN2'
+
+alias -g TMP='"$(mktemp)"'

@@ -1,0 +1,22 @@
+aur() {
+	setopt local_options no_monitor no_notify
+	for pkg in $@; do
+		git clone https://aur.archlinux.org/$pkg.git &
+	done
+	wait
+}
+
+nvimpkg() {
+	setopt local_options no_monitor no_notify
+	for pkg in $@; do
+		url="$pkg"
+		name="${pkg##*/}"
+		mypath=~/.local/share/nvim/site/pack/$name/start/
+		mkdir -p "$mypath"
+
+		[[ "$pkg" != https://* ]] && \
+			url=https://github.com/$pkg
+		git clone "$url" "$mypath/$name" &
+	done
+	wait
+}

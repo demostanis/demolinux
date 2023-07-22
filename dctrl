@@ -1,6 +1,6 @@
 #!/bin/sh
 # demolinux VM control script
-#  Usage: ./dctrl [shell|pull|push] [src [dest]]
+#  Usage: ./dctrl [shell|pull{,nvim,awesome}|push] [src [dest]]
 
 common_opts=( 60022 -o StrictHostKeyChecking=no -o LogLevel=quiet )
 
@@ -20,5 +20,10 @@ case $1 in
 	shell) shell ;;
 	pull) pull "${@:2}" ;;
 	push) push "${@:2}" ;;
+
+	# shorthands
+	pullnvim) pull '.config/nvim/*' airootfs/etc/skel/.config/nvim ;;
+	pullawesome) pull '.config/awesome/*' airootfs/etc/skel/.config/awesome ;;
+
 	*) sed -n '2,3s/# //p' "$0" ;;
 esac

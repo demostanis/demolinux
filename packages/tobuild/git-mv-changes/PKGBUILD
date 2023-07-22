@@ -1,0 +1,14 @@
+pkgname=git-mv-changes
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="A script allowing moving changes of particular files from one commit to another"
+arch=(any)
+makedepends=(git)
+url=https://github.com/MikhailGolubtsov/git-mv-changes
+source=(git+$url.git)
+sha256sums=(SKIP)
+
+package() {
+  cd $pkgname
+  install -Dm 755 mv-changes "$pkgdir"/usr/bin/git-mv-changes
+}

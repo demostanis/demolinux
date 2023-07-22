@@ -82,6 +82,7 @@ fd
 fzf
 git
 local jargon
+local git-mv-changes
 man-db
 man-pages
 irssi

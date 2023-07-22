@@ -106,4 +106,5 @@ xdg-user-dirs
 bubblewrap-suid
 clipnotify
 openssh
+clang
 zsh

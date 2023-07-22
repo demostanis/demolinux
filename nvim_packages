@@ -1,0 +1,17 @@
+# Auto-insert
+rstacruz/vim-closer
+tpope/vim-endwise
+
+# Completion
+neovim/nvim-lspconfig
+hrsh7th/cmp-nvim-lsp
+hrsh7th/cmp-nvim-lsp-signature-help
+honza/vim-snippets
+dcampos/nvim-snippy
+dcampos/cmp-snippy
+hrsh7th/nvim-cmp
+
+lambdalisue/suda.vim
+junegunn/vim-slash
+tpope/vim-sleuth
+folke/neodev.nvim

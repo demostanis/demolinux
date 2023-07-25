@@ -16,7 +16,7 @@ nvimpkg() {
 
 		[[ "$pkg" != https://* ]] && \
 			url=https://github.com/$pkg
-		git clone "$url" "$mypath/$name" &
+		git clone "$url" "$mypath$name" &
 	done
 	wait
 }

@@ -2,15 +2,12 @@ set -o vi
 bindkey ^R history-incremental-pattern-backward-search
 bindkey '^[[Z' reverse-menu-complete # Shift-Tab
 
-autoload -Uz compinit
-compinit
-
 autoload run-help
 unalias run-help
 
-source .zaliases
-source .zfunctions
-source .zpath
+source ~/.zaliases
+source ~/.zfunctions
+source ~/.zpath
 
 preexec() {
 	# set window title
@@ -39,3 +36,16 @@ precmd() {
 
 	unset format_elapsed initial_seconds
 }
+
+if [[ $(tty) == /dev/pts/* ]]; then
+	source ~/.zplugins/*/*.plugin.zsh
+
+	# https://github.com/marlonrichert/zsh-autocomplete#make-tab-go-straight-to-the-menu-and-cycle-there
+	bindkey '\t' menu-select "$terminfo[kcbt]" menu-select
+	bindkey -M menuselect '\t' menu-complete "$terminfo[kcbt]" reverse-menu-complete
+	# disable zsh-autocomplete history
+	bindkey -a k up-line-or-history
+	bindkey -a j down-line-or-history
+	bindkey "^[[A" up-line-or-history
+	bindkey "^[[B" down-line-or-history
+fi

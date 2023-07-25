@@ -10,5 +10,6 @@ packages/tobuild/*/*.xpi
 packages/chroot/
 packages/aurcache/
 packages/nvimcache/
+packages/zshcache/
 packages/db/
 *.log

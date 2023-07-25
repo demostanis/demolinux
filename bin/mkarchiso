@@ -23,6 +23,7 @@ app_name="${0##*/}"
 pkg_list=()
 aur_pkg_list=()
 nvim_pkg_list=()
+zsh_pkg_list=()
 local_pkg_list=()
 bootstrap_pkg_list=()
 data_directories=()
@@ -44,6 +45,7 @@ swap_size=""
 pacman_conf=""
 packages=""
 nvim_packages=""
+zsh_packages=""
 bootstrap_packages=""
 pacstrap_dir=""
 buildmodes=()
@@ -154,6 +156,7 @@ _show_config() {
     _msg_info "                 Packages:   ${buildmode_pkg_list[*]}"
     _msg_info "             AUR Packages:   ${aur_pkg_list[*]}"
     _msg_info "            Nvim Packages:   ${nvim_pkg_list[*]}"
+    _msg_info "             Zsh Packages:   ${zsh_pkg_list[*]}"
     _msg_info "           Local Packages:   ${local_pkg_list[*]}"
     _msg_info "               SSH access:   ${ssh_access}"
 }
@@ -428,6 +431,23 @@ _make_chroot() {
         path="${pacstrap_dir}/etc/skel/.local/share/nvim/site/pack/${pkgname}/start/${pkgname}/"
         mkdir -p "$path"
         cp -r "$cachepkgpath"/* "$path"
+    done
+    for pkg in ${zsh_pkg_list[@]}; do
+        _msg_info "Cloning zsh package $pkg..."
+        pkgname="${pkg##*/}"
+        cachepkgpath="${profile}/packages/zshcache/${pkgname}"
+        if [ -e "$cachepkgpath" ]; then
+            cd "$cachepkgpath"
+            git pull
+        else
+            url="$pkg"
+            if [[ "$pkg" != https://* ]]; then
+                url=https://github.com/$pkg
+            fi
+            git clone $url "$cachepkgpath"
+        fi
+        mkdir -p "${pacstrap_dir}/etc/skel/.zplugins/${pkgname}"
+        cp -r "$cachepkgpath"/* "${pacstrap_dir}/etc/skel/.zplugins/${pkgname}"
     done
 }
 
@@ -1479,6 +1499,16 @@ _validate_common_requirements_buildmode_iso_netboot() {
         (( validation_error=validation_error+1 ))
         _msg_error "packages file '${nvim_packages}' does not exist." 0
     fi
+    if [[ -e "${zsh_packages}" ]]; then
+        mapfile -t zsh_pkg_list < <(sed '/^[[:blank:]]*#.*/d;s/#.*//;/^[[:blank:]]*$/d' "${zsh_packages}")
+        if (( ${#zsh_pkg_list[@]} < 1 )); then
+            (( validation_error=validation_error+1 ))
+            _msg_error "no package specified in '${zsh_packages}'." 0
+        fi
+    else
+        (( validation_error=validation_error+1 ))
+        _msg_error "packages file '${zsh_packages}' does not exist." 0
+    fi
 
     if [[ -v cert_list ]]; then
         # Check if the certificate files exist
@@ -1809,8 +1839,10 @@ _read_profile() {
         [[ -n "$arch" ]] || arch="$(uname -m)"
         [[ -n "$packages" ]] || packages="${profile}/available_packages"
         [[ -n "$nvim_packages" ]] || nvim_packages="${profile}/nvim_packages"
+        [[ -n "$zsh_packages" ]] || zsh_packages="${profile}/zsh_plugins"
         packages="$(realpath -- "${packages}")"
         nvim_packages="$(realpath -- "${nvim_packages}")"
+        zsh_packages="$(realpath -- "${zsh_packages}")"
         pacman_conf="$(realpath -- "${pacman_conf}")"
 
         # Resolve paths of files that may reside in the profile's directory

@@ -1,6 +1,5 @@
 # Auto-insert
 rstacruz/vim-closer
-tpope/vim-endwise
 
 # Completion
 neovim/nvim-lspconfig
@@ -18,3 +17,6 @@ folke/neodev.nvim
 
 demostanis/nvim-base16
 nvim-lualine/lualine.nvim
+
+nvim-lua/plenary.nvim
+nvim-telescope/telescope.nvim

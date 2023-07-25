@@ -15,3 +15,5 @@ lambdalisue/suda.vim
 junegunn/vim-slash
 tpope/vim-sleuth
 folke/neodev.nvim
+
+demostanis/nvim-base16

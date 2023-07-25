@@ -55,8 +55,8 @@ case $1 in
 	run) run ;;
 	clean) clean ;;
 	build) clean; build ;;
-	all) clean; build; run ;;
 	schemes) rebuild_schemes $2 ;;
 	flash) flash $2 ;;
+	all) clean; rebuild_schemes && build && run ;;
 	*) sed -n '2,3s/# //p' "$0" ;;
 esac

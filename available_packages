@@ -108,6 +108,7 @@ xdg-dbus-proxy
 pulseaudio
 xdg-user-dirs
 bubblewrap-suid
+local pambase
 clipnotify
 openssh
 clang

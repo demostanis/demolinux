@@ -22,8 +22,13 @@ EOF
 chmod +x "$XDG_RUNTIME_DIR"/ffhardened-$pid/mpv-launcher
 
 while true; do
-	curl -s "$(cat "$fifo")" | \
-		/usr/local/bin/mpv-hardened /dev/stdin
+	url="$(cat "$fifo")"
+	if [ -n "$url" ]; then
+		curl -H 'User-Agent: Firefox' \
+			-H 'Accept-Language: en-US' \
+			-Ls "$url" | \
+			/usr/local/bin/mpv-hardened /dev/stdin
+	fi
 done &
 
 cookie="$XDG_RUNTIME_DIR"/ffhardened-$pid/cookie

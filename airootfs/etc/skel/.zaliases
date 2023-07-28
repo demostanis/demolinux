@@ -3,6 +3,10 @@ alias gc="git commit"
 alias gs="git status"
 alias ga="git add"
 
+alias imv=imv-hardened
+alias mpv=mpv-hardened
+alias firefox=firefox-hardened
+
 alias -g DN='>/dev/null'
 alias -g DN2='2>/dev/null'
 alias -g QUIET='DN DN2'

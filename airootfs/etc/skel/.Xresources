@@ -1,4 +1,4 @@
-URxvt.font: xft:Fira Code
+URxvt.font: xft:FiraCode Nerd Font,xft:Noto Sans Symbols 2:size=8
 URxvt.internalBorder: 5
 URxvt.iconFile: /usr/share/icons/la-capitaine/apps/scalable/terminal.svg
 URxvt.scrollBar: true

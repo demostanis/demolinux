@@ -88,6 +88,7 @@ local git-mv-changes
 man-db
 man-pages
 irssi
+btop
 jq
 lynx
 nmap

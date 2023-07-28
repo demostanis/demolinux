@@ -61,8 +61,8 @@ trap '
 	# For some reason, two firefox-hardened instances
 	# exist. Kill the remaining ones if no browser is
 	# open.
-	if ! pgrep -f /usr/lib/firefox/firefox; then
-		pkill -f firefox-hardened
+	if ! pgrep -f /usr/lib/firefox/firefox >/dev/null 2>&1; then
+		pkill -xf /usr/local/bin/firefox-hardened
 	fi
 	exit 0
 ' EXIT

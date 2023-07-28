@@ -112,7 +112,7 @@ bwrap \
 	--ro-bind /sys/bus/pci /sys/bus/pci \
 	--ro-bind /sys/devices/pci0000:00 /sys/devices/pci0000:00 \
 	--bind $HOME/.mozilla /firefox/.mozilla \
-	--bind $HOME/downloads /firefox/downloads \
+	--bind $HOME/downloads /firefox/Downloads \
 	--setenv HOME /firefox \
 	--setenv GTK_THEME Adwaita:dark \
 	--setenv PATH /usr/bin \

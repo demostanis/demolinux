@@ -28,13 +28,13 @@ xterm
 # Browser & addons
 firefox
 firefox-dark-reader
+firefox-ublock-origin
 aur ff2mpv-native-messaging-host-git
 aur legacyfox
 local firefox-base16
 local firefox-canvasblocker
 local firefox-ff2mpv
 local firefox-sponsorblock
-local firefox-ublock-origin
 local firefox-vimfx
 local firefox-ytarb
 

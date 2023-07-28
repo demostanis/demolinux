@@ -76,6 +76,19 @@ awful.rules.rules = {{
     properties = {
         titlebars_enabled = true
     }
+},
+{
+    rule = {class = "mpv"},
+    properties = {
+        keys = gears.table.join(
+            require"clientkeys",
+            -- due to X11 sandboxing, mpv cannot get
+            -- fullscreen on its own
+            awful.key({ nil }, "f", function(c)
+                c.fullscreen = not c.fullscreen
+            end)
+        )
+    }
 }}
 
 client.connect_signal("request::titlebars", function(c)

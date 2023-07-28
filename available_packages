@@ -40,7 +40,7 @@ local firefox-ytarb
 
 # Fonts
 local ttf-font-awesome-pro
-ttf-fira-code
+ttf-firacode-nerd
 ttf-fira-sans
 ttf-font-awesome
 noto-fonts

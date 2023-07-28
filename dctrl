@@ -24,6 +24,7 @@ case $1 in
 	# shorthands
 	pullnvim) pull '.config/nvim/*' airootfs/etc/skel/.config/nvim ;;
 	pullawesome) pull '.config/awesome/*' airootfs/etc/skel/.config/awesome ;;
+	pullbookmarks) pull '.mozilla/firefox/default.profile/bookmarks.html' airootfs/etc/skel/.mozilla/firefox/default.profile ;;
 
 	*) sed -n '2,3s/# //p' "$0" ;;
 esac

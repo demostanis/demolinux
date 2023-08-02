@@ -89,6 +89,12 @@ awful.rules.rules = {{
             end)
         )
     }
+},
+{
+    rule_any = {name = {"GIMP Startup"}, class = {"Iwdgui"}},
+    properties = {
+        placement = awful.placement.centered
+    }
 }}
 
 client.connect_signal("request::titlebars", function(c)

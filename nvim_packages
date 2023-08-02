@@ -1,6 +1,3 @@
-# Auto-insert
-rstacruz/vim-closer
-
 # Completion
 neovim/nvim-lspconfig
 hrsh7th/cmp-nvim-lsp

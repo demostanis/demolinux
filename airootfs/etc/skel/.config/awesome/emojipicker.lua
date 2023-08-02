@@ -2,6 +2,7 @@ local emoji_file = "/usr/share/unicode/emoji-test.txt"
 
 local filter = ""
 local grabber, popup
+local old_client_focus = nil
 local no_results = false
 local no_resultsw = wibox.widget{
     widget = wibox.widget.textbox,
@@ -26,13 +27,17 @@ local grid = wibox.widget{
 
 local input_command = "xdotool type %s"
 local function input(text)
+    if old_client_focus then
+        client.focus = old_client_focus
+        client.focus:raise()
+    end
     gears.timer{
         single_shot = true,
         timeout = 0.5,
         callback = function()
             awful.spawn(string.format(
                 input_command, text
-            ))
+            ), false)
         end
     }:start()
 end
@@ -289,6 +294,8 @@ return function()
     print_active_emoji()
     redraw_grid()
     popup.visible = true
+
+    old_client_focus = client.focus
 
     local timer, grabber
     grabber = awful.keygrabber.run(function(mod, key, status)

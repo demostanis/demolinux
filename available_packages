@@ -21,6 +21,7 @@ imv
 mpv
 zathura
 zathura-pdf-mupdf
+local iwdgui
 gimp
 neovim
 xterm
@@ -116,4 +117,5 @@ local pambase
 clipnotify
 openssh
 clang
+iwd
 zsh

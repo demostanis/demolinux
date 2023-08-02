@@ -18,6 +18,8 @@ preexec() {
 }
 
 precmd() {
+	[[ "$(fc -l -1)" = *pacman*-S* ]] && rehash
+
 	printf "\x1b]0;Untitled\a"
 
 	if [ -n "$initial_seconds" ]; then

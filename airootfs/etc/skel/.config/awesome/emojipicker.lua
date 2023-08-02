@@ -296,6 +296,7 @@ return function()
     popup.visible = true
 
     old_client_focus = client.focus
+    mouse.screen.mypanel:hide()
 
     local timer, grabber
     grabber = awful.keygrabber.run(function(mod, key, status)

@@ -55,6 +55,8 @@ return function()
         end
     end
 
+    s.mypanel:hide()
+
     local function quit_overview()
         if filter_popup then
             filter_popup.visible = false

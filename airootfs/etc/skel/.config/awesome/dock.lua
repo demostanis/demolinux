@@ -19,7 +19,7 @@ local function hook_icon_draw(icon)
     local initial_draw = icon.draw
     function icon.draw(self, _, cr, ...)
         initial_draw(self, _, cr, ...)
-        if should_lighten then
+        if should_lighten and not overview_shown then
             local s = nil
             if self._private.handle then
                 s = awesome.pixbuf_to_surface(self._private.handle:get_pixbuf()._native)

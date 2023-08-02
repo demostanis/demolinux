@@ -15,7 +15,7 @@ return function(c)
         function button.draw(self, _, cr, ...)
             initial_draw(self, _, cr, ...)
             local color = beautiful.fg_normal
-            if should_lighten then
+            if should_lighten and not overview_shown then
                 color = beautiful.wibar_widget_hover_color
             end
             local s = self._private.image

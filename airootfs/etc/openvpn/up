@@ -1,0 +1,9 @@
+#!/bin/sh
+/usr/bin/update-systemd-resolved "$@"
+
+sudo /usr/bin/ufw default deny outgoing
+sudo /usr/bin/ufw default deny incoming
+sudo /usr/bin/ufw allow out on tun0 from any to any
+sudo /usr/bin/ufw allow in on tun0 from any to any
+sudo /usr/bin/ufw allow out from any to "$6"
+sudo /usr/bin/ufw allow out from any to 10.42.0.1 # DNS

@@ -1,0 +1,12 @@
+[Unit]
+Description=Initialize RiseupVPN
+Requires=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/riseup-vpn -u
+ExecStart=/usr/bin/riseup-vpn -g
+
+[Install]
+WantedBy=multi-user.target

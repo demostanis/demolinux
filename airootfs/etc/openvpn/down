@@ -1,0 +1,5 @@
+#!/bin/sh
+/usr/bin/update-systemd-resolved "$@"
+
+sudo /usr/bin/ufw default allow outgoing
+sudo /usr/bin/ufw default allow incoming

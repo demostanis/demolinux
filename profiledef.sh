@@ -16,9 +16,11 @@ data_directories=("downloads" "music" "programming")
 file_permissions=(
   ["/etc/shadow"]="0:0:400"
   ["/etc/sudoers"]="0:0:400"
-  ["/root"]="0:0:750"
+  ["/etc/sudoers.d"]="0:0:400"
 
   ["/usr/lib/boot/finishboot"]="0:0:+s+x"
+  ["/etc/openvpn/up"]="0:0:+x"
+  ["/etc/openvpn/down"]="0:0:+x"
 )
 for file in $(find airootfs/usr/local/bin -type f); do
   file_permissions+=( ["${file##airootfs}"]="0:0:755" )

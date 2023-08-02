@@ -32,7 +32,7 @@ cmp.setup{
             end
         },
         ["<CR>"] = cmp.mapping{
-            i = cmp.mapping.confirm{select = true}
+            i = cmp.mapping.confirm()
         }
     },
     sources = cmp.config.sources{

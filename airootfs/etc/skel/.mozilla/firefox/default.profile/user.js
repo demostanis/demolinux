@@ -6,6 +6,7 @@ user_pref("devtools.chrome.enabled",				false);
 
 // Don't ever show about:welcome
 user_pref("browser.aboutwelcome.enabled",                       false);
+user_pref("startup.homepage_welcome_url",               "about:blank");
 
 // Hide search engines ads
 user_pref("browser.urlbar.suggest.topsites",                    false);

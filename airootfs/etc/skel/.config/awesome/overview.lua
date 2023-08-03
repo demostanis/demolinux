@@ -309,11 +309,18 @@ return function()
 
     local filter = ""
     local is_ctrling = false
-    local grabber = awful.keygrabber.run(function(mod, key, status)
+    local grabber = awful.keygrabber.run(function(mods, key, status)
         if status == "release" then return end
 
+        local is_mod4 = false
+        for _, mod in ipairs(mods) do
+            if mod == "Mod4" then
+                is_mod4 = true
+            end
+        end
+
         local focus_first = false
-        if key == "Escape" then
+        if key == "Escape" or (is_mod4 and key == "o") then
             quit_overview()
             return
         elseif key == "Shift_L" then
@@ -326,7 +333,7 @@ return function()
             focus_first = true
         elseif key == "u" and is_ctrling then
             filter = ""
-        elseif #key == 1 then
+        elseif #key == 1 and #mods == 0 then
             filter = filter .. key
         end
 

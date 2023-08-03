@@ -55,8 +55,6 @@ return function()
         end
     end
 
-    s.mypanel:hide()
-
     local function quit_overview()
         if filter_popup then
             filter_popup.visible = false
@@ -303,6 +301,7 @@ return function()
         end
     end
     if #clients <= 1 then return end
+    s.mypanel:hide()
     draw_clients(clients)
 
     overview_shown = true

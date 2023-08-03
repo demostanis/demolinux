@@ -1,4 +1,3 @@
-
 local mixer = "Master"
 local mutedicon = "\u{f6a9}"
 local unmutedicon = "\u{f6a8}"
@@ -81,7 +80,7 @@ vicious.register(myvolwidget,
             mycontainer.left = -0.5
             return fmt(unmutedicon)
         end
-    end, 1, mixer)
+    end, 1, {mixer, "-D", "pulse"})
 
 return mycontainer
 

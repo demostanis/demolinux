@@ -13,6 +13,11 @@ qt5ct
 xorg
 xorg-xinit
 
+# Theming
+local themix-gui-git
+local themix-plugin-base16-git
+local themix-theme-oomox-git
+
 # Graphical apps
 local rxvt-unicode-pixbuf
 pavucontrol

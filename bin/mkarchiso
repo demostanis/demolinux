@@ -509,6 +509,12 @@ _make_customize_airootfs() {
     # Generate locales
     eval -- env -u TMPDIR arch-chroot "${pacstrap_dir}" "/usr/bin/locale-gen"
 
+    # oomox is so messy that it was cleaner to separate
+    # it to another file
+    _msg_info "Generating oomox theme..."
+    chmod +x "${pacstrap_dir}/opt/oomox/run_oomox.sh"
+    eval -- env -u TMPDIR arch-chroot "${pacstrap_dir}" "/opt/oomox/run_oomox.sh"
+
     # Copy SSH public key
     if [[ "$ssh_access" = y* ]] && [ -e ~/.ssh/id_rsa.pub ]; then
         _msg_info "Adding your id_rsa.pub to ~/.ssh/authorized_keys..."

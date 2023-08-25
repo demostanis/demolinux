@@ -378,8 +378,8 @@ _make_chroot() {
         else
             chown -R $SUDO_USER:$SUDO_USER "${pkgdir}"
 
-            if compgen -G "${profile}"/packages/db/*"$pkg"*pkg.tar*; then
-                rm "${profile}"/packages/db/*"$pkg"*pkg.tar*
+            if compgen -G "${profile}"/packages/db/*"$pkg"-[0-9]*pkg.tar*; then
+                rm "${profile}"/packages/db/*"$pkg"-[0-9]*pkg.tar*
             fi
 
             additional_opts=()

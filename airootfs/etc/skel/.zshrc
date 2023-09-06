@@ -1,5 +1,5 @@
 set -o vi
-bindkey ^R history-incremental-pattern-backward-search
+bindkey ^R history-incremental-pattern-search-backward
 bindkey '^[[Z' reverse-menu-complete # Shift-Tab
 
 autoload run-help

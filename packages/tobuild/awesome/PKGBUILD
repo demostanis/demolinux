@@ -10,8 +10,8 @@
 
 _pkgname=awesome
 pkgname=${_pkgname}
-pkgver=4.3.1606.g0e5fc4575
-pkgrel=4
+pkgver=4.3.1611.gaa8c7c6e2
+pkgrel=1
 pkgdesc='Highly configurable framework window manager'
 arch=('i686' 'x86_64')
 url='http://awesome.naquadah.org/'

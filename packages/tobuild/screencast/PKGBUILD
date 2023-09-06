@@ -18,7 +18,7 @@ optdepends=('imagemagick: watermark effect support'
             'bash-completion: bash-completion support')
 checkdepends=('xorg-server-xvfb' 'imagemagick' 'ttf-dejavu')
 source=("https://raw.githubusercontent.com/demostanis/screencast/main/screencast")
-sha256sums=('695f38756f13bb089d4a203961ed391dd02066b46c2899b5bb70991d62f600b1')
+sha256sums=('9d300262a61bf6c0536a15caae1e6015839aa3df40548ca2c3857064027d6722')
 
 package() {
     install -Dm 755 screencast "$pkgdir"/usr/bin/screencast

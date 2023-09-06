@@ -27,7 +27,7 @@ imv
 mpv
 zathura
 zathura-pdf-mupdf
-local iwdgui
+local iwgtk
 gimp
 neovim
 xterm

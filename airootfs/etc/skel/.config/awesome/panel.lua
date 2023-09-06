@@ -169,7 +169,7 @@ return function(s)
             {
                 {
                     mkpanew("\u{f1eb}", "WiFi", function()
-                        awful.spawn("iwdgui", false)
+                        awful.spawn("iwgtk", false)
                     end, {hide_panel_on_click = true}),
                     mkpanew("\u{e4e2}", "VPN", function()
                         local verb = "start"

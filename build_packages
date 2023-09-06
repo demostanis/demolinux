@@ -1,6 +1,10 @@
 arch-install-scripts
 base
+btrfs-progs
 devtools
+erofs-utils
 git
+grub
 pv
 squashfs-tools
+xfsprogs

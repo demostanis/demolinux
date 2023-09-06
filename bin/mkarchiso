@@ -1072,7 +1072,13 @@ _validate_requirements_bootmode_hybrid.grub.gpt() {
 
 # Allow booting from both BIOS and UEFI
 _make_bootmode_hybrid.grub.gpt() {
-    system_size=$( du "${isofs_dir}/${install_dir}/${arch}/airootfs.sfs" | awk '{print int($1/1000+0.5)}' )M
+    airootfs_image_filename=""
+    if [[ -e "${isofs_dir}/${install_dir}/${arch}/airootfs.sfs" ]]; then
+        airootfs_image_filename="${isofs_dir}/${install_dir}/${arch}/airootfs.sfs"
+    elif [[ -e "${isofs_dir}/${install_dir}/${arch}/airootfs.erofs" ]]; then
+        airootfs_image_filename="${isofs_dir}/${install_dir}/${arch}/airootfs.erofs"
+    fi
+    system_size=$( du "$airootfs_image_filename" | awk '{print int($1/1000+0.5)}' )M
     data_size=$( echo $(( ( "$(numfmt --from=iec --field=1,3,5,7,9 <<< "$disk_size - $swap_size - $system_size - 1M - 200M")" ) / 2 )) | numfmt --to=iec --format=%.0f )
     imgpath="${work_dir}/disk.img"
 
@@ -1110,7 +1116,7 @@ _make_bootmode_hybrid.grub.gpt() {
     umount /mnt/demolinux/data
 
     # Copy the system image to the system partition
-    cp "${isofs_dir}/${install_dir}/${arch}/airootfs.sfs" /dev/loop0p3
+    cp "$airootfs_image_filename" /dev/loop0p3
 
     _msg_info "Installing grub..."
     # Install grub for both BIOS and UEFI boot
@@ -2172,6 +2178,7 @@ _build_buildmode_iso() {
 _finalize_disk_image() {
     _msg_info "Moving disk image to ${out_dir}/$image_name..."
     local image_name="${iso_name}-${iso_version}-${arch}.img"
+    mkdir -p "${out_dir}"
     cp "${work_dir}/disk.img" "${out_dir}/$image_name"
     local user=${SUDO_USER:-1000}
     chown $user:$user "${out_dir}/$image_name"

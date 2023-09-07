@@ -187,6 +187,58 @@ return function(s)
             margins = 5
         },
         nil,
+        {
+            {
+                {
+                    {
+                        widget = wibox.widget.textbox,
+                        font = beautiful.base_icon_font .. " 25",
+                        forced_width = 30,
+                        text = "\u{f011}"
+                    },
+                    widget = wibox.container.margin,
+                    left = 270, right = 5, bottom = 11, top = 15,
+                },
+                widget = wibox.container.background,
+                id = "system",
+                command = function()
+                    awful.spawn("systemctl poweroff")
+                end
+            },
+            {
+                {
+                    {
+                        widget = wibox.widget.textbox,
+                        font = beautiful.base_icon_font .. " 23",
+                        text = "\u{f2f9}"
+                    },
+                    widget = wibox.container.margin,
+                    left = 15, right = 5, bottom = 11, top = 15,
+                },
+                widget = wibox.container.background,
+                id = "system",
+                command = function()
+                    awful.spawn("systemctl reboot")
+                end
+            },
+            {
+                {
+                    {
+                        widget = wibox.widget.textbox,
+                        font = beautiful.base_icon_font .. " 25",
+                        text = "\u{f880}"
+                    },
+                    widget = wibox.container.margin,
+                    left = 15, right = 5, bottom = 11, top = 15,
+                },
+                widget = wibox.container.background,
+                id = "system",
+                command = function()
+                    awful.spawn("systemctl hibernate")
+                end
+            },
+            layout = wibox.layout.fixed.horizontal
+        },
         --footerw,
         layout = wibox.layout.align.vertical
     }
@@ -216,6 +268,33 @@ return function(s)
                 if pane.opts and pane.opts.hide_panel_on_click then
                     mypanel:hide()
                 end
+            end
+        end)
+    end
+
+    for _, system_action in ipairs(mypanel:get_children_by_id("system")) do
+        system_action:connect_signal("mouse::enter", function()
+            for _, child in ipairs(system_action:get_all_children()) do
+                local textboxtype = "wibox.widget.textbox"
+                if string.sub(tostring(child), 1, string.len(textboxtype)) == textboxtype then
+                    child.oldtext = child.text
+                    -- TODO: use a wrapper function in utils?
+                    child.markup = string.format([[<span foreground="%s">%s</span>]], beautiful.wibar_widget_hover_color, child.text)
+                end
+            end
+        end)
+        system_action:connect_signal("mouse::leave", function()
+            for _, child in ipairs(system_action:get_all_children()) do
+                local textboxtype = "wibox.widget.textbox"
+                if string.sub(tostring(child), 1, string.len(textboxtype)) == textboxtype and child.oldtext then
+                    child.markup = child.oldtext
+                end
+            end
+        end)
+        system_action:connect_signal("mouse::click", function()
+            system_action.command()
+            if system_action.opts and system_action.opts.hide_system_action_on_click then
+                mypanel:hide()
             end
         end)
     end
@@ -257,6 +336,12 @@ return function(s)
 
                     if #panes == 0 then
                         for _, w in pairs(mypanel:get_children_by_id("pane")) do
+                            local pane = wgeometry(w, mypanel)
+                            pane.widget = w
+                            pane.has_hovering_in_previous_frame = false
+                            table.insert(panes, pane)
+                        end
+                        for _, w in pairs(mypanel:get_children_by_id("system")) do
                             local pane = wgeometry(w, mypanel)
                             pane.widget = w
                             pane.has_hovering_in_previous_frame = false

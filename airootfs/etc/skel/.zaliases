@@ -11,4 +11,9 @@ alias -g DN='>/dev/null'
 alias -g DN2='2>/dev/null'
 alias -g QUIET='DN DN2'
 
+alias applauncher='awesome-client require\"applauncher\"'
+alias overview='awesome-client require\"overview\"'
+alias emojipicker='awesome-client require\"emojipicker\"'
+alias restart='awesome-client awesome.restart\(\)'
+
 alias -g TMP='"$(mktemp)"'

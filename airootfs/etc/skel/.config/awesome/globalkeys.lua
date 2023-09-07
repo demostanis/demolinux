@@ -1,9 +1,3 @@
-local app_whitelist = {
-    "Firefox Web Browser",
-    "urxvt", "Nemo", "Neovim",
-    "scrcpy", "GNU Image Manipulation Program",
-}
-
 local should_spawn_with_selection = false
 local function spawn_with_selection_if_needed(...)
     if should_spawn_with_selection then
@@ -56,15 +50,7 @@ local globalkeys = gears.table.join(
         awesome.emit_signal("bling::window_switcher::turn_on")
     end),
     awful.key({ modkey }, "o", require"overview", nil),
-    awful.key({ modkey }, "space", function()
-        bling.widget.app_launcher{
-            terminal = terminal.." -e",
-            icon_theme = beautiful.icon_theme,
-            whitelist = app_whitelist,
-            app_shape = rrect(),
-            apps_per_row = 2,
-        }:toggle()
-    end),
+    awful.key({ modkey }, "space", require"applauncher", nil),
     -- God, why is it trying to call some on_release when I don't specify nil??
     awful.key({ modkey }, "e", require"emojipicker", nil),
 

@@ -1,1 +1,2 @@
 eval "$(luarocks path)"
+export PATH="$HOME/.local/bin:$PATH"

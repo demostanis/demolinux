@@ -1,0 +1,4 @@
+#!/bin/sh
+
+# workaround because Nemo is retarded
+exec urxvt "$@"

@@ -346,7 +346,7 @@ return function()
             end
         end
         free_popups()
-        if focus_first then
+        if focus_first and #filtered_clients ~= 0 then
             local c = filtered_clients[1]
             quit_overview()
             client.focus = c

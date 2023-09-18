@@ -85,7 +85,9 @@ return function(s)
 
     function mypanel:hide()
         mypanel.visible = false
-        client.focus = old_client_focus
+        if old_client_focus then
+            client.focus = old_client_focus
+        end
         overview_shown = false
         awesome.emit_signal("overview::display", false)
         stopped = true
@@ -328,6 +330,9 @@ return function(s)
 
             if mypanel.visible then
                 old_client_focus = client.focus
+                old_client_focus:connect_signal("unmanage", function()
+                    old_client_focus = nil
+                end)
                 client.focus = nil
 
                 stopped = false

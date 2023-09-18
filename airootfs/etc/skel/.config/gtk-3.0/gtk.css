@@ -1,0 +1,6 @@
+headerbar .title {
+	opacity: 0;
+}
+headerbar {
+	border-bottom-color: transparent;
+}

@@ -119,7 +119,7 @@ accessibility=''
 boot_type='bios'
 mediatype='cdrom'
 secure_boot='off'
-display='sdl'
+display='gtk,show-cursor=on'
 qemu_options=()
 working_dir="$(mktemp -dt run_archiso.XXXXXXXXXX)"
 trap cleanup_working_dir EXIT

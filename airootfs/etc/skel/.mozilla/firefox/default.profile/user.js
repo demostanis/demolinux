@@ -20,6 +20,13 @@ user_pref("browser.startup.couldRestoreSession.count",          2);
 user_pref("browser.startup.page",                               0);
 user_pref("browser.startup.homepage",                           "about:blank");
 
+// VimFx config.js
+user_pref("extensions.VimFx.config_file_directory",             "/firefox/.vimfx");
+user_pref("security.sandbox.content.read_path_whitelist",       "/firefox/.vimfx");
+// Additional VimFx prefs
+user_pref("extensions.VimFx.mode.normal.scroll_page_down", "<c-f>");
+user_pref("extensions.VimFx.mode.normal.scroll_page_up", "<c-b>");
+
 user_pref("browser.bookmarks.autoExportHTML",                   true);
 
 // Prefs stolen from https://github.com/pyllyukko/user.js

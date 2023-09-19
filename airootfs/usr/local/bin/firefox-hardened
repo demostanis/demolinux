@@ -121,6 +121,7 @@ bwrap \
 	--ro-bind /sys/devices/pci0000:00 /sys/devices/pci0000:00 \
 	--bind $HOME/.mozilla /firefox/.mozilla \
 	--bind $HOME/downloads /firefox/Downloads \
+	--bind $HOME/.vimfx /firefox/.vimfx \
 	--setenv HOME /firefox \
 	--setenv GTK_THEME Adwaita:dark \
 	--setenv PATH /usr/bin \

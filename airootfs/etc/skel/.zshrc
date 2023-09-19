@@ -9,6 +9,8 @@ source ~/.zaliases
 source ~/.zfunctions
 source ~/.zpath
 
+[ -n "$NEWPWD" ] && cd "$NEWPWD"
+
 preexec() {
 	# set window title
 	1="$(sed s/%/%%/g<<<"$1")"
@@ -50,4 +52,16 @@ if [[ $(tty) == /dev/pts/* ]]; then
 	bindkey -a j down-line-or-history
 	bindkey "^[[A" up-line-or-history
 	bindkey "^[[B" down-line-or-history
+
+	chpwd() {
+		awesome-client "
+			for _, master in pairs(tab_masters) do
+				for _, tab in ipairs(master.tabs) do
+					if tab.client == client.focus then
+						tab.pwd = [[$PWD]]
+					end
+				end
+			end
+		"
+	}
 fi

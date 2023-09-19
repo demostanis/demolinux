@@ -1,4 +1,4 @@
-local tab_masters = {}
+tab_masters = {}
 local tabbed_clients = {"URxvt"}
 local is_launching_tab = false
 
@@ -165,6 +165,20 @@ local function spawn_new_tab_in(master)
     is_launching_tab = true
 
     local tabs = master.tabs
+    local c = master.active_slave
+    local command = io.open("/proc/"..c.pid.."/cmdline"):read()
+    local shell_command = command
+    local pwd = nil
+    for _, tab in ipairs(tabs) do
+        if tab.active and tab.pwd then
+            pwd = tab.pwd
+        end
+    end
+    if pwd then
+        pwd = pwd:gsub("'", "'\"'\"'") -- escapes single quotes
+        shell_command = {"/bin/sh", "-c", "NEWPWD='"..pwd.."' "..command}
+    end
+
     deactivate(tabs)
     local tab =  {
         name = "Untitled",
@@ -173,9 +187,7 @@ local function spawn_new_tab_in(master)
     table.insert(tabs, tab)
     update_tabs(master)
 
-    local c = master.active_slave
-    local command = io.open("/proc/"..c.pid.."/cmdline"):read()
-    local new_client = awful.spawn(command, {
+    local new_client = awful.spawn(shell_command, {
         x = c.x, y = c.y,
         width = c.width,
         height = c.height,

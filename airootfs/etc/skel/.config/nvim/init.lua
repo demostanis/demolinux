@@ -1,3 +1,3 @@
 require"options"
-require"completion"
 require"plugins"
+require"completion"

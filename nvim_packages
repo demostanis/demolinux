@@ -1,19 +1,40 @@
-# Completion
+# LSP completion
 neovim/nvim-lspconfig
 hrsh7th/cmp-nvim-lsp
 hrsh7th/cmp-nvim-lsp-signature-help
+# snippets
 honza/vim-snippets
 dcampos/nvim-snippy
 dcampos/cmp-snippy
+# completion engine
 hrsh7th/nvim-cmp
 
+# git integration
+tpope/vim-fugitive
+# git diff markers
+airblade/vim-gitgutter
+
+# use sudo if needed to write files
 lambdalisue/suda.vim
+# search improvements
 junegunn/vim-slash
+# automatic buffer options such as tabstop
 tpope/vim-sleuth
+# completion for neovim lua development
 folke/neodev.nvim
-
+# theming
 demostanis/nvim-base16
+# status line
 nvim-lualine/lualine.nvim
-
+# file manager
+nvim-tree/nvim-tree.lua
+nvim-tree/nvim-web-devicons
+# telescope dep.
 nvim-lua/plenary.nvim
+# find, filter, preview, pick
 nvim-telescope/telescope.nvim
+# case sensitive substitute (:S),
+# coerce to different casing conventions (cr...)
+tpope/vim-abolish
+# preview :normal
+smjonas/live-command.nvim

@@ -509,6 +509,8 @@ _make_customize_airootfs() {
     # Generate locales
     eval -- env -u TMPDIR arch-chroot "${pacstrap_dir}" "/usr/bin/locale-gen"
 
+    eval -- env -u TMPDIR arch-chroot "${pacstrap_dir}" 'bash -c '"'"'for doc in $(find /etc/skel/.local/share/nvim/site/pack -type d -name doc); do nvim -u NONE +"helptags $doc|q"; done'"'"
+
     # oomox is so messy that it was cleaner to separate
     # it to another file
     _msg_info "Generating oomox theme..."

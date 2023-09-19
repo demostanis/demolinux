@@ -1,0 +1,15 @@
+pkgname=awesome-switcher
+pkgrel=2
+pkgver=1.0.0
+pkgdesc="Familiar Alt-Tab functionality in Awesome WM"
+arch=(any)
+source=(git+https://github.com/troglobit/awesome-switcher)
+makedepends=(git)
+depends=(awesome)
+sha256sums=(SKIP)
+_luaver=5.4
+
+package() {
+  cd $pkgname
+  install -Dm644 init.lua "$pkgdir"/usr/share/lua/$_luaver/$pkgname/init.lua
+}

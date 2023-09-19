@@ -1,6 +1,7 @@
 # Graphical interface
 local awesome
 aur awesome-rubato-git
+local awesome-switcher
 aur la-capitaine-icon-theme
 local picom-sdhand
 local emoji-test

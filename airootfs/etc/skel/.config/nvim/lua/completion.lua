@@ -42,8 +42,18 @@ cmp.setup{
     }
 }
 
-local capabilities = require"cmp_nvim_lsp".default_capabilities()
-require"lspconfig".clangd.setup{
-    capabilities = capabilities
-}
+vim.diagnostic.disable()
+
+local function enable_ls(name, settings)
+    local capabilities = require"cmp_nvim_lsp".default_capabilities()
+    require"lspconfig"[name].setup{
+        capabilities = capabilities,
+        settings = settings
+    }
+end
+enable_ls("clangd")
+enable_ls("lua_ls", {Lua = {
+    completion = {callSnippet = "Replace"},
+    workspace = {checkThirdParty = false}}})
+
 -- vim:set et sw=4 ts=4:

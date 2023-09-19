@@ -109,6 +109,10 @@ websocat
 xclip
 yt-dlp
 
+# Development
+lua-language-server
+clang
+
 # System
 base
 base-devel
@@ -126,6 +130,5 @@ bubblewrap-suid
 local pambase
 clipnotify
 openssh
-clang
 iwd
 zsh

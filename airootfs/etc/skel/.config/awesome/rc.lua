@@ -58,6 +58,10 @@ client.connect_signal("manage", function(c)
         c.screen.mywibar.visible = not c.fullscreen
         c.screen.mydock.visible = not c.fullscreen
     end)
+    c:connect_signal("unmanage", function()
+        c.screen.mywibar.visible = true
+        c.screen.mydock.visible = true
+    end)
 end)
 
 awful.rules.rules = {{

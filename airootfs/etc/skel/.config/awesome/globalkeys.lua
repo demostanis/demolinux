@@ -1,6 +1,7 @@
 local should_spawn_with_selection = false
 local function spawn_with_selection_if_needed(...)
     if should_spawn_with_selection then
+        should_spawn_with_selection = false
         spawn_with_selection(...)
     else
         awful.spawn(...)
@@ -61,12 +62,12 @@ local globalkeys = gears.table.join(
     awful.key({ modkey }, "x", function()
         should_spawn_with_selection = true
         gears.timer{
-            timeout = 1000,
+            timeout = 2,
             single_shot = true,
             callback = function()
                 should_spawn_with_selection = false
             end
-        }
+        }:start()
     end)
 )
 

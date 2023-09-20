@@ -44,6 +44,13 @@ cmp.setup{
 
 vim.diagnostic.disable()
 
+vim.api.nvim_create_autocmd("LspAttach", {
+    callback = function(args)
+        local c = vim.lsp.get_client_by_id(args.data.client_id)
+        c.server_capabilities.semanticTokensProvider = nil
+    end
+})
+
 local function enable_ls(name, settings)
     local capabilities = require"cmp_nvim_lsp".default_capabilities()
     require"lspconfig"[name].setup{

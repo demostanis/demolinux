@@ -3,7 +3,7 @@ local awesome
 aur awesome-rubato-git
 local awesome-switcher
 aur la-capitaine-icon-theme
-local picom-sdhand
+picom
 local emoji-test
 local bling
 local vicious

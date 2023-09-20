@@ -330,10 +330,12 @@ return function(s)
 
             if mypanel.visible then
                 old_client_focus = client.focus
-                old_client_focus:connect_signal("unmanage", function()
-                    old_client_focus = nil
-                end)
-                client.focus = nil
+                if old_client_focus then
+                    old_client_focus:connect_signal("unmanage", function()
+                        old_client_focus = nil
+                    end)
+                    client.focus = nil
+                end
 
                 stopped = false
                 mousegrabber.run(function(coords)

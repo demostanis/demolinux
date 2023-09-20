@@ -18,5 +18,5 @@ exec bwrap \
 	`# Media to display` \
 	--ro-bind-try "${@: -1}" "$(realpath -- "${@: -1}")" \
 	--unshare-all --new-session \
-	/usr/bin/imv-x11 "$@"
+	/usr/bin/imv-x11 "$(realpath -- "${@: -1}")"
 

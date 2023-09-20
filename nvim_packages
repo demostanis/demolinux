@@ -38,3 +38,5 @@ nvim-telescope/telescope.nvim
 tpope/vim-abolish
 # preview :normal
 smjonas/live-command.nvim
+# color preview
+nvchad/nvim-colorizer.lua

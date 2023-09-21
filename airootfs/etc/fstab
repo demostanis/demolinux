@@ -1,2 +1,1 @@
-/dev/disk/by-partlabel/data           	/data     	btrfs     	rw,noatime,space_cache=v2,compress=zstd,subvolid=5,subvol=/	0 0
-/dev/disk/by-partlabel/swap           	none      	swap      	defaults  	0 0
+/run/archiso/swap/swapfile none swap defaults,nobootwait,nofail 0 0

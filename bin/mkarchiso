@@ -40,8 +40,6 @@ iso_application=""
 iso_version=""
 install_dir=""
 arch="x86_64"
-disk_size=""
-swap_size=""
 pacman_conf=""
 packages=""
 nvim_packages=""
@@ -140,8 +138,6 @@ _show_config() {
     _msg_info "               Build date:   ${build_date}"
     _msg_info "         Output directory:   ${out_dir}"
     _msg_info "       Current build mode:   ${buildmode}"
-    _msg_info "                Disk size:   ${disk_size}"
-    _msg_info "                Swap size:   ${swap_size}"
     _msg_info "                  GPG key:   ${gpg_key:-None}"
     _msg_info "               GPG signer:   ${gpg_sender:-None}"
     _msg_info "Code signing certificates:   ${cert_list[*]:-None}"
@@ -1049,23 +1045,19 @@ _make_boot_on_disk_image() {
     _msg_info "Preparing kernel and initramfs for the disk image..."
 
     # Way too many MBs wasted...
-    rm "${work_dir}/boot/"*"fallback"*".img"
-    mv -- "${work_dir}/boot/initramfs-"*".img" /mnt/demolinux/boot
-    mv -- "${work_dir}/boot/vmlinuz-"* /mnt/demolinux/boot
+    rm -f "${work_dir}/boot/"*"fallback"*".img"
+    cp -- "${work_dir}/boot/initramfs-"*".img" /mnt/demolinux/boot
+    cp -- "${work_dir}/boot/vmlinuz-"* /mnt/demolinux/boot
 
     for ucode_image in "${ucodes[@]}"; do
         if [[ -e "${work_dir}/boot/${ucode_image}" ]]; then
-            mv -- "${work_dir}/boot/${ucode_image}" /mnt/demolinux/boot/
+            cp -- "${work_dir}/boot/${ucode_image}" /mnt/demolinux/boot/
         fi
     done
     _msg_info "Done!"
 }
 
 _validate_requirements_bootmode_hybrid.grub.gpt() {
-    if (( ${disk_size##G} < 2 + ${swap_size##G} )); then
-        (( validation_error=validation_error+1 ))
-        _msg_error "Validating '${bootmode}': Disk size is too small!" 0
-    fi
     if [[ ! " ${pkg_list[*]} " =~ ' grub ' ]]; then
         (( validation_error=validation_error+1 ))
         _msg_error "Validating '${bootmode}': The 'grub' package is missing from the package list!" 0
@@ -1080,8 +1072,14 @@ _make_bootmode_hybrid.grub.gpt() {
     elif [[ -e "${isofs_dir}/${install_dir}/${arch}/airootfs.erofs" ]]; then
         airootfs_image_filename="${isofs_dir}/${install_dir}/${arch}/airootfs.erofs"
     fi
-    system_size=$( du "$airootfs_image_filename" | awk '{print int($1/1000+0.5)}' )M
-    data_size=$( echo $(( ( "$(numfmt --from=iec --field=1,3,5,7,9 <<< "$disk_size - $swap_size - $system_size - 1M - 200M")" ) / 2 )) | numfmt --to=iec --format=%.0f )
+    # we used to calculate manually the size of the system partition.
+    # since we now use Btrfs with zstd compression, instead of calculating
+    # an incorrect size (since the size will greatly shrink after being
+    # copied to the Btrfs subvolume), we set a fixed size. this also
+    # ensures the system won't take up an extravagant amount of
+    # space in the future.
+    system_size=$( numfmt --from=iec --to=none --to-unit=1000000 <<< 3G)M
+    disk_size=$( echo $(( "$(numfmt --from=iec --field=1,3,5 <<< "$system_size + 1M + 200M")" )) | numfmt --to=none --to-unit=1000000 --format=%.0f )M
     imgpath="${work_dir}/disk.img"
 
     _msg_info "Partitioning disk..."
@@ -1091,9 +1089,6 @@ _make_bootmode_hybrid.grub.gpt() {
         -n 1:0:+1M -t 1:ef02 -c 1:legacyboot \
         -n 2:0:+200M -t 2:ef00 -c 2:boot \
         -n 3:0:+$system_size -t 3:8300 -c 3:system \
-        -n 4:0:+$swap_size -t 4:8200 -c 4:swap \
-        -n 5:0:+$data_size -t 5:8300 -c 5:persist \
-        -n 6:0:0 -t 6:8300 -c 6:data \
         -p "$imgpath"
 
     losetup -P /dev/loop0 "$imgpath"
@@ -1101,24 +1096,13 @@ _make_bootmode_hybrid.grub.gpt() {
     _msg_info "Creating file systems..."
     # boot
     mkfs.vfat /dev/loop0p2
-    # swap
-    mkswap /dev/loop0p4
-    # persist
-    mkfs.xfs /dev/loop0p5
-    # data
-    mkfs.btrfs /dev/loop0p6
+    # system, swap, persist, data
+    mkfs.btrfs /dev/loop0p3
 
-    # Create common directories
-    mkdir -p /mnt/demolinux/data
-    mount /dev/loop0p6 /mnt/demolinux/data
-    for dir in ${data_directories[@]}; do
-        mkdir -p /mnt/demolinux/data/"$dir"
-        chown 1000:1000 /mnt/demolinux/data/"$dir"
-    done
-    umount /mnt/demolinux/data
-
-    # Copy the system image to the system partition
-    cp "$airootfs_image_filename" /dev/loop0p3
+    mkdir -p /mnt/demolinux/root
+    mount -o compress=zstd,noatime /dev/loop0p3 /mnt/demolinux/root
+    btrfs subvolume create /mnt/demolinux/root/system
+    cp "$airootfs_image_filename" /mnt/demolinux/root/system
 
     _msg_info "Installing grub..."
     # Install grub for both BIOS and UEFI boot
@@ -1147,7 +1131,7 @@ _make_bootmode_hybrid.grub.gpt() {
     sed 's/%INSTALLDIR%/'"$install_dir"'/' -i $grub_cfg
 
     _make_boot_on_disk_image
-    umount /mnt/demolinux/boot
+    umount /mnt/demolinux/{b,r}oot
     losetup -d /dev/loop0
 
     _msg_info "Done!"
@@ -1941,16 +1925,6 @@ _set_overrides() {
     elif [[ -z "$pacman_conf" ]]; then
         pacman_conf="/etc/pacman.conf"
     fi
-    if [[ -v override_disk_size ]]; then
-        disk_size="$override_disk_size"
-    elif [[ -z "$disk_size" ]]; then
-        disk_size="32G"
-    fi
-    if [[ -v override_swap_size ]]; then
-        swap_size="$override_swap_size"
-    elif [[ -z "$swap_size" ]]; then
-        swap_size="8G"
-    fi
     pacman_conf="$(realpath -- "$pacman_conf")"
     [[ ! -v override_pkg_list ]] || pkg_list+=("${override_pkg_list[@]}")
     # TODO: allow overriding bootstrap_pkg_list
@@ -2235,8 +2209,6 @@ while getopts 'c:p:C:L:P:A:D:d:s:w:m:o:g:G:vh?' arg; do
     case "${arg}" in
         p) read -r -a override_pkg_list <<< "${OPTARG}" ;;
         C) override_pacman_conf="${OPTARG}" ;;
-        d) override_disk_size="${OPTARG}" ;;
-        s) override_swap_size="${OPTARG}" ;;
         L) override_iso_label="${OPTARG}" ;;
         P) override_iso_publisher="${OPTARG}" ;;
         A) override_iso_application="${OPTARG}" ;;

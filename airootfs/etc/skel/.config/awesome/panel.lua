@@ -198,14 +198,14 @@ return function(s)
                         forced_width = 30,
                         text = "\u{f011}"
                     },
-                    widget = wibox.container.margin,
-                    left = 270, right = 5, bottom = 11, top = 15,
+                    widget = wibox.container.background,
+                    id = "system",
+                    command = function()
+                        awful.spawn("systemctl poweroff")
+                    end
                 },
-                widget = wibox.container.background,
-                id = "system",
-                command = function()
-                    awful.spawn("systemctl poweroff")
-                end
+                widget = wibox.container.margin,
+                left = 270, right = 5, bottom = 11, top = 15,
             },
             {
                 {
@@ -214,14 +214,14 @@ return function(s)
                         font = beautiful.base_icon_font .. " 23",
                         text = "\u{f2f9}"
                     },
-                    widget = wibox.container.margin,
-                    left = 15, right = 5, bottom = 11, top = 15,
+                    widget = wibox.container.background,
+                    id = "system",
+                    command = function()
+                        awful.spawn("systemctl reboot")
+                    end
                 },
-                widget = wibox.container.background,
-                id = "system",
-                command = function()
-                    awful.spawn("systemctl reboot")
-                end
+                widget = wibox.container.margin,
+                left = 15, right = 5, bottom = 11, top = 15,
             },
             {
                 {
@@ -230,14 +230,14 @@ return function(s)
                         font = beautiful.base_icon_font .. " 25",
                         text = "\u{f880}"
                     },
-                    widget = wibox.container.margin,
-                    left = 15, right = 5, bottom = 11, top = 15,
+                    widget = wibox.container.background,
+                    id = "system",
+                    command = function()
+                        awful.spawn("systemctl hibernate")
+                    end
                 },
-                widget = wibox.container.background,
-                id = "system",
-                command = function()
-                    awful.spawn("systemctl hibernate")
-                end
+                widget = wibox.container.margin,
+                left = 15, right = 5, bottom = 11, top = 15,
             },
             layout = wibox.layout.fixed.horizontal
         },
@@ -354,6 +354,7 @@ return function(s)
                             pane.has_hovering_in_previous_frame = false
                             table.insert(panes, pane)
                         end
+                        return true
                     end
                     for _, pane in pairs(panes) do
                         -- when a mousegrabber is active, mouse::* events

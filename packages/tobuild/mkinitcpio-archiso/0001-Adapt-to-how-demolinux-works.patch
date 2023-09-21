@@ -66,7 +66,7 @@ index d2c600e..b3711f2 100644
 +        part="${device##*/}"
 +        disk="${part%%?}"
 +        partid="${part##"$disk"}"
-+        parted "/dev/$disk" resizepart $partid 100% 2>&1 | grep -v fstab
++        parted -sf "/dev/$disk" resizepart $partid 100%
 +        partprobe
 +
 +        _mnt_dev /dev/disk/by-partlabel/system $btrfs_root "-w" "subvol=system,compress=zstd"
@@ -124,7 +124,6 @@ index d2c600e..b3711f2 100644
      fi
  
      if [ "${copytoram}" = "y" ]; then
-diff --git a/install/archiso b/install/archiso
 --- a/install/archiso
 +++ b/install/archiso
 @@ -7,6 +7,7 @@ build() {

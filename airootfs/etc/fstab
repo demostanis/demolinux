@@ -1,1 +1,1 @@
-/run/archiso/swap/swapfile none swap defaults,nobootwait,nofail 0 0
+/run/archiso/btrfs/swap/swapfile none swap defaults,nobootwait,nofail 0 0

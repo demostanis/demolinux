@@ -1,15 +1,15 @@
-From 719edad7e6528ef434b8841dbc80e6bef18c7277 Mon Sep 17 00:00:00 2001
+From 6a146bcb1a0ca954ad90c4d0ecd6ca6bc92b92ec Mon Sep 17 00:00:00 2001
 From: demostanis worlds <demostanis@protonmail.com>
-Date: Thu, 21 Sep 2023 21:12:30 +0200
+Date: Fri, 22 Sep 2023 16:54:58 +0200
 Subject: [PATCH] Adapt to how demolinux works
 
 ---
- hooks/archiso   | 65 +++++++++++++++++++++++++++++++++++++------------
+ hooks/archiso   | 69 +++++++++++++++++++++++++++++++++++--------------
  install/archiso |  3 +++
- 2 files changed, 53 insertions(+), 15 deletions(-)
+ 2 files changed, 53 insertions(+), 19 deletions(-)
 
 diff --git a/hooks/archiso b/hooks/archiso
-index d2c600e..b3711f2 100644
+index d2c600e..4e3e729 100644
 --- a/hooks/archiso
 +++ b/hooks/archiso
 @@ -45,13 +45,13 @@ _mnt_dmsnapshot() {
@@ -32,7 +32,7 @@ index d2c600e..b3711f2 100644
  }
  
  # args: /path/to/image_file, mountpoint
-@@ -211,20 +211,53 @@ archiso_mount_handler() {
+@@ -211,21 +211,47 @@ archiso_mount_handler() {
      local sigfile cms_sigfile fs_img fs_img_size iso_blockdev
  
      if ! mountpoint -q "/run/archiso/bootmnt"; then
@@ -49,15 +49,10 @@ index d2c600e..b3711f2 100644
 -        fs_img="/run/archiso/bootmnt/${archisobasedir}/${arch}/airootfs.sfs"
 -    elif [ -f "/run/archiso/bootmnt/${archisobasedir}/${arch}/airootfs.erofs" ]; then
 -        fs_img="/run/archiso/bootmnt/${archisobasedir}/${arch}/airootfs.erofs"
-+    if [ -e "$btrfs_root/airootfs.sfs" ]; then
-+        fs_img="$btrfsroot/airootfs.sfs"
-+    elif [ -e "$btrfs_root/airootfs.erofs" ]; then
-+        fs_img="$btrfs_root/airootfs.erofs"
-     else
-         echo "ERROR: no root file system image found"
-         launch_interactive_shell
-     fi
-+    if [ $(( $(btrfs subvol list $btrfs_root | wc -l) < 4 )) = 1 ]; then
+-    else
+-        echo "ERROR: no root file system image found"
+-        launch_interactive_shell
++    if [ $(( $(btrfs subvol list $btrfs_root | wc -l) < 5 )) = 1 ]; then
 +        # first, resize the filesystem
 +        umount -f $btrfs_root
 +        # i wonder why i do all this work when
@@ -84,14 +79,16 @@ index d2c600e..b3711f2 100644
 +
 +        umount -f $btrfs_root
 +        _mnt_dev /dev/disk/by-partlabel/system $btrfs_root "-r" "subvol=system,compress=zstd"
-+    fi
-+
+     fi
+ 
 +    _mnt_dev /dev/disk/by-partlabel/system /run/archiso/persistfs "-w" "subvol=/system/persistfs,compress=zstd,noatime"
 +    _mnt_dev /dev/disk/by-partlabel/system /run/archiso/data "-w" "subvol=/system/data,compress=zstd,noatime"
- 
++    _mnt_dev /dev/disk/by-partlabel/system /run/archiso/airootfs "-r" "subvol=/system/airootfs,compress=zstd,noatime"
++
      # shellcheck disable=SC2154
      # defined via initcpio's parse_cmdline()
-@@ -292,7 +325,7 @@ archiso_mount_handler() {
+     if [ "${checksum}" = "y" ]; then
+@@ -292,7 +318,7 @@ archiso_mount_handler() {
      # * the root file system image size is less than 4 GiB,
      # * the estimated available memory is more than the root file system image size + 2 GiB.
      if [ "${copytoram}" = "auto" ]; then
@@ -100,14 +97,14 @@ index d2c600e..b3711f2 100644
          if [ "$iso_blockdev" = "${iso_blockdev##/dev/sr}" ]; then
              fs_img_size="$(du -bsk "$fs_img" | cut -f 1)"
              if [ "$fs_img_size" -lt 4194304 ] && [ "$(awk '$1 == "MemAvailable:" { print $2 }' /proc/meminfo)" -gt $((fs_img_size + 2097152)) ]; then
-@@ -314,14 +347,20 @@ archiso_mount_handler() {
+@@ -314,14 +340,19 @@ archiso_mount_handler() {
          msg ":: Mounting /run/archiso/cowspace (tmpfs) filesystem, size=${cow_spacesize}..."
          mount --mkdir -t tmpfs -o "size=${cow_spacesize}",mode=0755 cowspace /run/archiso/cowspace
      fi
 -    mkdir -p "/run/archiso/cowspace/${cow_directory}"
 -    chmod 0700 "/run/archiso/cowspace/${cow_directory}"
  
-     _mnt_fs "${fs_img}" "/run/archiso/airootfs"
+-    _mnt_fs "${fs_img}" "/run/archiso/airootfs"
      if [ -f "/run/archiso/airootfs/airootfs.img" ]; then
          _mnt_dmsnapshot "/run/archiso/airootfs/airootfs.img" "${newroot}" "/"
      else
@@ -124,6 +121,8 @@ index d2c600e..b3711f2 100644
      fi
  
      if [ "${copytoram}" = "y" ]; then
+diff --git a/install/archiso b/install/archiso
+index 2a145ba..d0db37a 100644
 --- a/install/archiso
 +++ b/install/archiso
 @@ -7,6 +7,7 @@ build() {

@@ -1066,12 +1066,6 @@ _validate_requirements_bootmode_hybrid.grub.gpt() {
 
 # Allow booting from both BIOS and UEFI
 _make_bootmode_hybrid.grub.gpt() {
-    airootfs_image_filename=""
-    if [[ -e "${isofs_dir}/${install_dir}/${arch}/airootfs.sfs" ]]; then
-        airootfs_image_filename="${isofs_dir}/${install_dir}/${arch}/airootfs.sfs"
-    elif [[ -e "${isofs_dir}/${install_dir}/${arch}/airootfs.erofs" ]]; then
-        airootfs_image_filename="${isofs_dir}/${install_dir}/${arch}/airootfs.erofs"
-    fi
     # we used to calculate manually the size of the system partition.
     # since we now use Btrfs with zstd compression, instead of calculating
     # an incorrect size (since the size will greatly shrink after being
@@ -1102,7 +1096,9 @@ _make_bootmode_hybrid.grub.gpt() {
     mkdir -p /mnt/demolinux/root
     mount -o compress=zstd,noatime /dev/loop0p3 /mnt/demolinux/root
     btrfs subvolume create /mnt/demolinux/root/system
-    cp "$airootfs_image_filename" /mnt/demolinux/root/system
+    btrfs subvolume create /mnt/demolinux/root/system/airootfs
+    _msg_info "Copying files to the disk image..."
+    cp -a "${pacstrap_dir}"/* /mnt/demolinux/root/system/airootfs
 
     _msg_info "Installing grub..."
     # Install grub for both BIOS and UEFI boot
@@ -2095,7 +2091,7 @@ _build_disk_image_base() {
     _run_once _make_customize_airootfs
     _run_once _make_pkglist
     _run_once _move_boot_to_temp_location
-    _run_once _prepare_airootfs_image
+    #_run_once _prepare_airootfs_image
     _make_bootmodes
     _run_once _cleanup_pacstrap_dir
 }

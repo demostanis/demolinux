@@ -1,15 +1,15 @@
-From f4e201cc68a91b7984bc1b56bc834f27f0c86525 Mon Sep 17 00:00:00 2001
+From 8a9ad45bae024abbfe4c7613a518b0e9457b74ae Mon Sep 17 00:00:00 2001
 From: demostanis worlds <demostanis@protonmail.com>
-Date: Fri, 22 Sep 2023 22:04:35 +0200
+Date: Sat, 23 Sep 2023 00:02:13 +0200
 Subject: [PATCH] Adapt to how demolinux works
 
 ---
- hooks/archiso   | 83 ++++++++++++++++++++++++++++++++++++-------------
- install/archiso |  3 ++
- 2 files changed, 64 insertions(+), 22 deletions(-)
+ hooks/archiso   | 89 +++++++++++++++++++++++++++++++++++++------------
+ install/archiso |  4 +++
+ 2 files changed, 71 insertions(+), 22 deletions(-)
 
 diff --git a/hooks/archiso b/hooks/archiso
-index d2c600e..23743dc 100644
+index d2c600e..d0a18b0 100644
 --- a/hooks/archiso
 +++ b/hooks/archiso
 @@ -45,13 +45,13 @@ _mnt_dmsnapshot() {
@@ -41,7 +41,7 @@ index d2c600e..23743dc 100644
      # shellcheck disable=SC2154
      # defined via initcpio's parse_cmdline()
      if [ -n "${cow_label}" ]; then
-@@ -211,21 +211,55 @@ archiso_mount_handler() {
+@@ -211,21 +211,62 @@ archiso_mount_handler() {
      local sigfile cms_sigfile fs_img fs_img_size iso_blockdev
  
      if ! mountpoint -q "/run/archiso/bootmnt"; then
@@ -79,6 +79,13 @@ index d2c600e..23743dc 100644
 +            echo   # don't remove the existing signature
 +            echo w # write changes
 +        ) | fdisk /dev/"$disk"
++        (
++            echo c # change partlabel
++            echo 3 # 3rd partition
++            echo system
++            echo w # write
++            echo y # confirm
++        ) | gdisk /dev/"$disk"
 +        partprobe
 +
 +        _mnt_dev /dev/disk/by-partlabel/system $btrfs_root "-w" "subvol=system,compress=zstd"
@@ -105,7 +112,7 @@ index d2c600e..23743dc 100644
      # shellcheck disable=SC2154
      # defined via initcpio's parse_cmdline()
      if [ "${checksum}" = "y" ]; then
-@@ -292,10 +326,10 @@ archiso_mount_handler() {
+@@ -292,10 +333,10 @@ archiso_mount_handler() {
      # * the root file system image size is less than 4 GiB,
      # * the estimated available memory is more than the root file system image size + 2 GiB.
      if [ "${copytoram}" = "auto" ]; then
@@ -119,7 +126,7 @@ index d2c600e..23743dc 100644
                  copytoram="y"
              fi
          fi
-@@ -314,14 +348,19 @@ archiso_mount_handler() {
+@@ -314,14 +355,19 @@ archiso_mount_handler() {
          msg ":: Mounting /run/archiso/cowspace (tmpfs) filesystem, size=${cow_spacesize}..."
          mount --mkdir -t tmpfs -o "size=${cow_spacesize}",mode=0755 cowspace /run/archiso/cowspace
      fi
@@ -144,7 +151,6 @@ index d2c600e..23743dc 100644
  
      if [ "${copytoram}" = "y" ]; then
 diff --git a/install/archiso b/install/archiso
-index 2a145ba..d382d6f 100644
 --- a/install/archiso
 +++ b/install/archiso
 @@ -7,6 +7,7 @@ build() {
@@ -155,12 +161,13 @@ index 2a145ba..d382d6f 100644
  
      add_runscript
  
-@@ -14,6 +15,8 @@ build() {
+@@ -14,6 +15,9 @@ build() {
      add_binary dmsetup
      add_binary losetup
      add_binary openssl
 +    add_binary btrfs
 +    add_binary fdisk
++    add_binary gdisk
  
      if command -v pv >/dev/null 2>&1; then
          add_binary pv

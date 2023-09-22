@@ -18,6 +18,7 @@ xorg-xinit
 local themix-gui-git
 local themix-plugin-base16-git
 local themix-theme-oomox-git
+aur flavours
 
 # Graphical apps
 local rxvt-unicode-pixbuf

@@ -1,15 +1,15 @@
-From 6a146bcb1a0ca954ad90c4d0ecd6ca6bc92b92ec Mon Sep 17 00:00:00 2001
+From f4e201cc68a91b7984bc1b56bc834f27f0c86525 Mon Sep 17 00:00:00 2001
 From: demostanis worlds <demostanis@protonmail.com>
-Date: Fri, 22 Sep 2023 16:54:58 +0200
+Date: Fri, 22 Sep 2023 22:04:35 +0200
 Subject: [PATCH] Adapt to how demolinux works
 
 ---
- hooks/archiso   | 69 +++++++++++++++++++++++++++++++++++--------------
- install/archiso |  3 +++
- 2 files changed, 53 insertions(+), 19 deletions(-)
+ hooks/archiso   | 83 ++++++++++++++++++++++++++++++++++++-------------
+ install/archiso |  3 ++
+ 2 files changed, 64 insertions(+), 22 deletions(-)
 
 diff --git a/hooks/archiso b/hooks/archiso
-index d2c600e..4e3e729 100644
+index d2c600e..23743dc 100644
 --- a/hooks/archiso
 +++ b/hooks/archiso
 @@ -45,13 +45,13 @@ _mnt_dmsnapshot() {
@@ -32,7 +32,16 @@ index d2c600e..4e3e729 100644
  }
  
  # args: /path/to/image_file, mountpoint
-@@ -211,21 +211,47 @@ archiso_mount_handler() {
+@@ -183,7 +183,7 @@ run_hook() {
+     # shellcheck disable=SC2154
+     # defined via initcpio's parse_cmdline()
+     [ -z "${archisodevice}" ] && archisodevice="/dev/disk/by-label/${archisolabel}"
+-    [ -z "${cow_spacesize}" ] && cow_spacesize="256M"
++    [ -z "${cow_spacesize}" ] && cow_spacesize="6G"
+     # shellcheck disable=SC2154
+     # defined via initcpio's parse_cmdline()
+     if [ -n "${cow_label}" ]; then
+@@ -211,21 +211,55 @@ archiso_mount_handler() {
      local sigfile cms_sigfile fs_img fs_img_size iso_blockdev
  
      if ! mountpoint -q "/run/archiso/bootmnt"; then
@@ -61,7 +70,15 @@ index d2c600e..4e3e729 100644
 +        part="${device##*/}"
 +        disk="${part%%?}"
 +        partid="${part##"$disk"}"
-+        parted -sf "/dev/$disk" resizepart $partid 100%
++        (
++            echo d # delete
++            echo 3 # 3rd partition
++            echo n # new partition
++            echo   # choose defaults
++            echo   # (= take up all empty space)
++            echo   # don't remove the existing signature
++            echo w # write changes
++        ) | fdisk /dev/"$disk"
 +        partprobe
 +
 +        _mnt_dev /dev/disk/by-partlabel/system $btrfs_root "-w" "subvol=system,compress=zstd"
@@ -88,16 +105,21 @@ index d2c600e..4e3e729 100644
      # shellcheck disable=SC2154
      # defined via initcpio's parse_cmdline()
      if [ "${checksum}" = "y" ]; then
-@@ -292,7 +318,7 @@ archiso_mount_handler() {
+@@ -292,10 +326,10 @@ archiso_mount_handler() {
      # * the root file system image size is less than 4 GiB,
      # * the estimated available memory is more than the root file system image size + 2 GiB.
      if [ "${copytoram}" = "auto" ]; then
 -        iso_blockdev="$(realpath "$(resolve_device "$archisodevice")")"
 +        iso_blockdev="$(realpath "$(resolve_device /dev/disk/by-partlabel/system)")"
          if [ "$iso_blockdev" = "${iso_blockdev##/dev/sr}" ]; then
-             fs_img_size="$(du -bsk "$fs_img" | cut -f 1)"
-             if [ "$fs_img_size" -lt 4194304 ] && [ "$(awk '$1 == "MemAvailable:" { print $2 }' /proc/meminfo)" -gt $((fs_img_size + 2097152)) ]; then
-@@ -314,14 +340,19 @@ archiso_mount_handler() {
+-            fs_img_size="$(du -bsk "$fs_img" | cut -f 1)"
+-            if [ "$fs_img_size" -lt 4194304 ] && [ "$(awk '$1 == "MemAvailable:" { print $2 }' /proc/meminfo)" -gt $((fs_img_size + 2097152)) ]; then
++            fs_img_size="$(du -bsk "/run/archiso/airootfs" | cut -f 1)"
++            if [ "$(awk '$1 == "MemAvailable:" { print $2 }' /proc/meminfo)" -gt $((fs_img_size + 2097152)) ]; then
+                 copytoram="y"
+             fi
+         fi
+@@ -314,14 +348,19 @@ archiso_mount_handler() {
          msg ":: Mounting /run/archiso/cowspace (tmpfs) filesystem, size=${cow_spacesize}..."
          mount --mkdir -t tmpfs -o "size=${cow_spacesize}",mode=0755 cowspace /run/archiso/cowspace
      fi
@@ -122,7 +144,7 @@ index d2c600e..4e3e729 100644
  
      if [ "${copytoram}" = "y" ]; then
 diff --git a/install/archiso b/install/archiso
-index 2a145ba..d0db37a 100644
+index 2a145ba..d382d6f 100644
 --- a/install/archiso
 +++ b/install/archiso
 @@ -7,6 +7,7 @@ build() {
@@ -138,7 +160,7 @@ index 2a145ba..d0db37a 100644
      add_binary losetup
      add_binary openssl
 +    add_binary btrfs
-+    add_binary parted
++    add_binary fdisk
  
      if command -v pv >/dev/null 2>&1; then
          add_binary pv

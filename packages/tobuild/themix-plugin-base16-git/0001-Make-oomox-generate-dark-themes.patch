@@ -1,0 +1,36 @@
+From 13b40506662765f0d8ff45a248bd677cf6c3437b Mon Sep 17 00:00:00 2001
+From: demostanis worlds <demostanis@protonmail.com>
+Date: Wed, 6 Sep 2023 00:56:54 +0200
+Subject: [PATCH] Make oomox generate dark themes
+
+---
+ cli.py | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/cli.py b/cli.py
+index 981a8fa..2ef13dd 100644
+--- a/cli.py
++++ b/cli.py
+@@ -14,7 +14,7 @@ sys.path.append(SCRIPT_DIR)
+ from oomox_gui.theme_file_parser import read_colorscheme_from_path  # noqa[E402]
+ from oomox_gui.theme_file import ThemeT  # noqa[E402]
+ 
+-from oomox_plugin import render_base16_template, convert_oomox_to_base16  # noqa[E402]
++from oomox_plugin import render_base16_template, convert_oomox_to_base16, Plugin  # noqa[E402]
+ 
+ 
+ def print_help() -> None:
+@@ -32,6 +32,10 @@ def main() -> None:
+     for item in result:
+         themix_theme = item
+     base16_theme = convert_oomox_to_base16(colorscheme=themix_theme)
++    for oomox_key, base16_key in Plugin.translation_dark.items():
++        if base16_key in base16_theme:
++            themix_theme[oomox_key] = base16_theme[base16_key]
++    base16_theme = convert_oomox_to_base16(colorscheme=themix_theme)
+     print(
+         render_base16_template(mustache_path, base16_theme),
+     )
+-- 
+2.42.0
+

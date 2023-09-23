@@ -42,7 +42,7 @@ precmd() {
 }
 
 if [[ $(tty) == /dev/pts/* ]]; then
-	source ~/.zplugins/*/*.plugin.zsh
+	for plugin in ~/.zplugins/*/*.plugin.zsh; do source "$plugin"; done
 
 	# https://github.com/marlonrichert/zsh-autocomplete#make-tab-go-straight-to-the-menu-and-cycle-there
 	bindkey '\t' menu-select "$terminfo[kcbt]" menu-select

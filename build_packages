@@ -4,6 +4,7 @@ btrfs-progs
 devtools
 erofs-utils
 git
+gptfdisk
 grub
 pv
 squashfs-tools

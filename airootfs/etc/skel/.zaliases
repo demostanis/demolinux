@@ -1,6 +1,9 @@
 alias gap="git add --patch"
 alias gc="git commit"
+alias gd="git diff"
 alias gs="git status"
+alias gl="git log"
+alias gp="git push"
 alias ga="git add"
 
 alias imv=imv-hardened

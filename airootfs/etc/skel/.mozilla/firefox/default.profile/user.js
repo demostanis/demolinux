@@ -33,6 +33,12 @@ user_pref("extensions.VimFx.mode.normal.scroll_page_up", "<c-b>");
 
 user_pref("browser.bookmarks.autoExportHTML",                   true);
 
+// https://bugzilla.mozilla.org/show_bug.cgi?id=1708982
+// Without this, Firefox crashes when there are no matches when using
+// "Find in page". This is because the X11 sandboxing (running Firefox
+// as an untrusted X client) prevents it from beeping.
+user_pref("accessibility.typeaheadfind.soundURL",               "");
+
 // Prefs stolen from https://github.com/pyllyukko/user.js
 
 // PREF: Don't reveal your internal IP when WebRTC is enabled (Firefox >= 42)

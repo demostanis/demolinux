@@ -1,0 +1,27 @@
+From c34cc959380846790d62b06a5e1a91b2d5f341eb Mon Sep 17 00:00:00 2001
+From: demostanis worlds <demostanis@protonmail.com>
+Date: Sat, 23 Sep 2023 17:08:15 +0200
+Subject: [PATCH] Open the first video in the page instead of the page itself
+
+---
+ ff2mpv.js | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/ff2mpv.js b/ff2mpv.js
+index 6808dae..e65305d 100644
+--- a/ff2mpv.js
++++ b/ff2mpv.js
+@@ -35,6 +35,9 @@ getOS().then((os) => {
+   });
+ 
+   browser.browserAction.onClicked.addListener((tab) => {
+-      ff2mpv(tab.url);
++      browser.tabs.executeScript({
++          code: "video = document.getElementsByTagName('video');video[0].src;"
++      }).then(([url]) =>
++        ff2mpv(url));
+   });
+ });
+-- 
+2.42.0
+

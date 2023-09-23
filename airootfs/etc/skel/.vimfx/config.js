@@ -23,6 +23,12 @@ vimfx.addCommand({
 }, ({ vim }) => vim.window.BrowserReload())
 vimfx.set('custom.mode.normal.refresh', 'R')
 
+vimfx.addCommand({
+	name: 'mpv',
+	description: 'Watch the current video in MPV'
+}, ({ vim }) => vim.window.document.querySelector("#ff2mpv_yossarian_net-BAP").firstChild.click())
+vimfx.set('custom.mode.normal.mpv', 'V')
+
 vimfx.addKeyOverrides(
 	[ () => true, // is that the right way of doing it..?
 		['<space>', 'r']]

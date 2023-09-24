@@ -3,3 +3,4 @@ require"live-command".setup{
 		Norm = {cmd = "norm"}
 	}
 }
+vim.cmd[[cabbrev norm Norm]]

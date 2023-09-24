@@ -1,0 +1,68 @@
+#!/bin/sh
+
+pname="$0"
+error()
+{
+	echo "$pname: $*"
+	exit 1
+}
+
+templates_dir="${XDG_TEMPLATES_DIR:="$HOME/Templates"}"
+
+template_name="$1"
+destination_path="$2"
+
+[ -e "$templates_dir" ] || error directory does not exist: $templates_dir
+[ -d "$templates_dir" ] || error not a directory: $templates_dir
+
+[ $# = 1 ] && error missing destination path
+(( $# > 2 )) && error usage: $pname [template_name destination_path]
+
+[ -e "$destination_path" ] && error directory already exists: $destination_path
+
+if [ -z "$template_name" ]; then
+	out="$(ls "$templates_dir")"
+	if [ -z "$out" ]; then
+		echo no templates availables
+	else
+		echo available templates:
+		echo "$out" | sed s/^/\ \ /
+	fi
+else
+substitute()
+{
+	awk '
+		{
+			i = 1
+			match($0, /{{ (.+) }}/, variables)
+			while (variables[i])
+			{
+				variable = variables[i++]
+				if (variable ~ /^shell /) {
+					output = ""
+					command = substr(variable, 6)
+					while ((command | getline line) > 0)
+						output = output line "\n"
+					gsub(/{{ .+ }}/, substr(output, 1, length(output)-1))
+				} else {
+					printf variable ": " > "/dev/stderr"
+					getline value < "/dev/tty"
+					gsub(/{{ .+ }}/, value)
+				}
+			}
+			print
+		}
+	' "$1"
+}
+
+	[ -e "$templates_dir/$template_name" ] || error no such template: $1
+
+	if [ -d "$templates_dir/$template_name" ]; then
+		mkdir -p "$destination_path"
+		while read -r file; do
+			substitute "$file" > "$destination_path/$(basename "$file")"
+		done < <(find "$templates_dir/$template_name" -type f)
+	else
+		substitute "$file" > "$destination_path"
+	fi
+fi

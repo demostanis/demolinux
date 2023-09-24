@@ -78,7 +78,7 @@ return function(s)
         x = beautiful.wibar_width+4, y = 4,
         ontop = true, visible = false,
         width = beautiful.panel_width,
-        height = s.geometry.height-8,
+        height = beautiful.panel_height,
         bg = beautiful.bg_focus,
     }
     s.mypanel = mypanel
@@ -95,6 +95,7 @@ return function(s)
 
     gears.timer{
         timeout = 2,
+        call_now = true,
         callback = function()
             awful.spawn.easy_async("systemctl show openvpn-client@riseup", function(stdout)
                 local message = "Unknown state"
@@ -137,6 +138,7 @@ return function(s)
 
     gears.timer{
         timeout = 2,
+        call_now = true,
         callback = function()
             awful.spawn.easy_async("iwctl station list", function(stdout)
                 local message = nil 
@@ -166,6 +168,34 @@ return function(s)
         end
     }:start()
 
+    local function update_music_player()
+        awful.spawn.easy_async([[playerctl metadata xesam:artist]], function(stdout, _, _, code)
+            local icon = mypanel:get_children_by_id("music-player-middle-icon")[1]
+            local artist = stdout:gsub("\n", "")
+            awful.spawn.easy_async([[playerctl metadata xesam:title]], function(stdout, _, _, code)
+                local message = "Not playing ;("
+                if code == 0 then
+                    local title = stdout:gsub("\n", "")
+                    message = artist .. " - " .. title
+                end
+                mypanel:get_children_by_id("music-player-message")[1].text = message
+                awful.spawn.easy_async([[playerctl status]], function(stdout, _, _, code)
+                    if stdout == "Playing\n" then
+                        icon.text = "\u{f04c}"
+                    else
+                        icon.text = "\u{f04b}"
+                    end
+                end)
+            end)
+        end)
+    end
+
+    gears.timer{
+        timeout = 1,
+        call_now = true,
+        callback = update_music_player
+    }:start()
+
     mypanel:setup{
         {
             {
@@ -182,6 +212,61 @@ return function(s)
                     end),
                     layout = wibox.layout.fixed.horizontal,
                     spacing = 5
+                },
+                {
+                    {
+                        {
+                            {
+                                {
+                                    {
+                                        widget = wibox.widget.textbox,
+                                        font = beautiful.base_font.." 15",
+                                        halign = "center",
+                                        text = "...",
+                                        id = "music-player-message"
+                                    },
+                                    widget = wibox.container.margin,
+                                    top = 20, bottom = 10
+                                },
+                                {
+                                    {
+                                        widget = wibox.widget.textbox,
+                                        font = beautiful.base_icon_font.." 35",
+                                        halign = "center",
+                                        text = "\u{f04a}",
+                                        id = "music-player-left-icon",
+                                        command = [[playerctl previous]]
+                                    },
+                                    {
+                                        widget = wibox.widget.textbox,
+                                        font = beautiful.base_icon_font.." 35",
+                                        halign = "center",
+                                        text = "\u{f04b}",
+                                        id = "music-player-middle-icon",
+                                        command = [[playerctl play-pause]]
+                                    },
+                                    {
+                                        widget = wibox.widget.textbox,
+                                        font = beautiful.base_icon_font.." 35",
+                                        halign = "center",
+                                        text = "\u{f04e}",
+                                        id = "music-player-right-icon",
+                                        command = [[playerctl next]]
+                                    },
+                                    layout = wibox.layout.flex.horizontal,
+                                    id = "music-player-icons"
+                                },
+                                layout = wibox.layout.fixed.vertical
+                            },
+                            widget = wibox.container.margin,
+                            bottom = 20
+                        },
+                        widget = wibox.container.background,
+                        bg = beautiful.bg_normal,
+                        shape = rrect(),
+                    },
+                    widget = wibox.container.margin,
+                    top = 5, bottom = 5
                 },
                 layout = wibox.layout.fixed.vertical,
             },
@@ -274,6 +359,20 @@ return function(s)
         end)
     end
 
+    for _, icon in pairs(mypanel:get_children_by_id("music-player-icons")[1]:get_all_children()) do
+        icon:connect_signal("mouse::click", function()
+            awful.spawn(icon.command)
+            update_music_player()
+        end)
+        icon:connect_signal("mouse::enter", function()
+            icon.oldtext = icon.text
+            icon.markup = string.format([[<span foreground="%s">%s</span>]], beautiful.wibar_widget_hover_color, icon.text)
+        end)
+        icon:connect_signal("mouse::leave", function()
+            icon.text = icon.oldtext
+        end)
+    end
+
     for _, system_action in ipairs(mypanel:get_children_by_id("system")) do
         system_action:connect_signal("mouse::enter", function()
             for _, child in ipairs(system_action:get_all_children()) do
@@ -348,6 +447,12 @@ return function(s)
                             pane.has_hovering_in_previous_frame = false
                             table.insert(panes, pane)
                         end
+                        for _, w in pairs(mypanel:get_children_by_id("music-player-icons")[1]:get_all_children()) do
+                            local pane = wgeometry(w, mypanel)
+                            pane.widget = w
+                            pane.has_hovering_in_previous_frame = false
+                            table.insert(panes, pane)
+                        end
                         for _, w in pairs(mypanel:get_children_by_id("system")) do
                             local pane = wgeometry(w, mypanel)
                             pane.widget = w
@@ -377,7 +482,9 @@ return function(s)
 
                     if not coords.buttons[1] then return true end
                     if coords.x > mypanel.x+mypanel.width or
-                        coords.x < mypanel.x then
+                        coords.x < mypanel.x or
+                        coords.y > mypanel.y+mypanel.height or
+                        coords.y < mypanel.y then
                         mypanel:hide()
                         return false
                     end

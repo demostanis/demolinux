@@ -68,6 +68,7 @@ theme.notification_bg = theme.color11
 theme.wibar_width = 35
 theme.wibar_widget_hover_color = theme.color13
 theme.panel_width = 415
+theme.panel_height = 415
 theme.dock_width = 50
 theme.dock_indicator_color = theme.color7
 theme.border_radius = 5

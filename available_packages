@@ -34,6 +34,7 @@ local iwgtk
 gimp
 neovim
 xterm
+cmus
 
 # Browser & addons
 firefox
@@ -81,6 +82,7 @@ arch-install-scripts
 aur brightnessctl-git
 inotify-tools
 local lsb-release
+playerctl
 luarocks
 pv
 reflector

@@ -7,40 +7,52 @@ fi
 
 case $1 in
 	add)
-		file=${2:?Missing file to add}
-		if [ ! -f "$file" ]; then
-			echo File does not exist: $file >&2
-			exit 1
-		fi
+		(( $# < 2 )) && echo Missing files to add && exit 1
+		statuscode=0
 
-		echo "$(realpath "$file")" >> /run/archiso/persistfs/upperdir/index
+		for file in ${@:2}; do
+			if [ ! -f "$file" ]; then
+				echo File does not exist: $file >&2
+				statuscode=1
+				continue
+			fi
 
-		current="$(realpath "$(dirname "$file")")"
-		parent="$current"
+			echo "$(realpath "$file")" >> /run/archiso/persistfs/upperdir/index
 
-		while [ ! "$current" = / ]; do
-			mkdir -p /run/archiso/persistfs/upperdir/"$current"
-			chown --reference="$current" /run/archiso/persistfs/upperdir/"$current"
-			chmod --reference="$current" /run/archiso/persistfs/upperdir/"$current"
-			current="$(dirname "$current")"
+			current="$(realpath "$(dirname "$file")")"
+			parent="$current"
+
+			while [ ! "$current" = / ]; do
+				mkdir -p /run/archiso/persistfs/upperdir/"$current"
+				chown --reference="$current" /run/archiso/persistfs/upperdir/"$current"
+				chmod --reference="$current" /run/archiso/persistfs/upperdir/"$current"
+				current="$(dirname "$current")"
+			done
+
+			cp -a "$file" /run/archiso/persistfs/upperdir"$parent/$(basename "$file")"
 		done
-
-		cp -a "$file" /run/archiso/persistfs/upperdir"$parent/$(basename "$file")"
+		exit $statuscode
 		;;
 	remove)
-		file=${2:?Missing file to remove}
-		if [ ! -f "$file" ]; then
-			echo File does not exist: $file >&2
-			exit 1
-		fi
+		(( $# < 2 )) && echo Missing files to remove && exit 1
+		statuscode=0
 
-		file="$(realpath "$file")"
-		rm -f /run/archiso/persistfs/upperdir/"$file"
-		e=$(echo "$file" | sed 's,/,\\\/,g')
-		sed /"$e"/d -i /run/archiso/persistfs/upperdir/index
+		for file in ${@:2}; do
+			if [ ! -f "$file" ]; then
+				echo File does not exist: $file >&2
+				statuscode=1
+				continue
+			fi
+
+			file="$(realpath "$file")"
+			rm -f /run/archiso/persistfs/upperdir/"$file"
+			e=$(echo "$file" | sed 's,/,\\\/,g')
+			sed /"$e"/d -i /run/archiso/persistfs/upperdir/index
+		done
+		exit $statuscode
 		;;
 	pkg)
-		pacman -Ql $2 | cut -d\  -f2 | xargs -n1 "$0" add 2>/dev/null
+		pacman -Ql $2 | cut -d\  -f2 | xargs "$0" add 2>/dev/null
 		;;
 	ipkg)
 		pacman -S $2 && "$0" pkg "$2"

@@ -526,6 +526,9 @@ _make_customize_airootfs() {
         sed -i /22/d "${pacstrap_dir}"/etc/ufw/*.rules
     fi
 
+    _msg_info "Copying source to /usr/src/demolinux..."
+    git clone "${profile}" "${pacstrap_dir}"/usr/src/demolinux >/dev/null
+
     # Install userchromejs-specific files to the Firefox profile
     if [[ " ${pkg_list[@]} " =~ " firefox-userchromejs " ]]; then
         _msg_info "Copying userchromejs configuration..."

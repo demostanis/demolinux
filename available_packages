@@ -96,6 +96,7 @@ fzf
 git
 local jargon
 local git-mv-changes
+imagemagick
 man-db
 man-pages
 irssi

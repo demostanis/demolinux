@@ -3,7 +3,7 @@
 _pkgname=riseup-vpn-configurator
 pkgname=riseup-vpn
 pkgver=1.0.1
-pkgrel=7
+pkgrel=10
 pkgdesc="a simple command line tool to get RiseupVPN up and running"
 arch=('any')
 url="https://github.com/kmille/riseup-vpn-configurator"
@@ -13,14 +13,17 @@ makedepends=(python-poetry-core python-build python-installer python-wheel)
 depends=(openvpn python python-jinja python-requests python-yaml python-pyasn1 python-pyasn1-modules python-psutil python-ping3)
 source=(https://github.com/kmille/riseup-vpn-configurator/archive/refs/tags/v$pkgver.tar.gz
 	riseup-vpn.yaml
-	patches.patch)
+	patches.patch
+	patches2.patch)
 sha256sums=('fe3b4317621a482254fb6cbf7b2c9018abad5636b779eaef984fc6bdd97df958'
             '48a75389552766c5573d34354db5970e402d2012c2581cdfbdd0a813b57142f7'
-            '9cf557e08b183842833e6c5a5dbef2b82e68b0c60b25fab3d76ae2b2d93245cf')
+            '9cf557e08b183842833e6c5a5dbef2b82e68b0c60b25fab3d76ae2b2d93245cf'
+            '7a611a2fc5b8d659d0aaa2c16a25769a485653c30df5b6419a19942da39a4293')
 
 prepare() {
   cd "$srcdir/$_pkgname-$pkgver"
   patch -p1 < ../patches.patch
+  patch -p1 < ../patches2.patch
 }
 
 build() {

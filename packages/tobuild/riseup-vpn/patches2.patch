@@ -1,0 +1,33 @@
+From 9e2900190b3aa995452791360312011ef9b16e20 Mon Sep 17 00:00:00 2001
+From: demostanis worlds <demostanis@protonmail.com>
+Date: Sun, 24 Sep 2023 22:37:28 +0200
+Subject: [PATCH] Do not update certificate
+
+---
+ riseup_vpn_configurator/__init__.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/riseup_vpn_configurator/__init__.py b/riseup_vpn_configurator/__init__.py
+index df4e5bd..550973c 100644
+--- a/riseup_vpn_configurator/__init__.py
++++ b/riseup_vpn_configurator/__init__.py
+@@ -82,7 +82,7 @@
+     curl https://api.black.riseup.net/1/configs/eip-service.json
+     """
+     logging.info("Updating VPN gateway list")
+-    cache_api_ca_cert()
++    #cache_api_ca_cert()
+     logging.debug(f"Fetching gateways from {GATEWAYS_API_URL}")
+     try:
+         resp = requests.get(GATEWAYS_API_URL, verify=str(api_ca_cert_file))
+@@ -488,7 +488,7 @@
+ 
+     if args.update:
+         update_gateways()
+-        update_vpn_ca_certificate()
++        #update_vpn_ca_certificate()
+         update_vpn_client_credentials()
+     elif args.check_config:
+         check_config_file()
+-- 
+2.42.0

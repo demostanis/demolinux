@@ -266,7 +266,7 @@ return function(s)
                         shape = rrect(),
                     },
                     widget = wibox.container.margin,
-                    top = 5, bottom = 5
+                    top = 5, bottom = -5
                 },
                 layout = wibox.layout.fixed.vertical,
             },
@@ -437,6 +437,7 @@ return function(s)
                 end
 
                 stopped = false
+                has_released_mouse = false
                 mousegrabber.run(function(coords)
                     if stopped then return false end
 
@@ -480,7 +481,8 @@ return function(s)
                         end
                     end
 
-                    if not coords.buttons[1] then return true end
+                    if not coords.buttons[1] then has_released_mouse = true end
+                    if not coords.buttons[1] or not has_released_mouse then return true end
                     if coords.x > mypanel.x+mypanel.width or
                         coords.x < mypanel.x or
                         coords.y > mypanel.y+mypanel.height or

@@ -41,7 +41,7 @@ index d2c600e..d0a18b0 100644
      # shellcheck disable=SC2154
      # defined via initcpio's parse_cmdline()
      if [ -n "${cow_label}" ]; then
-@@ -211,21 +211,62 @@ archiso_mount_handler() {
+@@ -211,21 +211,65 @@ archiso_mount_handler() {
      local sigfile cms_sigfile fs_img fs_img_size iso_blockdev
  
      if ! mountpoint -q "/run/archiso/bootmnt"; then
@@ -94,10 +94,6 @@ index d2c600e..d0a18b0 100644
 +        # finally, create the necessary subvolumes
 +        btrfs subvol create $btrfs_root/persistfs
 +        btrfs subvol create $btrfs_root/data
-+        mkdir $btrfs_root/data/programming
-+        mkdir $btrfs_root/data/downloads
-+        mkdir $btrfs_root/data/music
-+        chown 1000:1000 -R $btrfs_root/data
 +        btrfs subvol create $btrfs_root/swap
 +        btrfs filesystem mkswapfile --size 4G --uuid clear $btrfs_root/swap/swapfile 2>/dev/null
 +
@@ -109,10 +105,17 @@ index d2c600e..d0a18b0 100644
 +    _mnt_dev /dev/disk/by-partlabel/system /run/archiso/data "-w" "subvol=/system/data,compress=zstd,noatime"
 +    _mnt_dev /dev/disk/by-partlabel/system /run/archiso/airootfs "-r" "subvol=/system/airootfs,compress=zstd,noatime"
 +
++    for dir in /run/archiso/airootfs/etc/skel/*; do
++        if readlink "$dir" | grep -q '^/data'; then
++            mkdir -p /run/archiso/data/"$(basename "$(readlink "$dir")")"
++        fi
++    done
++    chown 1000:1000 -R /run/archiso/data
++
      # shellcheck disable=SC2154
      # defined via initcpio's parse_cmdline()
      if [ "${checksum}" = "y" ]; then
-@@ -292,10 +333,10 @@ archiso_mount_handler() {
+@@ -292,10 +336,10 @@ archiso_mount_handler() {
      # * the root file system image size is less than 4 GiB,
      # * the estimated available memory is more than the root file system image size + 2 GiB.
      if [ "${copytoram}" = "auto" ]; then
@@ -126,7 +129,7 @@ index d2c600e..d0a18b0 100644
                  copytoram="y"
              fi
          fi
-@@ -314,14 +355,19 @@ archiso_mount_handler() {
+@@ -314,14 +358,19 @@ archiso_mount_handler() {
          msg ":: Mounting /run/archiso/cowspace (tmpfs) filesystem, size=${cow_spacesize}..."
          mount --mkdir -t tmpfs -o "size=${cow_spacesize}",mode=0755 cowspace /run/archiso/cowspace
      fi
@@ -150,7 +153,6 @@ index d2c600e..d0a18b0 100644
      fi
  
      if [ "${copytoram}" = "y" ]; then
-diff --git a/install/archiso b/install/archiso
 --- a/install/archiso
 +++ b/install/archiso
 @@ -7,6 +7,7 @@ build() {

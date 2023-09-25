@@ -3,15 +3,10 @@
 
 iso_name="demolinux"
 iso_version="$(date +%Y.%m.%d)"
-install_dir="booya"
 buildmodes=("disk_image")
 bootmodes=("hybrid.grub.gpt")
 ssh_access="y"
 pacman_conf="pacman.conf"
-#airootfs_image_type="squashfs"
-#airootfs_image_tool_options=("-comp" "xz" "-Xbcj" "x86" "-b" "1M" "-Xdict-size" "1M")
-airootfs_image_type="erofs"
-airootfs_image_tool_options=("-zlz4hc,12")
 data_directories=("downloads" "music" "programming" "templates")
 file_permissions=(
   ["/etc/shadow"]="0:0:400"

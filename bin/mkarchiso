@@ -1127,7 +1127,6 @@ _make_bootmode_hybrid.grub.gpt() {
         s,grub_mkconfig_dir=.*,grub_mkconfig_dir='"$profile"'/grub/grub.d,
         /\/default\/grub ; then/{N;N;a . '"$profile"'/grub/config
     d}' `which grub-mkconfig` | bash -
-    sed 's/%INSTALLDIR%/'"$install_dir"'/' -i $grub_cfg
 
     _make_boot_on_disk_image
     umount /mnt/demolinux/{b,r}oot

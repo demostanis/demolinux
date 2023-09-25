@@ -148,7 +148,7 @@ linux_entry ()
   message="$(gettext_printf "Loading kernel %s..." ${version})"
   sed "s/^/$submenu_indentation/" << EOF
 	echo	'$(echo "$message" | grub_quote)'
-	linux	${rel_dirname}/${basename} archisobasedir=%INSTALLDIR% rw ${args}
+	linux	${rel_dirname}/${basename} ${args}
 EOF
   if test -n "${initrd}" ; then
     # TRANSLATORS: ramdisk isn't identifier. Should be translated.

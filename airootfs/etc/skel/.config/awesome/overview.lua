@@ -128,7 +128,7 @@ return function()
             local biggest_client_in_line = 0
 
             for _, c in ipairs(line) do
-                if c:geometry().height > last_height then
+                if c:geometry().height > biggest_client_in_line then
                     biggest_client_in_line = c:geometry().height*ratio
                 end
             end

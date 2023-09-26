@@ -1,0 +1,5 @@
+<settings version="2">
+    <setting id="autocomplete_provider" default="true">Google</setting>
+    <setting id="autocomplete_lang" default="true">en</setting>
+    <setting id="autocomplete_lang_local" default="true">en</setting>
+</settings>

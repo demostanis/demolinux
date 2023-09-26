@@ -8,4 +8,5 @@ gptfdisk
 grub
 pv
 squashfs-tools
+unzip
 xfsprogs

@@ -1,0 +1,7 @@
+<settings version="2">
+    <setting id="service">true</setting>
+    <setting id="log" default="true">false</setting>
+    <setting id="service_interval">0.5</setting>
+    <setting id="blur_radius">2</setting>
+    <setting id="background_interval">10</setting>
+</settings>

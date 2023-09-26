@@ -125,7 +125,7 @@ systemd-resolvconf
 local python-ping3 # riseup-vpn dependency
 local riseup-vpn
 local openvpn-update-systemd-resolved
-parcellite
+xfce4-clipman-plugin
 ufw
 xdg-dbus-proxy
 pulseaudio

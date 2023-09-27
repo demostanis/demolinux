@@ -48,7 +48,7 @@ while XAUTHORITY=~/.Xauthority clipnotify; do
 
 	# Sync clipboards
 	for clipboard in primary clipboard; do
-		types="$(xclip -selection primary -o -t TARGETS)"
+		types="$(xclip -selection $clipboard -o -t TARGETS)"
 		if echo "$types" | grep -q UTF8_STRING; then
 			xclip -selection $clipboard -o | \
 				XAUTHORITY=~/.Xauthority xclip -selection $clipboard -i

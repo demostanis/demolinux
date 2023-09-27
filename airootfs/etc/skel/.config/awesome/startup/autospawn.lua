@@ -1,5 +1,5 @@
 autospawn("picom-wrapper")
-autospawn("xfce4-clipman", true)
+autospawn("clipster -d")
 -- Flameshot needs its daemon to be
 -- spawned in order to be able to copy
 -- screenshots to the clipboard.

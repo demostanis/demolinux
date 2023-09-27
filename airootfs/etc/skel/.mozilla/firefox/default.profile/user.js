@@ -35,6 +35,9 @@ user_pref("extensions.VimFx.mode.normal.scroll_page_up", "<c-b>");
 
 user_pref("browser.bookmarks.autoExportHTML",                   true);
 
+// Hide popup when typing on Discord
+user_pref("media.webspeech.synth.dont_notify_on_error",         true);
+
 // https://bugzilla.mozilla.org/show_bug.cgi?id=1708982
 // Without this, Firefox crashes when there are no matches when using
 // "Find in page". This is because the X11 sandboxing (running Firefox

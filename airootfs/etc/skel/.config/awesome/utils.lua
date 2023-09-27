@@ -19,9 +19,9 @@ function tpopup(text)
     return {popup, textwidget}
 end
 
-function autospawn(command, has_zero_as_its_exit_code_although_it_unexpectedly_quitted)
+function autospawn(command)
     awful.spawn.easy_async(command, function(out, err, reason, code)
-        if has_zero_as_its_exit_code_although_it_unexpectedly_quitted or code ~= 0 then
+        if code ~= 0 then
             gears.timer{
                 timeout = 1,
                 single_shot = true,

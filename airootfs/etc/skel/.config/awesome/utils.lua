@@ -63,28 +63,6 @@ function spawn_with_selection(command)
     end)
 end
 
-function fade_on_overview(wb)
-    awesome.connect_signal("overview::display", function(shown)
-        if shown then
-            rubato.timed{
-                pos = 1,
-                duration = 0.1,
-                subscribed = function(pos)
-                    wb.opacity = pos
-                end
-            }.target = 0.7
-        else
-            rubato.timed{
-                pos = 0.7,
-                duration = 0.1,
-                subscribed = function(pos)
-                    wb.opacity = pos
-                end
-            }.target = 1
-        end
-    end)
-end
-
 function delayed(fn, timeout)
     gears.timer{
         single_shot = true,

@@ -26,6 +26,9 @@ user_pref("browser.startup.couldRestoreSession.count",          2);
 user_pref("browser.startup.page",                               0);
 user_pref("browser.startup.homepage",                           "about:blank");
 
+// Disable the spellchecker since it seems to be using a lot of CPU
+user_pref("layout.spellcheckDefault",                           0);
+
 // VimFx config.js
 user_pref("extensions.VimFx.config_file_directory",             "/firefox/.vimfx");
 user_pref("security.sandbox.content.read_path_whitelist",       "/firefox/.vimfx");

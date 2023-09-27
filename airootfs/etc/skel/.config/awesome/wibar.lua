@@ -54,7 +54,6 @@ return function(s)
         widget = wibox.container.background,
         shape = rrect(),
     }
-    fade_on_overview(mywibar)
 
     return mywibar
 end

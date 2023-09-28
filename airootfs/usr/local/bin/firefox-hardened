@@ -56,10 +56,7 @@ while XAUTHORITY=~/.Xauthority clipnotify; do
 		for other_type in $(echo "$types" | grep /); do
 			if [ "${other_type%%/*}" = text ]; then continue; fi
 			declare -A acceptable_types=(
-				[png]=1
-				[jpg]=1
-				[webp]=1
-				[gif]=1
+				[html]=1
 			)
 			if [ "${acceptable_types[${other_type##*/}]}" = 1 ]; then
 				xclip -selection $clipboard -o -t "$other_type" | \

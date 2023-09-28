@@ -1,4 +1,5 @@
 local stopped = false
+local mykeygrabber = nil
 local old_client_focus = nil
 local state = nil
 
@@ -89,6 +90,9 @@ return function(s)
             client.focus = old_client_focus
         end
         overview_shown = false
+        if mykeygrabber then
+            mykeygrabber:stop()
+        end
         awesome.emit_signal("overview::display", false)
         stopped = true
     end
@@ -318,7 +322,7 @@ return function(s)
                     widget = wibox.container.background,
                     id = "system",
                     command = function()
-                        awful.spawn("systemctl hibernate")
+                        awful.spawn("systemctl suspend")
                     end
                 },
                 widget = wibox.container.margin,
@@ -492,6 +496,12 @@ return function(s)
                     end
                     return true
                 end, "arrow")
+                mykeygrabber = awful.keygrabber{
+                    keybindings = {
+                        {{ }, "Escape", mypanel.hide}
+                    }
+                }
+                mykeygrabber:start()
             end
         end)
     ))

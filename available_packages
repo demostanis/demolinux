@@ -127,6 +127,7 @@ local riseup-vpn
 local openvpn-update-systemd-resolved
 aur clipster-git
 ufw
+earlyoom
 xdg-dbus-proxy
 pulseaudio
 pulseaudio-alsa

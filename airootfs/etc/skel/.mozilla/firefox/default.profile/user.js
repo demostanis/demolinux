@@ -14,6 +14,10 @@ user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
 user_pref("browser.aboutwelcome.enabled",                       false);
 user_pref("startup.homepage_welcome_url",               "about:blank");
 
+// Prevent windows from entering fullscreen because the X sandboxing
+// disallows it, and attempting to enter fullscreen messes up Firefox
+user_pref("full-screen-api.enabled",                            false);
+
 // Hide search engines ads
 user_pref("browser.urlbar.suggest.topsites",                    false);
 

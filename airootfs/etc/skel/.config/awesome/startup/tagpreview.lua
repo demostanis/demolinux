@@ -2,8 +2,8 @@
 bling.widget.tag_preview.enable {
     show_client_content = true,
     placement_fn = function(c)
-        awful.placement.left(c, {
-            margins = { left = 40 }
+        awful.placement.top(c, {
+            margins = { top = 50 }
         })
     end
 }

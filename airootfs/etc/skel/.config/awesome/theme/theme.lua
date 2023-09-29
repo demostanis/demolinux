@@ -11,7 +11,7 @@ theme.base_font = "Fira Sans"
 theme.font = theme.base_font.." 10"
 theme.bold_font = theme.base_font .. ", ExtraBold 10"
 theme.base_icon_font = "Font Awesome 6 Pro"
-theme.icon_font = theme.base_icon_font.." 8"
+theme.icon_font = theme.base_icon_font.." 10"
 
 theme.default_icon = "/usr/share/icons/la-capitaine/status/scalable-dark/dialog-question.svg"
 theme.icon_theme = "la-capitaine"
@@ -65,7 +65,7 @@ theme.notification_offset_y = 55
 theme.notification_border_color = theme.color11
 theme.notification_bg = theme.color11
 
-theme.wibar_width = 35
+theme.wibar_height = 40
 theme.wibar_widget_hover_color = theme.color13
 theme.panel_width = 415
 theme.panel_height = 415

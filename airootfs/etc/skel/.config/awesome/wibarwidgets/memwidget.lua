@@ -27,7 +27,10 @@ end)
 
 vicious.register(textw, vicious.widgets.mem, "RAM: $2/$3MiB", 1)
 
---return wibox.container.margin(mymemwidget, 2)
-return mymemwidget
+return wibox.widget{
+    mymemwidget,
+    widget = wibox.container.background,
+    forced_width = 25,
+}
 
 -- vim:set et sw=4 ts=4:

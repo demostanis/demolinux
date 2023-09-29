@@ -76,7 +76,7 @@ end
 
 return function(s)
     local mypanel = wibox{screen = s,
-        x = beautiful.wibar_width+4, y = 4,
+        x = 5, y = beautiful.wibar_height+8,
         ontop = true, visible = false,
         width = beautiful.panel_width,
         height = beautiful.panel_height,
@@ -405,9 +405,9 @@ return function(s)
     end
 
     local panel_button = wibox.widget{
-        text = "\u{f054}",
+        text = "\u{f078}",
         widget = wibox.widget.textbox,
-        font = beautiful.icon_font,
+        font = beautiful.base_icon_font.." 10",
         halign = "center",
     }
 

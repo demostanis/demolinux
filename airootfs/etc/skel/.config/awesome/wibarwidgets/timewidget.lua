@@ -5,31 +5,21 @@ local popup, textw = table.unpack(tpopup())
 local timewidget = wibox.widget {
     {
         {
-            {
-                widget = wibox.widget.textclock"%H",
-                font = beautiful.bold_font,
-            },
-            widget = wibox.container.place,
+            widget = wibox.widget.textclock"%H:%M",
+            font = beautiful.bold_font,
         },
-        {
-            {
-                widget = wibox.widget.textclock"%M",
-                font = beautiful.bold_font,
-            },
-            widget = wibox.container.place,
-        },
-        layout = wibox.layout.fixed.vertical
+        widget = wibox.container.place,
     },
     widget = wibox.container.background,
     id = "background"
 }
 timewidget:connect_signal("mouse::enter", function()
-    local geo = wgeometry(timewidget)
+    local geo = mouse.current_widget_geometry
     if overview_shown or not geo then return end
+    geo.x = geo.x + 8.5
 
     textw:set_markup(DateTime.new_now(TimeZone.new_local()):format"%c")
-    popup.x = geo.x + geo.width + 10
-    popup.y = geo.y + geo.height / 4
+    popup:move_next_to(geo)
     popup.visible = true
 
     timewidget:get_children_by_id("background")[1].fg = beautiful.wibar_widget_hover_color

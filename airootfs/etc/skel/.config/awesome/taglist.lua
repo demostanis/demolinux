@@ -30,7 +30,7 @@ return function(s)
     local taglist = awful.widget.taglist {
         screen  = s,
         filter  = awful.widget.taglist.filter.all,
-        layout  = wibox.layout.fixed.vertical,
+        layout  = wibox.layout.fixed.horizontal,
         buttons = taglist_buttons,
         widget_template = {
             {
@@ -43,8 +43,7 @@ return function(s)
                     widget = wibox.container.background,
                     id = "circle"
                 },
-                left = 7,
-                top = 4,
+                top = 12,
                 widget = wibox.container.margin,
             },
             widget = wibox.container.background,

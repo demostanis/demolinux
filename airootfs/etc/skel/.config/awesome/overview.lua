@@ -170,8 +170,8 @@ return function()
                     c.minimized = true
                 end
 
-                local popup_x = beautiful.wibar_width+last_widths+(s.geometry.width-beautiful.wibar_width-line_width)/(#line+1)*j
-                local popup_y = (last_height+(s.geometry.height-total_height)/(#lines+1)*i)-beautiful.dock_width/2+(biggest_client_in_line-geo.height*ratio)/2
+                local popup_x = last_widths+(s.geometry.width-line_width)/(#line+1)*j
+                local popup_y = (last_height+(s.geometry.height-total_height)/(#lines+1)*i)-(beautiful.wibar_height-beautiful.dock_width)/2+(biggest_client_in_line-geo.height*ratio)/2
 
                 local content_popup = new_popup{
                     widget = wibox.widget{
@@ -273,7 +273,7 @@ return function()
             local w, h = wibox.widget.base.fit_widget(filterw,
                 {dpi = xresources.get_dpi()}, filterw, 9999, 9999)
 
-            local x = s.geometry.width/2-w/2+beautiful.wibar_width/2
+            local x = s.geometry.width/2-w/2
             local y = s.geometry.height*0.8
             if filter_popup then
                 filter_popup.x = x

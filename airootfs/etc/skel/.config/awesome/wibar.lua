@@ -5,13 +5,13 @@ return function(s)
         ontop = true,
         visible = true,
         bg = beautiful.bg_focus,
-        width = beautiful.wibar_width-6,
-        height = s.geometry.height-8,
+        width = s.geometry.width-8,
+        height = beautiful.wibar_height,
     }
     mywibar:struts{
-        top = 10, right = 10,
+        top = beautiful.wibar_height+10, right = 5,
         bottom = beautiful.dock_width+10,
-        left = beautiful.wibar_width+5,
+        left = 5
     }
 
     local mycpuwidget = optional"wibarwidgets/cpuwidget"
@@ -35,20 +35,21 @@ return function(s)
                             myvolwidget,
                             mybatwidget,
                             widget = wibox.container.margin,
-                            left = -2,
-                            layout = wibox.layout.flex.vertical,
-                            spacing = 5
+                            top = 8,
+                            layout = wibox.layout.flex.horizontal,
+                            spacing = 10
                         },
-                        bottom = 8,
+                        bottom = 2,
+                        right = 10,
                         widget = wibox.container.margin,
                     },
                     mytimewidget,
-                    layout = wibox.layout.fixed.vertical
+                    layout = wibox.layout.fixed.horizontal
                 },
-                bottom = 3.5,
+                right = 10,
                 widget = wibox.container.margin
             },
-            layout = wibox.layout.align.vertical,
+            layout = wibox.layout.align.horizontal,
             expand = "none"
         },
         widget = wibox.container.background,

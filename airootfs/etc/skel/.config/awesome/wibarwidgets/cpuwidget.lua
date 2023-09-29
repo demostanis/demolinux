@@ -3,7 +3,7 @@ local popup, textw = table.unpack(tpopup())
 local mycpuwidget = wibox.widget{
     text = "\u{f2db}",
     widget = wibox.widget.textbox,
-    font = beautiful.base_icon_font .. " 9",
+    font = beautiful.icon_font,
     halign = "center"
 }
 

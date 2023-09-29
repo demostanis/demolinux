@@ -34,8 +34,8 @@ local function app_shortcut(app, key)
 end
 
 local globalkeys = gears.table.join(
-    awful.key({ modkey }, "j",  awful.tag.viewnext),
-    awful.key({ modkey }, "k",   awful.tag.viewprev),
+    awful.key({ modkey }, "l",  awful.tag.viewnext),
+    awful.key({ modkey }, "h",   awful.tag.viewprev),
 
     awful.key({ modkey, "Shift" }, "j",  function() moveclient("down") end),
     awful.key({ modkey, "Shift" }, "k", function() moveclient("up") end),

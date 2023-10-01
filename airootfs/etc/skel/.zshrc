@@ -41,6 +41,23 @@ precmd() {
 	unset format_elapsed initial_seconds
 }
 
+printf '\033[5 q\r'
+autoload -U add-zle-hook-widget
+change_cursor() {
+	case "$KEYMAP" in
+		vicmd)
+			# block cursor
+			printf '\033[2 q\r'
+			;;
+		viins|main)
+			# I-beam cursor
+			printf '\033[5 q\r'
+			;;
+	esac
+	zle reset-prompt
+}
+add-zle-hook-widget zle-keymap-select change_cursor
+
 if [[ $(tty) == /dev/pts/* ]]; then
 	for plugin in ~/.zplugins/*/*.plugin.zsh; do source "$plugin"; done
 

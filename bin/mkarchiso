@@ -528,8 +528,8 @@ _make_customize_airootfs() {
     # oomox is so messy that it was cleaner to separate
     # it to another file
     _msg_info "Generating oomox theme..."
-    chmod +x "${pacstrap_dir}/opt/oomox/run_oomox.sh"
-    eval -- env -u TMPDIR arch-chroot "${pacstrap_dir}" "/opt/oomox/run_oomox.sh"
+    chmod +x "${pacstrap_dir}/usr/share/oomox/run_oomox.sh"
+    eval -- env -u TMPDIR arch-chroot "${pacstrap_dir}" "/usr/share/oomox/run_oomox.sh"
 
     # Copy SSH public key
     if [[ "$ssh_access" = y* ]] && [ -e ~/.ssh/id_rsa.pub ]; then

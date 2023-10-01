@@ -9,6 +9,10 @@ source ~/.zaliases
 source ~/.zfunctions
 source ~/.zpath
 
+export HISTFILE=~/.histfile
+export HISTSIZE=10000
+export SAVEHIST=10000
+
 [ -n "$NEWPWD" ] && cd "$NEWPWD"
 
 preexec() {

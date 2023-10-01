@@ -5,7 +5,7 @@ _pkgname=themix-plugin-base16
 _reponame=$_pkgname
 pkgname="${_pkgname}-git"
 pkgver=1.5.4.r2.g81e71cd
-pkgrel=2
+pkgrel=3
 pkgdesc="Import and export plugin for Themix GUI designer to use color palettes from Base16 project"
 arch=('x86_64' 'i686')
 url="https://github.com/themix-project/${_reponame}"
@@ -47,7 +47,7 @@ prepare() {
 }
 
 package() {
-	_oomox_dir=/opt/oomox
+	_oomox_dir=/usr/share/oomox
 	_plugin_name=base16
 
 	cd "${srcdir}/${_reponame}"

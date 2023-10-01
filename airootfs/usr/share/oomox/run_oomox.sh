@@ -1,7 +1,7 @@
 #!/bin/sh
 
 DEST=${DEST:-/etc/skel/.themes}
-OOMOX_PATH=/opt/oomox
+OOMOX_PATH=/usr/share/oomox
 
 # TODO: use CUSTOM_PATHLIST
 

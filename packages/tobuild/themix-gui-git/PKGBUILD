@@ -3,7 +3,7 @@
 
 pkgname=themix-gui-git
 pkgver=1.15.1.r129.g6d9f49ca
-pkgrel=1
+pkgrel=2
 pkgdesc="Plugin-based theme designer GUI for
  environments (like GTK2, GTK3, Cinnamon, GNOME, MATE, Openbox, Xfwm),
  icons and terminal palettes."
@@ -58,7 +58,7 @@ pkgver() {
 }
 
 package() {
-	_oomox_dir=/opt/oomox
+	_oomox_dir=/usr/share/oomox
 	_oomox_gui_dir=${_oomox_dir}/oomox_gui
 
 	cd "${srcdir}/oomox"

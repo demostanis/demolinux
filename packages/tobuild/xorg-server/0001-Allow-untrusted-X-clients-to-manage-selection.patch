@@ -1,0 +1,59 @@
+From ef3b50e0ea9bdeb45ee32f3ab186bb075709cae8 Mon Sep 17 00:00:00 2001
+From: demostanis worlds <demostanis@protonmail.com>
+Date: Sat, 30 Sep 2023 22:42:38 +0200
+Subject: [PATCH] Allow untrusted X clients to manage selection
+
+---
+ Xext/security.c | 14 +++++++++++---
+ 1 file changed, 11 insertions(+), 3 deletions(-)
+
+diff --git a/Xext/security.c b/Xext/security.c
+index 162d07a..859d547 100644
+--- a/Xext/security.c
++++ b/Xext/security.c
+@@ -746,6 +746,9 @@ SecurityResource(CallbackListPtr *pcbl, void *unused, void *calldata)
+ 
+     subj = dixLookupPrivate(&rec->client->devPrivates, stateKey);
+ 
++    if ((unsigned long)rec->id == 0xa00002 || rec->rtype == RT_WINDOW || rec->rtype == 0x1bf)
++	return;
++
+     /* disable background None for untrusted windows */
+     if ((requested & DixCreateAccess) && (rec->rtype == RT_WINDOW))
+         if (subj->haveState && subj->trustLevel != XSecurityClientTrusted)
+@@ -776,9 +779,10 @@ SecurityResource(CallbackListPtr *pcbl, void *unused, void *calldata)
+             return;
+     }
+ 
+-    SecurityAudit("Security: denied client %d access %lx to resource 0x%lx "
++    SecurityAudit("Security: denied client %d access %lx to resource %s 0x%lx "
+                   "of client %d on request %s\n", rec->client->index,
+-                  (unsigned long)requested, (unsigned long)rec->id, cid,
++                  (unsigned long)requested, LookupResourceName(rec->rtype),
++		  (unsigned long)rec->id, cid,
+                   SecurityLookupRequestName(rec->client));
+     rec->status = BadAccess;    /* deny access */
+ }
+@@ -856,6 +860,9 @@ SecurityProperty(CallbackListPtr *pcbl, void *unused, void *calldata)
+     subj = dixLookupPrivate(&rec->client->devPrivates, stateKey);
+     obj = dixLookupPrivate(&wClient(rec->pWin)->devPrivates, stateKey);
+ 
++    if (name == 0x1b9 || strcmp(NameForAtom(name), "VT_SELECTION") == 0)
++	return;
++
+     if (SecurityDoCheck(subj, obj, requested, allowed) != Success) {
+         SecurityAudit("Security: denied client %d access to property %s "
+                       "(atom 0x%x) window 0x%lx of client %d on request %s\n",
+@@ -884,7 +891,8 @@ SecuritySend(CallbackListPtr *pcbl, void *unused, void *calldata)
+         for (i = 0; i < rec->count; i++)
+             if (rec->events[i].u.u.type != UnmapNotify &&
+                 rec->events[i].u.u.type != ConfigureRequest &&
+-                rec->events[i].u.u.type != ClientMessage) {
++                rec->events[i].u.u.type != ClientMessage &&
++                rec->events[i].u.u.type != 0x9f) {
+ 
+                 SecurityAudit("Security: denied client %d from sending event "
+                               "of type %s to window 0x%lx of client %d\n",
+-- 
+2.42.0
+

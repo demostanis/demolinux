@@ -1,4 +1,5 @@
 # Graphical interface
+local xorg-server
 local awesome
 aur awesome-rubato-git
 local awesome-switcher

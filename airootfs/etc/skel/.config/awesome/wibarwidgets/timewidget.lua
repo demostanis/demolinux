@@ -16,7 +16,7 @@ local timewidget = wibox.widget {
 timewidget:connect_signal("mouse::enter", function()
     local geo = mouse.current_widget_geometry
     if overview_shown or not geo then return end
-    geo.x = geo.x + 8.5
+    geo.x = geo.x + 10
 
     textw:set_markup(DateTime.new_now(TimeZone.new_local()):format"%c")
     popup:move_next_to(geo)

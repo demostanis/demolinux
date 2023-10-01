@@ -77,6 +77,7 @@ if [[ $(tty) == /dev/pts/* ]]; then
 	bindkey -a j down-line-or-history
 	bindkey "^[[A" up-line-or-history
 	bindkey "^[[B" down-line-or-history
+	bindkey -M vicmd / vi-history-search-forward
 
 	chpwd() {
 		awesome-client "

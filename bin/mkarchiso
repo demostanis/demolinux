@@ -377,7 +377,11 @@ _make_chroot() {
         else
             chown -R $SUDO_USER:$SUDO_USER "${pkgdir}"
 
-            if compgen -G "${profile}"/packages/db/*"$pkg"-[0-9]*pkg.tar*; then
+            # special case for xorg-server
+            # since it builds many packages
+            if [ "$pkg" = xorg-server ]; then
+                rm -f "${profile}"/packages/db/$pkg{,-{common,devel,xephyr,xnest,xvfb}}*pkg.tar*
+            elif compgen -G "${profile}"/packages/db/*"$pkg"-[0-9]*pkg.tar*; then
                 rm "${profile}"/packages/db/*"$pkg"-[0-9]*pkg.tar*
             fi
 

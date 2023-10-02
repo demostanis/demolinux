@@ -5,6 +5,7 @@ packages/tobuild/*/pkg
 packages/tobuild/*/*.tar.gz
 packages/tobuild/*/*.tar.bz2
 packages/tobuild/*/*.tar.zst
+packages/tobuild/*/*.tar.xz
 packages/tobuild/*/*.xpi
 !packages/tobuild/firefox-base16/*.xpi
 packages/chroot/

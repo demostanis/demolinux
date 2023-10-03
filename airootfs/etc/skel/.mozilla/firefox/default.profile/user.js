@@ -45,6 +45,10 @@ user_pref("browser.bookmarks.autoExportHTML",                   true);
 // Hide popup when typing on Discord
 user_pref("media.webspeech.synth.dont_notify_on_error",         true);
 
+// Makes the blank page (e.g. clicking on a target="_blank" link)
+// follow the system theme, dark
+user_pref("browser.display.use_system_colors",                  true);
+
 // https://bugzilla.mozilla.org/show_bug.cgi?id=1708982
 // Without this, Firefox crashes when there are no matches when using
 // "Find in page". This is because the X11 sandboxing (running Firefox

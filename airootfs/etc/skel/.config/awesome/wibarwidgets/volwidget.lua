@@ -64,6 +64,11 @@ myvolwidget:connect_signal("mouse::leave", function()
     myvolwidget.markup = fmt(myvolwidget.text)
 end)
 
+local mycontainer = wibox.widget{ myvolwidget,
+    widget = wibox.container.margin,
+    left = -3
+}
+
 vicious.cache(vicious.widgets.volume)
 vicious.register(myvolwidget,
     vicious.widgets.volume,
@@ -72,16 +77,14 @@ vicious.register(myvolwidget,
         muted = args[2] == "🔈" or percentage == 0
         if textw then textw.text = widgettext() end
         if muted then
+            mycontainer.left = -3
             return fmt(mutedicon)
         else
+            mycontainer.left = -2.5
             return fmt(unmutedicon)
         end
     end, 1, {mixer, "-D", "pulse"})
 
-return wibox.widget{
-    myvolwidget,
-    widget = wibox.container.margin,
-    left = -2
-}
+return mycontainer
 
 -- vim:set et sw=4 ts=4:

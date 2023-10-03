@@ -37,7 +37,7 @@ return function(s)
                             widget = wibox.container.margin,
                             top = 8,
                             layout = wibox.layout.flex.horizontal,
-                            spacing = 10
+                            spacing = 5
                         },
                         bottom = 2,
                         right = 10,

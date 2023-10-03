@@ -7,21 +7,25 @@ error()
 	exit 1
 }
 
-templates_dir="${XDG_TEMPLATES_DIR:="$HOME/Templates"}"
+system_templates_dir=/usr/share/templates
+user_templates_dir="${XDG_TEMPLATES_DIR:="$HOME/Templates"}"
 
 template_name="$1"
 destination_path="$2"
 
-[ -e "$templates_dir" ] || error directory does not exist: $templates_dir
-[ -d "$templates_dir" ] || error not a directory: $templates_dir
+[ -e "$system_templates_dir" -o -e "$templates_dir" ] ||
+	error neither directory exist: $system_templates_dir, $user_templates_dir
+[ -e "$system_templates_dir" -a ! -d "$system_templates_dir" ] &&
+	error not a directory: $system_templates_dir
+[ -e "$user_templates_dir" -a ! -d "$user_templates_dir" ] &&
+	error not a directory: $user_templates_dir
 
-[ $# = 1 ] && error missing destination path
-(( $# > 2 )) && error usage: $pname [template_name destination_path]
+(( $# > 2 )) && error usage: $pname [template_name [destination_path]]
 
-[ -e "$destination_path" ] && error directory already exists: $destination_path
+[ -e "$destination_path" ] && error destination path already exists: $destination_path
 
 if [ -z "$template_name" ]; then
-	out="$(ls "$templates_dir")"
+	out="$( (ls "$system_templates_dir"; ls "$user_templates_dir") | sort -u )"
 	if [ -z "$out" ]; then
 		echo no templates availables
 	else
@@ -55,14 +59,20 @@ substitute()
 	' "$1"
 }
 
-	[ -e "$templates_dir/$template_name" ] || error no such template: $1
-
-	if [ -d "$templates_dir/$template_name" ]; then
+	template="$user_templates_dir/$template_name"
+	if [ ! -e "$template" ]; then
+		template="$system_templates_dir/$template_name"
+		if [ ! -e "$template" ]; then
+			error no such template: $template_name
+		fi
+	fi
+	: "${destination_path:="$template_name"}"
+	if [ -d "$template" ]; then
 		mkdir -p "$destination_path"
 		while read -r file; do
 			substitute "$file" > "$destination_path/$(basename "$file")"
-		done < <(find "$templates_dir/$template_name" -type f)
+		done < <(find "$template" -type f)
 	else
-		substitute "$file" > "$destination_path"
+		substitute "$template" > "$destination_path"
 	fi
 fi

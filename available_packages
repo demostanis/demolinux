@@ -42,7 +42,7 @@ kodi
 
 # Browser & addons
 firefox
-firefox-dark-reader
+local firefox-dark-reader
 firefox-ublock-origin
 aur ff2mpv-native-messaging-host-git
 aur legacyfox

@@ -1,0 +1,38 @@
+# Maintainer: Daniel M. Capella <polyzen@archlinux.org>
+# Contributor: Cookie Engineer <cookiengineer@protonmail.ch>
+
+pkgname='firefox-dark-reader'
+_pkgbase=dark-reader
+_name=${_pkgbase/-}
+pkgver=4.9.67
+pkgrel=2
+pkgdesc='Inverts brightness of web pages and aims to reduce eyestrain while browsing the web'
+arch=('any')
+url=https://darkreader.org/
+groups=('firefox-addons')
+license=('MIT')
+makedepends=('git' 'npm')
+source=("git+https://github.com/$_name/$_name.git#tag=v$pkgver")
+b2sums=('SKIP')
+
+prepare() {
+  cd "$_name"
+  sed -i 's/enableForProtectedPages: false/enableForProtectedPages: true/'  src/defaults.ts
+  npm ci
+}
+
+build() {
+  cd "$_name"
+  npm run build
+}
+
+check() {
+  cd "$_name"
+  npm test
+}
+
+package() {
+  cd "$_name"/build/release
+  install -Dm644 "$_name"-firefox.xpi \
+    "$pkgdir"/usr/lib/firefox/browser/extensions/addon@"$_name".org.xpi
+}

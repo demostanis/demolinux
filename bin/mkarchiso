@@ -450,7 +450,7 @@ _make_chroot() {
             git clone $url "$cachepkgpath"
         fi
         mkdir -p "${pacstrap_dir}/etc/skel/.zplugins/${pkgname}"
-        cp -r "$cachepkgpath"/* "${pacstrap_dir}/etc/skel/.zplugins/${pkgname}"
+        cp -r "$cachepkgpath"/{.[!.]*,*} "${pacstrap_dir}/etc/skel/.zplugins/${pkgname}"
     done
     for pkg in ${kodi_pkg_list[@]}; do
         _msg_info "Downloading kodi package $pkg..."

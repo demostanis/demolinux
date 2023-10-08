@@ -69,6 +69,8 @@ if [[ $(tty) == /dev/pts/* ]]; then
 	# weird errors while typing `man`, workaround:
 	FAST_HIGHLIGHT[chroma-man]=
 
+	fast-theme sv-orple >/dev/null 2>&1
+
 	# https://github.com/marlonrichert/zsh-autocomplete#make-tab-go-straight-to-the-menu-and-cycle-there
 	bindkey '\t' menu-select "$terminfo[kcbt]" menu-select
 	bindkey -M menuselect '\t' menu-complete "$terminfo[kcbt]" reverse-menu-complete

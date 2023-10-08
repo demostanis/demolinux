@@ -98,6 +98,8 @@ fun display_password_callback (prompt, bullets)
 Plymouth.SetDisplayNormalFunction(display_normal_callback);
 Plymouth.SetDisplayPasswordFunction(display_password_callback);
 
+statuses_count = 0;
+
 if (Plymouth.GetMode () == "boot")
 {
   progress_box.image = Image("progress_box.png");
@@ -113,20 +115,17 @@ if (Plymouth.GetMode () == "boot")
   progress_bar.x = Window.GetX() + Window.GetWidth()  / 2 -        progress_bar.original_image.GetWidth() / 2;
   progress_bar.y = Window.GetY() + Window.GetHeight() / 2 * 1.3                                                                                                                                                                                                 - progress_box.image.GetHeight() / 2 + (progress_box.image.GetHeight() - progress_bar.original_image.GetHeight()) / 2;
   progress_bar.sprite.SetPosition(progress_bar.x, progress_bar.y, 1);
-
-  fun progress_callback (duration, progress)
-    {
-      local.real_progress;
-      real_progress = Math.Min (1, progress*1.7);
-      if (progress_bar.image.GetWidth () != Math.Int (progress_bar.original_image.GetWidth () * real_progress))
-        {
-          progress_bar.image = progress_bar.original_image.Scale(progress_bar.original_image.GetWidth(progress_bar.original_image) * real_progress, progress_bar.original_image.GetHeight());
-          progress_bar.sprite.SetImage (progress_bar.image);
-        }
-    }
-
-  Plymouth.SetBootProgressFunction(progress_callback);
 }
+
+fun progress_callback (progress)
+  {
+    if (progress_bar.image.GetWidth () != Math.Int (progress_bar.original_image.GetWidth () * progress))
+      {
+        progress_bar.image = progress_bar.original_image.Scale(progress_bar.original_image.GetWidth(progress_bar.original_image) * progress, progress_bar.original_image.GetHeight());
+        progress_bar.sprite.SetImage (progress_bar.image);
+      }
+  }
+
 
 fun quit_callback ()
 {
@@ -158,5 +157,39 @@ fun hide_message_callback (text)
     }
 }
 
+fun update_status_callback (text) {
+  if (global.status_box)
+    {
+      global.status_box.sprite = NULL;
+    }
+
+  if (text == "run-user-1000-gvfs.mount")
+    {
+      progress_callback(1);
+    }
+    else
+    {
+      global.statuses_count++;
+      progress_callback(global.statuses_count/70);
+    }
+
+  // I hate Plymouth scripting
+  if (text != "Welcome to demolinux!" &&
+      text != "Starting Awesome..." &&
+      text != "Starting X...")
+    {
+      text = "Starting " + text + "...";
+    }
+
+  global.status_box = Image.Text(text, 1, 1, 1);
+  global.status_box.sprite = Sprite(global.status_box);
+  global.status_box.x = Window.GetX() + Window.GetWidth() / 2 - global.status_box.GetWidth() / 2;
+  global.status_box.y = Window.GetY() + Window.GetHeight() * 0.80 - global.status_box.GetHeight() / 2;
+  global.status_box.sprite.SetPosition(global.status_box.x, global.status_box.y, 0);
+}
+update_status_callback("Welcome to demolinux!");
+
+Plymouth.SetRefreshRate(10);
 Plymouth.SetDisplayMessageFunction (display_message_callback);
+Plymouth.SetUpdateStatusFunction (update_status_callback);
 Plymouth.SetHideMessageFunction (hide_message_callback);

@@ -148,7 +148,7 @@ function M.setup(colors, config)
     hi.Question                           = { guifg = M.colors.base0D, guibg = nil, gui = nil, guisp = nil }
     hi.Search                             = { guifg = M.colors.base01, guibg = M.colors.base0A, gui = nil, guisp = nil }
     hi.Substitute                         = { guifg = M.colors.base01, guibg = M.colors.base0A, gui = 'none', guisp = nil }
-    hi.SpecialKey                         = { guifg = M.colors.base03, guibg = nil, gui = nil, guisp = nil }
+    hi.SpecialKey                         = { guifg = M.colors.base0A, guibg = nil, gui = nil, guisp = nil }
     hi.TooLong                            = { guifg = M.colors.base08, guibg = nil, gui = nil, guisp = nil }
     hi.Underlined                         = { guifg = M.colors.base08, guibg = nil, gui = nil, guisp = nil }
     hi.Visual                             = { guifg = nil, guibg = M.colors.base02, gui = nil, guisp = nil }

@@ -1,4 +1,4 @@
-vim.cmd[[colorscheme base16-mellow-purple]]
+vim.cmd.colorscheme"base16-demolinux"
 vim.o.mousemodel = "extend"
 vim.g.mapleader = " "
 vim.o.number = true

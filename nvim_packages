@@ -22,8 +22,6 @@ junegunn/vim-slash
 tpope/vim-sleuth
 # completion for neovim lua development
 folke/neodev.nvim
-# theming
-demostanis/nvim-base16
 # status line
 nvim-lualine/lualine.nvim
 # file manager

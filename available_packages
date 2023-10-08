@@ -103,6 +103,9 @@ local git-mv-changes
 imagemagick
 man-db
 man-pages
+expac
+diffutils
+lsof
 irssi
 btop
 jq

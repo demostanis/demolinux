@@ -81,7 +81,7 @@ if [[ $(tty) == /dev/pts/* ]]; then
 
 	chpwd() {
 		awesome-client "
-			for _, master in pairs(tab_masters) do
+			for _, master in pairs(tab_masters or {}) do
 				for _, tab in ipairs(master.tabs) do
 					if tab.client == client.focus then
 						tab.pwd = [[$PWD]]

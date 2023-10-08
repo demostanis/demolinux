@@ -24,7 +24,7 @@ ensure_installed(){
 }
 
 rebuild_schemes(){
-	XDG_CONFIG_HOME=$PWD flavours -c flavours/flavours.conf apply ${1:-mellow-purple}
+	XDG_CONFIG_HOME=$PWD without_root flavours -c flavours/flavours.conf apply ${1:-mellow-purple}
 }
 
 build(){

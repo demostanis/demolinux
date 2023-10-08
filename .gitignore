@@ -14,4 +14,5 @@ packages/kodicache/
 packages/nvimcache/
 packages/zshcache/
 packages/db/
+qmk_firmware
 *.log

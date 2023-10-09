@@ -20,6 +20,9 @@ preexec() {
 	1="$(sed s/%/%%/g<<<"$1")"
 	printf "\x1b]0;$1\a"
 
+	# reset cursor
+	printf '\033[0 q'
+
 	initial_seconds=$SECONDS
 }
 
@@ -49,18 +52,19 @@ printf '\033[5 q\r'
 autoload -U add-zle-hook-widget
 change_cursor() {
 	case "$KEYMAP" in
-		vicmd)
+		vicmd|visual)
 			# block cursor
-			printf '\033[2 q\r'
+			printf '\033[1 q'
 			;;
-		viins|main)
+		*)
 			# I-beam cursor
-			printf '\033[5 q\r'
+			printf '\033[5 q'
 			;;
 	esac
-	zle reset-prompt
 }
-add-zle-hook-widget zle-keymap-select change_cursor
+for hook in keymap-select line-finish line-init; do
+	add-zle-hook-widget $hook change_cursor
+done
 
 if [[ $(tty) == /dev/pts/* ]]; then
 	for plugin in ~/.zplugins/*/*.plugin.zsh; do source "$plugin"; done

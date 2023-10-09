@@ -54,6 +54,7 @@ local globalkeys = gears.table.join(
         switcher.switch(-1, modkey, "Super_L", "Shift", "Tab")
     end),
 
+    awful.key({ modkey }, "k", require"screenlock", nil),
     awful.key({ modkey }, "o", require"overview", nil),
     awful.key({ modkey }, "space", require"applauncher", nil),
     -- God, why is it trying to call some on_release when I don't specify nil??

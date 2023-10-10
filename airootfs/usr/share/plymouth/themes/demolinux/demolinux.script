@@ -117,12 +117,20 @@ if (Plymouth.GetMode () == "boot")
   progress_bar.sprite.SetPosition(progress_bar.x, progress_bar.y, 1);
 }
 
+progress_reached_end = 0;
 fun progress_callback (progress)
   {
-    if (progress_bar.image.GetWidth () != Math.Int (progress_bar.original_image.GetWidth () * progress))
+    if (global.progress_reached_end != 1)
+    {
+      if (progress_bar.image.GetWidth () != Math.Int (progress_bar.original_image.GetWidth () * progress))
+        {
+  	progress_bar.image = progress_bar.original_image.Scale(progress_bar.original_image.GetWidth(progress_bar.original_image) * progress, progress_bar.original_image.GetHeight());
+  	progress_bar.sprite.SetImage (progress_bar.image);
+        }
+    }
+    if (progress >= 1)
       {
-        progress_bar.image = progress_bar.original_image.Scale(progress_bar.original_image.GetWidth(progress_bar.original_image) * progress, progress_bar.original_image.GetHeight());
-        progress_bar.sprite.SetImage (progress_bar.image);
+        global.progress_reached_end = 1;
       }
   }
 
@@ -170,7 +178,14 @@ fun update_status_callback (text) {
     else
     {
       global.statuses_count++;
-      progress_callback(global.statuses_count/70);
+      if (global.statuses_count/70 >= 1)
+        {
+          progress_callback(1);
+	}
+	else
+	{
+          progress_callback(global.statuses_count/70);
+	}
     }
 
   // I hate Plymouth scripting

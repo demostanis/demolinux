@@ -27,7 +27,7 @@ index d2c600e..d0a18b0 100644
      mount -t overlay -o \
 -        "lowerdir=${src},upperdir=/run/archiso/cowspace/${cow_directory}/upperdir,workdir=/run/archiso/cowspace/${cow_directory}/workdir" \
 -        airootfs "${newroot}${mnt}"
-+        "lowerdir=${lowerdir},upperdir=${upperdir},workdir=${workdir}" \
++        "lowerdir=${lowerdir},upperdir=${upperdir},workdir=${workdir},index=off,metacopy=off" \
 +        airootfs "${mountpoint}"
  }
  
@@ -41,7 +41,7 @@ index d2c600e..d0a18b0 100644
      # shellcheck disable=SC2154
      # defined via initcpio's parse_cmdline()
      if [ -n "${cow_label}" ]; then
-@@ -211,21 +211,66 @@ archiso_mount_handler() {
+@@ -211,21 +211,70 @@ archiso_mount_handler() {
      local sigfile cms_sigfile fs_img fs_img_size iso_blockdev
  
      if ! mountpoint -q "/run/archiso/bootmnt"; then
@@ -61,7 +61,7 @@ index d2c600e..d0a18b0 100644
 -    else
 -        echo "ERROR: no root file system image found"
 -        launch_interactive_shell
-+    if [ $(( $(btrfs subvol list $btrfs_root | wc -l) < 5 )) = 1 ]; then
++    if [ $(( $(btrfs subvol list $btrfs_root | wc -l) < 6 )) = 1 ]; then
 +        # first, resize the filesystem
 +        umount -f $btrfs_root
 +        # i wonder why i do all this work when
@@ -93,6 +93,7 @@ index d2c600e..d0a18b0 100644
 +
 +        # finally, create the necessary subvolumes
 +        btrfs subvol create $btrfs_root/persistfs
++        btrfs subvol create $btrfs_root/snapshots
 +        btrfs subvol create $btrfs_root/data
 +        btrfs subvol create $btrfs_root/swap
 +        btrfs filesystem mkswapfile --size 4G --uuid clear $btrfs_root/swap/swapfile 2>/dev/null
@@ -102,8 +103,11 @@ index d2c600e..d0a18b0 100644
      fi
  
 +    _mnt_dev /dev/disk/by-partlabel/system /run/archiso/persistfs "-w" "subvol=/system/persistfs,compress=zstd,noatime"
++    _mnt_dev /dev/disk/by-partlabel/system /run/archiso/snapshots "-w" "subvol=/system/snapshots,compress=zstd,noatime"
 +    _mnt_dev /dev/disk/by-partlabel/system /run/archiso/data "-w" "subvol=/system/data,compress=zstd,noatime"
-+    _mnt_dev /dev/disk/by-partlabel/system /run/archiso/airootfs "-r" "subvol=/system/airootfs,compress=zstd,noatime"
++    snapshot="${btrfs_snapshot##*/}"
++    snapshot="${snapshot:+snapshots/$snapshot}"
++    _mnt_dev /dev/disk/by-partlabel/system /run/archiso/airootfs "-r" "subvol=/system/${snapshot:-airootfs},compress=zstd,noatime"
 +    _mnt_dev /dev/disk/by-partlabel/system /run/archiso/swap "-w" "subvol=/system/swap,compress=zstd,noatime"
 +
 +    for dir in /run/archiso/airootfs/etc/skel/*; do
@@ -116,7 +120,7 @@ index d2c600e..d0a18b0 100644
      # shellcheck disable=SC2154
      # defined via initcpio's parse_cmdline()
      if [ "${checksum}" = "y" ]; then
-@@ -292,10 +337,10 @@ archiso_mount_handler() {
+@@ -292,10 +341,10 @@ archiso_mount_handler() {
      # * the root file system image size is less than 4 GiB,
      # * the estimated available memory is more than the root file system image size + 2 GiB.
      if [ "${copytoram}" = "auto" ]; then
@@ -130,7 +134,7 @@ index d2c600e..d0a18b0 100644
                  copytoram="y"
              fi
          fi
-@@ -314,14 +359,19 @@ archiso_mount_handler() {
+@@ -314,14 +363,19 @@ archiso_mount_handler() {
          msg ":: Mounting /run/archiso/cowspace (tmpfs) filesystem, size=${cow_spacesize}..."
          mount --mkdir -t tmpfs -o "size=${cow_spacesize}",mode=0755 cowspace /run/archiso/cowspace
      fi

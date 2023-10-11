@@ -189,6 +189,7 @@ function M.setup(colors, config)
     hi.Boolean                            = { guifg = M.colors.base09, guibg = nil, gui = nil, guisp = nil }
     hi.Character                          = { guifg = M.colors.base08, guibg = nil, gui = nil, guisp = nil }
     hi.Comment                            = { guifg = darken(M.colors.base0B, 0.3), guibg = nil, gui = nil, guisp = nil, italic = true }
+    hi.rustCommentLineDoc                 = 'Comment'
     hi.Conditional                        = { guifg = M.colors.base0E, guibg = nil, gui = nil, guisp = nil }
     hi.Constant                           = { guifg = M.colors.base09, guibg = nil, gui = nil, guisp = nil }
     hi.Define                             = { guifg = M.colors.base0A, guibg = nil, gui = 'none', guisp = nil }

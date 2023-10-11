@@ -97,6 +97,7 @@ bat
 bind
 fd
 fzf
+sd
 git
 local jargon
 local git-mv-changes

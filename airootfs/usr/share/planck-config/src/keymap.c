@@ -59,17 +59,17 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
   ),
 
   [_LOWER] = LAYOUT_planck_grid(
-    T,  KC_1,       KC_2,         KC_3,         KC_4,      KC_5,     KC_6,     KC_7,     KC_8,              KC_9,            KC_0,                T,
-    T,  KC_LCBR,    KC_LBRACKET,  KC_RBRACKET,  KC_RCBR,   KC_PIPE,  KC_LEFT,  KC_DOWN,  KC_UP,             KC_RIGHT,        T,                   T,
-    T,  T,          KC_LPRN,      KC_RPRN,      KC_BSLASH, T,        T,        T,        KC_GRAVE,          KC_TILD,         T,                   T,
-    T,  T,          T,            T,            T,         T,        KC_NO,    T,        KC_AUDIO_VOL_DOWN, KC_AUDIO_VOL_UP, KC_MEDIA_PLAY_PAUSE, T                    
+    T,  KC_1,       KC_2,         KC_3,         KC_4,     KC_5,     KC_6,     KC_7,     KC_8,              KC_9,            KC_0,                T,
+    T,  KC_LCBR,    KC_LBRACKET,  KC_RBRACKET,  KC_RCBR,  KC_PIPE,  KC_LEFT,  KC_DOWN,  KC_UP,             KC_RIGHT,        T,                   T,
+    T,  T,          T,            T,            T,        T,        T,        T,        KC_GRAVE,          KC_TILD,         KC_BSLASH,           T,
+    T,  T,          T,            T,            T,        T,        KC_NO,    T,        KC_AUDIO_VOL_DOWN, KC_AUDIO_VOL_UP, KC_MEDIA_PLAY_PAUSE, T                    
   ),                                                                                                                                                             
 
   [_RAISE] = LAYOUT_planck_grid(
-    T,  KC_EXLM,  KC_AT,  KC_HASH,  KC_DLR,  KC_PERC,  KC_CIRC,  KC_AMPR,   KC_ASTR,   T,  T,  T,
-    T,  T,        T,      T,        T,       T,        T,        KC_MINUS,  KC_EQUAL,  T,  T,  T,
-    T,  T,        T,      T,        T,       T,        KC_DQUO,  KC_QUOTE,  T,         T,  T,  T,
-    T,  T,        T,      T,        T,       T,        KC_NO,    T,         T,         T,  T,  T
+    T,  KC_EXLM,  KC_AT,  KC_HASH,  KC_DLR,  KC_PERC,  KC_CIRC,  KC_AMPR,   KC_ASTR,   KC_LPRN,  KC_RPRN,  T,
+    T,  T,        T,      T,        T,       T,        T,        KC_MINUS,  KC_EQUAL,  T,        T,        T,
+    T,  T,        T,      T,        T,       T,        KC_DQUO,  KC_QUOTE,  T,         T,        T,        T,
+    T,  T,        T,      T,        T,       T,        KC_NO,    T,         T,         T,        T,        T
   ),
 
   [_ADJUST] = LAYOUT_planck_grid(

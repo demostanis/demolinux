@@ -21,6 +21,14 @@ return function(s)
     local mybatwidget = optional"wibarwidgets/batwidget"
     local mytimewidget = optional"wibarwidgets/timewidget"
 
+    local function marginify(w)
+        if w == nil then return nil end
+        return wibox.widget{
+            w,
+            margins = -8,
+            widget = wibox.container.margin
+        }
+    end
     mywibar:setup {
         {
             require"panel"(s),
@@ -29,19 +37,16 @@ return function(s)
                 {
                     {
                         {
-                            mymemwidget,
-                            mycpuwidget,
-                            mybrightnesswidget,
-                            myvolwidget,
-                            mybatwidget,
-                            widget = wibox.container.margin,
-                            top = 8,
+                            marginify(mymemwidget),
+                            marginify(mycpuwidget),
+                            marginify(mybrightnesswidget),
+                            marginify(myvolwidget),
+                            marginify(mybatwidget),
+                            spacing = 18,
                             layout = wibox.layout.flex.horizontal,
-                            spacing = 5
                         },
-                        bottom = 2,
-                        right = 10,
                         widget = wibox.container.margin,
+                        right = 20
                     },
                     mytimewidget,
                     layout = wibox.layout.fixed.horizontal

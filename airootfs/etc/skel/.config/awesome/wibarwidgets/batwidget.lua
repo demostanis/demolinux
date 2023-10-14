@@ -47,7 +47,7 @@ vicious.register(textw, vicious.widgets.bat, function(widget, args)
 end, 1, "BAT0")
 
 if vicious.call(vicious.widgets.bat, "$1", "BAT0") ~= "⌁" then -- unknown state
-    return wibox.container.margin(mybatwidget, 0, 0, -2, 0)
+    return mybatwidget
 end
 return {_absent = true}
 

@@ -29,7 +29,9 @@ local c = 0
 awful.screen.connect_for_each_screen(function(s)
     c = c + 1
 
-    gears.wallpaper.centered(beautiful.wallpaper, s, beautiful.color0, 0.1)
+    -- I swear I used beautiful.color0 to generate beautiful.wallpaper...
+    -- Why is it not the same color??? Why do I have to hardcode this one??
+    gears.wallpaper.centered(beautiful.wallpaper, s, "#1E0427", 0.1)
 
     awful.tag({ "1", "2", "3", "4", "5" }, s, awful.layout.suit.floating)
 

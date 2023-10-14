@@ -11,7 +11,7 @@ case $1 in
 		statuscode=0
 
 		for file in ${@:2}; do
-			if [ ! -f "$file" ]; then
+			if [ ! -e "$file" ]; then
 				echo File does not exist: $file >&2
 				statuscode=1
 				continue
@@ -38,14 +38,14 @@ case $1 in
 		statuscode=0
 
 		for file in ${@:2}; do
-			if [ ! -f "$file" ]; then
+			if [ ! -e /run/archiso/persistfs/upperdir/"$file" ]; then
 				echo File does not exist: $file >&2
 				statuscode=1
 				continue
 			fi
 
 			file="$(realpath "$file")"
-			rm -f /run/archiso/persistfs/upperdir/"$file"
+			rm -rf /run/archiso/persistfs/upperdir/"$file"
 			e=$(echo "$file" | sed 's,/,\\\/,g')
 			sed /"$e"/d -i /run/archiso/persistfs/upperdir/index
 		done

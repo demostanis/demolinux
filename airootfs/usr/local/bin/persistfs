@@ -52,7 +52,7 @@ case $1 in
 		exit $statuscode
 		;;
 	pkg)
-		pacman -Ql $2 | cut -d\  -f2 | xargs "$0" add 2>/dev/null
+		pacman -Ql $2 | cut -d\  -f2 | grep -v /$ | xargs "$0" add 2>/dev/null
 		;;
 	ipkg)
 		pacman -S $2 && "$0" pkg "$2"

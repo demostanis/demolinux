@@ -109,7 +109,7 @@ EOF
 EOF
 }
 
-linux="/mnt/demolinux/boot/vmlinuz-linux-hardened"
+linux="/mnt/demolinux/boot/vmlinuz-linux"
 basename=`basename $linux`
 dirname=`dirname $linux`
 rel_dirname=`make_system_path_relative_to_its_root $dirname`
@@ -126,7 +126,7 @@ for i in ${GRUB_EARLY_INITRD_LINUX_STOCK} \
 done
 
  # also hardcoding this lol
-initrd_real=initramfs-linux-hardened.img
+initrd_real=initramfs-linux.img
 
 initrd=
 if test -n "${initrd_early}" || test -n "${initrd_real}"; then

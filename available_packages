@@ -63,7 +63,7 @@ noto-fonts-emoji
 
 # Boot
 linux-firmware
-linux-hardened
+linux
 local mkinitcpio-archiso
 mkinitcpio-nfs-utils
 nbd

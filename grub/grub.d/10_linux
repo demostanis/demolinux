@@ -159,6 +159,8 @@ EOF
     done
     sed "s/^/$submenu_indentation/" << EOF
 	echo	'$(echo "$message" | grub_quote)'
+        initrd  /intel-ucode.img
+        initrd  /amd-ucode.img
 	initrd	$(echo $initrd_path)
 EOF
   fi
@@ -169,7 +171,7 @@ EOF
 
 # hardcode kernel since im too lazy to understand
 # why it doesnt work otherwise...
-list="/mnt/demolinux/boot/vmlinuz-linux-hardened"
+list="/mnt/demolinux/boot/vmlinuz-linux"
 
 case "$machine" in
     i?86) GENKERNEL_ARCH="x86" ;;
@@ -218,7 +220,7 @@ for linux in ${reverse_sorted_list}; do
   done
 
   # also hardcoding this lol
-  initrd_real=initramfs-linux-hardened.img
+  initrd_real=initramfs-linux.img
 
   initrd=
   if test -n "${initrd_early}" || test -n "${initrd_real}"; then

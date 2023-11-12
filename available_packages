@@ -106,7 +106,7 @@ imagemagick
 man-db
 man-pages
 expac
-diffutils
+patchutils
 lsof
 irssi
 btop

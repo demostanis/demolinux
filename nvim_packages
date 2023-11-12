@@ -24,9 +24,6 @@ tpope/vim-sleuth
 folke/neodev.nvim
 # status line
 nvim-lualine/lualine.nvim
-# file manager
-nvim-tree/nvim-tree.lua
-nvim-tree/nvim-web-devicons
 # telescope dep.
 nvim-lua/plenary.nvim
 # find, filter, preview, pick
@@ -38,3 +35,8 @@ tpope/vim-abolish
 smjonas/live-command.nvim
 # color preview
 nvchad/nvim-colorizer.lua
+# comfier netrw usage
+tpope/vim-vinegar
+# prettify the quickfix window
+folke/trouble.nvim
+nvim-tree/nvim-web-devicons

@@ -63,4 +63,17 @@ enable_ls("lua_ls", {Lua = {
     completion = {callSnippet = "Replace"},
     workspace = {checkThirdParty = false}}})
 
+vim.api.nvim_create_autocmd("LspAttach", {
+    group = vim.api.nvim_create_augroup("LspConfig", {}),
+    callback = function(event)
+        local opts = { buffer = event.buf }
+        vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
+        vim.keymap.set("n", "gD", vim.lsp.buf.declaration, opts)
+        vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
+        vim.keymap.set("n", "gr", vim.lsp.buf.references, opts)
+        vim.keymap.set("n", "Lr", vim.lsp.buf.rename, opts)
+        vim.keymap.set("n", "La", vim.lsp.buf.code_action, opts)
+    end
+})
+
 -- vim:set et sw=4 ts=4:

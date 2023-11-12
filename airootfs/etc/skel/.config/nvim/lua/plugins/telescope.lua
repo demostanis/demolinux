@@ -2,6 +2,7 @@ require"telescope".setup{
     defaults = {
         mappings = {
             i = {
+		-- enable CTRL-U to clear input
                 ["<C-u>"] = false
             }
         }

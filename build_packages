@@ -2,6 +2,7 @@ arch-install-scripts
 base
 btrfs-progs
 devtools
+dosfstools
 erofs-utils
 git
 gptfdisk

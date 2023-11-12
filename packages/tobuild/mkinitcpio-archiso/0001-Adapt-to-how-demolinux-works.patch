@@ -1,15 +1,15 @@
-From 8a9ad45bae024abbfe4c7613a518b0e9457b74ae Mon Sep 17 00:00:00 2001
-From: demostanis worlds <demostanis@protonmail.com>
-Date: Sat, 23 Sep 2023 00:02:13 +0200
+From 47236c5c418e867ec9866918b2b973e9b3391af2 Mon Sep 17 00:00:00 2001
+From: demostanis <demostanis@protonmail.com>
+Date: Mon, 30 Oct 2023 22:02:24 +0000
 Subject: [PATCH] Adapt to how demolinux works
 
 ---
- hooks/archiso   | 89 +++++++++++++++++++++++++++++++++++++------------
- install/archiso |  4 +++
- 2 files changed, 71 insertions(+), 22 deletions(-)
+ hooks/archiso   | 119 ++++++++++++++++++++++++++++++++----------------
+ install/archiso |   4 ++
+ 2 files changed, 85 insertions(+), 38 deletions(-)
 
 diff --git a/hooks/archiso b/hooks/archiso
-index d2c600e..d0a18b0 100644
+index d2c600e..a307a2a 100644
 --- a/hooks/archiso
 +++ b/hooks/archiso
 @@ -45,13 +45,13 @@ _mnt_dmsnapshot() {
@@ -32,7 +32,25 @@ index d2c600e..d0a18b0 100644
  }
  
  # args: /path/to/image_file, mountpoint
-@@ -183,7 +183,7 @@ run_hook() {
+@@ -66,17 +66,6 @@ _mnt_fs() {
+     if [ "${copytoram}" = "y" ]; then
+         msg -n ":: Copying rootfs image to RAM..."
+ 
+-        # in case we have pv use it to display copy progress feedback otherwise
+-        # fallback to using plain cp
+-        if command -v pv >/dev/null 2>&1; then
+-            echo ""
+-            (pv "${img}" >"/run/archiso/copytoram/${img_fullname}")
+-            local rc=$?
+-        else
+-            (cp -- "${img}" "/run/archiso/copytoram/${img_fullname}")
+-            local rc=$?
+-        fi
+-
+         if [ "$rc" != 0 ]; then
+             echo "ERROR: while copy '${img}' to '/run/archiso/copytoram/${img_fullname}'"
+             launch_interactive_shell
+@@ -183,7 +172,7 @@ run_hook() {
      # shellcheck disable=SC2154
      # defined via initcpio's parse_cmdline()
      [ -z "${archisodevice}" ] && archisodevice="/dev/disk/by-label/${archisolabel}"
@@ -41,7 +59,7 @@ index d2c600e..d0a18b0 100644
      # shellcheck disable=SC2154
      # defined via initcpio's parse_cmdline()
      if [ -n "${cow_label}" ]; then
-@@ -211,21 +211,70 @@ archiso_mount_handler() {
+@@ -211,21 +200,70 @@ archiso_mount_handler() {
      local sigfile cms_sigfile fs_img fs_img_size iso_blockdev
  
      if ! mountpoint -q "/run/archiso/bootmnt"; then
@@ -120,7 +138,7 @@ index d2c600e..d0a18b0 100644
      # shellcheck disable=SC2154
      # defined via initcpio's parse_cmdline()
      if [ "${checksum}" = "y" ]; then
-@@ -292,10 +341,10 @@ archiso_mount_handler() {
+@@ -292,10 +330,10 @@ archiso_mount_handler() {
      # * the root file system image size is less than 4 GiB,
      # * the estimated available memory is more than the root file system image size + 2 GiB.
      if [ "${copytoram}" = "auto" ]; then
@@ -134,7 +152,7 @@ index d2c600e..d0a18b0 100644
                  copytoram="y"
              fi
          fi
-@@ -314,14 +363,19 @@ archiso_mount_handler() {
+@@ -314,19 +352,24 @@ archiso_mount_handler() {
          msg ":: Mounting /run/archiso/cowspace (tmpfs) filesystem, size=${cow_spacesize}..."
          mount --mkdir -t tmpfs -o "size=${cow_spacesize}",mode=0755 cowspace /run/archiso/cowspace
      fi
@@ -146,6 +164,11 @@ index d2c600e..d0a18b0 100644
          _mnt_dmsnapshot "/run/archiso/airootfs/airootfs.img" "${newroot}" "/"
      else
 -        _mnt_overlayfs "/run/archiso/airootfs" "${newroot}" "/"
+-    fi
+-
+-    if [ "${copytoram}" = "y" ]; then
+-        umount -d /run/archiso/bootmnt
+-        rmdir /run/archiso/bootmnt
 +        # why doesnt {cowspace,persistfs} work...
 +        mkdir -p /run/archiso/cowspace/upperdir
 +        mkdir -p /run/archiso/cowspace/workdir
@@ -153,11 +176,18 @@ index d2c600e..d0a18b0 100644
 +        mkdir -p /run/archiso/persistfs/workdir
 +        mkdir -p /run/archiso/cowspace/lowerdir
 +
-+        _mnt_overlayfs lowerdir=/run/archiso/airootfs upperdir=/run/archiso/persistfs/upperdir workdir=/run/archiso/persistfs/workdir mountpoint=/run/archiso/cowspace/lowerdir
++	lowerdir=/run/archiso/airootfs
++	if [ "$copytoram" = y ]; then
++		cp -a /run/archiso/airootfs/* /run/archiso/copytoram
++		lowerdir=/run/archiso/copytoram
++	fi
++        _mnt_overlayfs lowerdir=$lowerdir upperdir=/run/archiso/persistfs/upperdir workdir=/run/archiso/persistfs/workdir mountpoint=/run/archiso/cowspace/lowerdir
 +        _mnt_overlayfs lowerdir=/run/archiso/cowspace/lowerdir upperdir=/run/archiso/cowspace/upperdir workdir=/run/archiso/cowspace/workdir mountpoint="$newroot/"
      fi
+ }
  
-     if [ "${copytoram}" = "y" ]; then
+diff --git a/install/archiso b/install/archiso
+index 2a145ba..f0e94bb 100644
 --- a/install/archiso
 +++ b/install/archiso
 @@ -7,6 +7,7 @@ build() {

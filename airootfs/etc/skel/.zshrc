@@ -66,25 +66,74 @@ for hook in keymap-select line-finish line-init; do
 	add-zle-hook-widget $hook change_cursor
 done
 
+# most of the completion stuff was stolen from grml
+autoload -Uz compinit && compinit
+
+zstyle ':completion:*:approximate:'    max-errors 'reply=( $((($#PREFIX+$#SUFFIX)/3 )) numeric )'
+
+# start menu completion only if it could find no unambiguous initial string
+zstyle ':completion:*:correct:*'       insert-unambiguous true
+zstyle ':completion:*:correct:*'       original true
+
+# activate color-completion
+zstyle ':completion:*:default'         list-colors ${(s.:.)LS_COLORS} "ma=48;5;244;38;5;0"
+
+# format on completion
+zstyle ':completion:*:descriptions'    format $'%{\e[0m%}completing %B%d%b%{\e[0m%}'
+
+# insert all expansions for expand completer
+zstyle ':completion:*:expand:*'        tag-order all-expansions
+zstyle ':completion:*:history-words'   list false
+
+# match uppercase from lowercase
+zstyle ':completion:*'                 matcher-list 'm:{a-z}={A-Z}'
+
+# separate matches into groups
+zstyle ':completion:*'                 group-name ''
+
+# activate menu
+zstyle ':completion:*'                 menu select
+
+# describe options in full
+zstyle ':completion:*:options'         description 'yes'
+
+# on processes completion complete all user processes
+zstyle ':completion:*:processes'       command 'ps -au$USER'
+
+# offer indexes before parameters in subscripts
+zstyle ':completion:*:*:-subscript-:*' tag-order indexes parameters
+
+# provide verbose completion information
+zstyle ':completion:*'                 verbose true
+
+# set format for warnings
+zstyle ':completion:*:warnings'        format $'%{\e[0;33m%}no matches for:%{\e[0m%} %d'
+
+# ignore completion functions for commands you don't have:
+zstyle ':completion::(^approximate*):*:functions' ignored-patterns '_*'
+
+# provide more processes in completion of programs like killall:
+zstyle ':completion:*:processes-names' command 'ps c -u ${USER} -o command | uniq'
+
+# complete manual by their section
+zstyle ':completion:*:manuals'    separate-sections true
+zstyle ':completion:*:manuals.*'  insert-sections   true
+zstyle ':completion:*:man:*'      menu yes select
+
+COMP_CACHE_DIR=${COMP_CACHE_DIR:-${ZDOTDIR:-$HOME}/.cache}
+if [[ ! -d ${COMP_CACHE_DIR} ]]; then
+	command mkdir -p "${COMP_CACHE_DIR}"
+	zstyle ':completion:*' use-cache  yes
+	zstyle ':completion:*:complete:*' cache-path "${COMP_CACHE_DIR}"
+fi
+
+for plugin in ~/.zplugins/*/*.plugin.zsh; do source "$plugin"; done
+fast-theme sv-orple >/dev/null 2>&1
+# fast-syntax-highlighting shows
+# weird errors while typing `man`, workaround:
+FAST_HIGHLIGHT[chroma-man]=
+
 if [[ $(tty) == /dev/pts/* ]]; then
-	for plugin in ~/.zplugins/*/*.plugin.zsh; do source "$plugin"; done
-
-	# fast-syntax-highlighting shows
-	# weird errors while typing `man`, workaround:
-	FAST_HIGHLIGHT[chroma-man]=
-
-	fast-theme sv-orple >/dev/null 2>&1
-
-	# https://github.com/marlonrichert/zsh-autocomplete#make-tab-go-straight-to-the-menu-and-cycle-there
-	bindkey '\t' menu-select "$terminfo[kcbt]" menu-select
-	bindkey -M menuselect '\t' menu-complete "$terminfo[kcbt]" reverse-menu-complete
-	# disable zsh-autocomplete history
-	bindkey -a k up-line-or-history
-	bindkey -a j down-line-or-history
-	bindkey "^[[A" up-line-or-history
-	bindkey "^[[B" down-line-or-history
-	bindkey -M vicmd / vi-history-search-forward
-
 	chpwd() {
 		awesome-client "
 			for _, master in pairs(tab_masters or {}) do

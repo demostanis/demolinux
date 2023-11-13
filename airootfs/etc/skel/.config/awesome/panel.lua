@@ -422,6 +422,7 @@ return function(s)
     end)
 
     local panes = {}
+    local first_time = true
     local containerw = wibox.container.margin(
         panel_button, 10, 10, 10, 10)
     containerw:buttons(gears.table.join(
@@ -486,7 +487,8 @@ return function(s)
                     end
 
                     if not coords.buttons[1] then has_released_mouse = true end
-                    if not coords.buttons[1] or not has_released_mouse then return true end
+                    if not first_time and not coords.buttons[1] or not has_released_mouse then return true end
+                    first_time = false
                     if coords.x > mypanel.x+mypanel.width or
                         coords.x < mypanel.x or
                         coords.y > mypanel.y+mypanel.height or

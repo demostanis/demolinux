@@ -8,7 +8,7 @@ URxvt.scrollTtyOutput: false
 URxvt.scrollTtyKeypress: true
 URxvt.keysym.Shift-Control-C: eval:selection_to_clipboard
 URxvt.keysym.Shift-Control-V: eval:paste_clipboard
-URxvt.perl-ext-common: default,-confirm-paste,-selection
+URxvt.perl-ext-common: default,-confirm-paste,-selection,vtwheel
 URxvt.iso14755: false
 
 ! hewwo pwease wepwace this

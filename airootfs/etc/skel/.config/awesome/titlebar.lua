@@ -9,7 +9,8 @@ return function(c)
     )
 
     -- Same logic as in dock.lua
-    local titlebar_button_with_hover_effect = function(button)
+    local titlebar_button_with_hover_effect = function(widget)
+        local button = widget:get_all_children()[1]
         local should_lighten = false
         local initial_draw = button.draw
         function button.draw(self, _, cr, ...)
@@ -23,17 +24,17 @@ return function(c)
             cr:mask_surface(gears.surface(s), 0, 0)
             cr:fill()
         end
-        button:connect_signal("mouse::enter", function()
+        widget:connect_signal("mouse::enter", function()
             should_lighten = true
             button:emit_signal(
                 "widget::redraw_needed")
         end)
-        button:connect_signal("mouse::leave", function()
+        widget:connect_signal("mouse::leave", function()
             should_lighten = false
             button:emit_signal(
                 "widget::redraw_needed")
         end)
-        return button
+        return widget
     end
 
     awful.titlebar(c):setup{
@@ -57,27 +58,31 @@ return function(c)
         {
             {
                 -- a bunch of random margins because these images' size suck...
-                {
-                    titlebar_button_with_hover_effect(awful.titlebar.widget.ontopbutton(c)),
+                titlebar_button_with_hover_effect(wibox.widget{
+                    awful.titlebar.widget.ontopbutton(c),
                     widget = wibox.container.margin,
-                    right = 7,
-                    top = 2
-                },
-                {
-                    titlebar_button_with_hover_effect(awful.titlebar.widget.maximizedbutton(c)),
+                    left = 2,
+                    right = 2
+                }),
+                titlebar_button_with_hover_effect(wibox.widget{
+                    awful.titlebar.widget.maximizedbutton(c),
                     widget = wibox.container.margin,
-                    top = 1,
-                    bottom = 4,
-                },
-                {
-                    titlebar_button_with_hover_effect(awful.titlebar.widget.closebutton(c)),
+                    left = 2,
+                    right = 2
+                }),
+                titlebar_button_with_hover_effect(wibox.widget{
+                    awful.titlebar.widget.closebutton(c),
                     widget = wibox.container.margin,
-                    bottom = 2.5
-                },
+                    left = 2,
+                    right = 2
+                }),
                 layout = wibox.layout.flex.horizontal,
+                widget = wibox.container.place
             },
             widget = wibox.container.margin,
-            top = 6,
+            top = 8,
+            bottom = 8,
+            right = 5
         },
         layout = wibox.layout.align.horizontal
     }

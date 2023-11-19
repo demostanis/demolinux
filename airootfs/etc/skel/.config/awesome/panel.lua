@@ -2,6 +2,8 @@ local stopped = false
 local mykeygrabber = nil
 local old_client_focus = nil
 local state = nil
+local mypanel = nil
+local panes = {}
 
 local footerw = {
     {
@@ -74,8 +76,93 @@ local function mkpanew(icon, text, command, opts)
     }
 end
 
+function show_panel()
+    mypanel.visible = not mypanel.visible
+    -- this should probably be renamed
+    overview_shown = mypanel.visible
+    awesome.emit_signal("overview::display", mypanel.visible)
+
+    if mypanel.visible then
+        old_client_focus = client.focus
+        if old_client_focus then
+            old_client_focus:connect_signal("unmanage", function()
+                old_client_focus = nil
+            end)
+            client.focus = nil
+        end
+
+        stopped = false
+        has_released_mouse_yet = false
+        mousegrabber.run(function(coords)
+            if stopped then return false end
+
+            if not has_released_mouse_yet and not coords.buttons[1] then
+                has_released_mouse_yet = true
+            end
+
+            if #panes == 0 then
+                for _, w in pairs(mypanel:get_children_by_id("pane")) do
+                    local pane = wgeometry(w, mypanel)
+                    pane.widget = w
+                    pane.has_hovering_in_previous_frame = false
+                    table.insert(panes, pane)
+                end
+                for _, w in pairs(mypanel:get_children_by_id("music-player-icons")[1]:get_all_children()) do
+                    local pane = wgeometry(w, mypanel)
+                    pane.widget = w
+                    pane.has_hovering_in_previous_frame = false
+                    table.insert(panes, pane)
+                end
+                for _, w in pairs(mypanel:get_children_by_id("system")) do
+                    local pane = wgeometry(w, mypanel)
+                    pane.widget = w
+                    pane.has_hovering_in_previous_frame = false
+                    table.insert(panes, pane)
+                end
+                return true
+            end
+            for _, pane in pairs(panes) do
+                -- when a mousegrabber is active, mouse::* events
+                -- aren't dispatched. thus we emit our own.
+                if coords.x > mypanel.x+pane.x and
+                    coords.x < mypanel.x+pane.x+pane.width and
+                    coords.y > mypanel.y+pane.y and
+                    coords.y < mypanel.y+pane.y+pane.height then
+                    if coords.buttons[1] then
+                        pane.widget:emit_signal("mouse::click")
+                    else
+                        pane.widget:emit_signal("mouse::enter")
+                        pane.was_hovering_in_previous_frame = true
+                    end
+                elseif pane.was_hovering_in_previous_frame then
+                    pane.widget:emit_signal("mouse::leave")
+                    pane.was_hovering_in_previous_frame = false
+                end
+            end
+
+            if not coords.buttons[1] or not has_released_mouse_yet then
+                return true
+            end
+            if coords.x > mypanel.x+mypanel.width or
+                coords.x < mypanel.x or
+                coords.y > mypanel.y+mypanel.height or
+                coords.y < mypanel.y then
+                mypanel:hide()
+                return false
+            end
+            return true
+        end, "arrow")
+        mykeygrabber = awful.keygrabber{
+            keybindings = {
+                {{ }, "Escape", mypanel.hide}
+            }
+        }
+        mykeygrabber:start()
+    end
+end
+
 return function(s)
-    local mypanel = wibox{screen = s,
+    mypanel = wibox{screen = s,
         x = 5, y = beautiful.wibar_height+8,
         ontop = true, visible = false,
         width = beautiful.panel_width,
@@ -93,6 +180,7 @@ return function(s)
         if mykeygrabber then
             mykeygrabber:stop()
         end
+        mousegrabber:stop()
         awesome.emit_signal("overview::display", false)
         stopped = true
     end
@@ -421,93 +509,11 @@ return function(s)
         panel_button.markup = panel_button.oldtext
     end)
 
-    local panes = {}
     local containerw = wibox.container.margin(
         panel_button, 10, 10, 10, 10)
     containerw:buttons(gears.table.join(
         awful.button({ }, 1, function()
-            mypanel.visible = not mypanel.visible
-            -- this should probably be renamed
-            overview_shown = mypanel.visible
-            awesome.emit_signal("overview::display", mypanel.visible)
-
-            if mypanel.visible then
-                old_client_focus = client.focus
-                if old_client_focus then
-                    old_client_focus:connect_signal("unmanage", function()
-                        old_client_focus = nil
-                    end)
-                    client.focus = nil
-                end
-
-                stopped = false
-                has_released_mouse_yet = false
-                mousegrabber.run(function(coords)
-                    if stopped then return false end
-
-                    if not has_released_mouse_yet and not coords.buttons[1] then
-                        has_released_mouse_yet = true
-                    end
-
-                    if #panes == 0 then
-                        for _, w in pairs(mypanel:get_children_by_id("pane")) do
-                            local pane = wgeometry(w, mypanel)
-                            pane.widget = w
-                            pane.has_hovering_in_previous_frame = false
-                            table.insert(panes, pane)
-                        end
-                        for _, w in pairs(mypanel:get_children_by_id("music-player-icons")[1]:get_all_children()) do
-                            local pane = wgeometry(w, mypanel)
-                            pane.widget = w
-                            pane.has_hovering_in_previous_frame = false
-                            table.insert(panes, pane)
-                        end
-                        for _, w in pairs(mypanel:get_children_by_id("system")) do
-                            local pane = wgeometry(w, mypanel)
-                            pane.widget = w
-                            pane.has_hovering_in_previous_frame = false
-                            table.insert(panes, pane)
-                        end
-                        return true
-                    end
-                    for _, pane in pairs(panes) do
-                        -- when a mousegrabber is active, mouse::* events
-                        -- aren't dispatched. thus we emit our own.
-                        if coords.x > mypanel.x+pane.x and
-                            coords.x < mypanel.x+pane.x+pane.width and
-                            coords.y > mypanel.y+pane.y and
-                            coords.y < mypanel.y+pane.y+pane.height then
-                            if coords.buttons[1] then
-                                pane.widget:emit_signal("mouse::click")
-                            else
-                                pane.widget:emit_signal("mouse::enter")
-                                pane.was_hovering_in_previous_frame = true
-                            end
-                        elseif pane.was_hovering_in_previous_frame then
-                            pane.widget:emit_signal("mouse::leave")
-                            pane.was_hovering_in_previous_frame = false
-                        end
-                    end
-
-                    if not coords.buttons[1] or not has_released_mouse_yet then
-                        return true
-                    end
-                    if coords.x > mypanel.x+mypanel.width or
-                        coords.x < mypanel.x or
-                        coords.y > mypanel.y+mypanel.height or
-                        coords.y < mypanel.y then
-                        mypanel:hide()
-                        return false
-                    end
-                    return true
-                end, "arrow")
-                mykeygrabber = awful.keygrabber{
-                    keybindings = {
-                        {{ }, "Escape", mypanel.hide}
-                    }
-                }
-                mykeygrabber:start()
-            end
+            show_panel()
         end)
     ))
     return containerw

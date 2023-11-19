@@ -18,6 +18,7 @@ alias applauncher='awesome-client require\"applauncher\"\(\)'
 alias overview='awesome-client require\"overview\"\(\)'
 alias emojipicker='awesome-client require\"emojipicker\"\(\)'
 alias restart='awesome-client awesome.restart\(\)'
+alias panel='awesome-client show_panel\(\)'
 
 alias -g TMP='"$(mktemp)"'
 

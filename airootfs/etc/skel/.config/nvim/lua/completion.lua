@@ -44,13 +44,6 @@ cmp.setup{
 
 vim.diagnostic.disable()
 
-vim.api.nvim_create_autocmd("LspAttach", {
-    callback = function(args)
-        local c = vim.lsp.get_client_by_id(args.data.client_id)
-        c.server_capabilities.semanticTokensProvider = nil
-    end
-})
-
 local function enable_ls(name, settings)
     local capabilities = require"cmp_nvim_lsp".default_capabilities()
     require"lspconfig"[name].setup{
@@ -67,12 +60,18 @@ vim.api.nvim_create_autocmd("LspAttach", {
     group = vim.api.nvim_create_augroup("LspConfig", {}),
     callback = function(event)
         local opts = { buffer = event.buf }
-        vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
-        vim.keymap.set("n", "gD", vim.lsp.buf.declaration, opts)
+        vim.keymap.set("n", "gd", function(args)
+            vim.g.is_going_to_definition = 1
+            vim.lsp.buf.definition(args)
+            vim.g.is_going_to_definition = 0
+        end, opts)
         vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
         vim.keymap.set("n", "gr", vim.lsp.buf.references, opts)
         vim.keymap.set("n", "Lr", vim.lsp.buf.rename, opts)
         vim.keymap.set("n", "La", vim.lsp.buf.code_action, opts)
+
+        local c = vim.lsp.get_client_by_id(event.data.client_id)
+        c.server_capabilities.semanticTokensProvider = nil
     end
 })
 

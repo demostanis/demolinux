@@ -40,3 +40,7 @@ tpope/vim-vinegar
 # prettify the quickfix window
 folke/trouble.nvim
 nvim-tree/nvim-web-devicons
+# unix commands as ex commands
+tpope/vim-eunuch
+# jump to last position in file on open
+farmergreg/vim-lastplace

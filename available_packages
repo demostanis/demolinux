@@ -133,6 +133,7 @@ local python-ping3 # riseup-vpn dependency
 local riseup-vpn
 local openvpn-update-systemd-resolved
 aur clipster-git
+aur localepurge
 ufw
 earlyoom
 xdg-dbus-proxy

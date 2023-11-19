@@ -1,0 +1,9 @@
+[Trigger]
+Operation = Install
+Type = Package
+Target = *
+
+[Action]
+Description = Purge unneeded locales
+When = PostTransaction
+Exec = /usr/bin/localepurge

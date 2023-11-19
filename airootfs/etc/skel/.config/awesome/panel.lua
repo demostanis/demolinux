@@ -422,7 +422,6 @@ return function(s)
     end)
 
     local panes = {}
-    local first_time = true
     local containerw = wibox.container.margin(
         panel_button, 10, 10, 10, 10)
     containerw:buttons(gears.table.join(
@@ -442,9 +441,13 @@ return function(s)
                 end
 
                 stopped = false
-                has_released_mouse = false
+                has_released_mouse_yet = false
                 mousegrabber.run(function(coords)
                     if stopped then return false end
+
+                    if not has_released_mouse_yet and not coords.buttons[1] then
+                        has_released_mouse_yet = true
+                    end
 
                     if #panes == 0 then
                         for _, w in pairs(mypanel:get_children_by_id("pane")) do
@@ -486,9 +489,9 @@ return function(s)
                         end
                     end
 
-                    if not coords.buttons[1] then has_released_mouse = true end
-                    if not first_time and not coords.buttons[1] or not has_released_mouse then return true end
-                    first_time = false
+                    if not coords.buttons[1] or not has_released_mouse_yet then
+                        return true
+                    end
                     if coords.x > mypanel.x+mypanel.width or
                         coords.x < mypanel.x or
                         coords.y > mypanel.y+mypanel.height or

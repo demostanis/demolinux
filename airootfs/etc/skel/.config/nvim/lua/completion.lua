@@ -8,32 +8,45 @@ cmp.setup{
         end
     },
 
-    mapping = cmp.mapping.preset.insert{
-        ["<Tab>"] = cmp.mapping{
-            i = function(fallback)
-                if cmp.visible() then
-                    cmp.select_next_item{behavior = cmp.SelectBehavior.Insert}
-                elseif snippy.can_expand_or_advance() then
-                    snippy.expand_or_advance()
-                else
-                    fallback()
+    mapping = {
+        ["<Tab>"] = cmp.mapping(function(fallback)
+            i = 0
+            while true do
+                if vim.fn.col('.')-i == 1 then break end
+                local hi = vim.fn.synstack(vim.fn.line('.'), vim.fn.col('.')-i)
+                if #hi ~= 0 then
+                    local found = false
+                    for j=1,#hi do
+                        if vim.fn.synIDattr(hi[j], "name") == "cType" then
+                            found = true
+                        end
+                    end
+                    if found then
+                        fallback()
+                        return
+                    end
                 end
+                i = i + 1
             end
-        },
-        ["<S-Tab>"] = cmp.mapping{
-            i = function(fallback)
-                if cmp.visible() then
-                    cmp.select_prev_item{behavior = cmp.SelectBehavior.Insert}
-                elseif snippy.can_jump(-1) then
-                    snippy.previous()
-                else
-                    fallback()
-                end
+
+            if cmp.visible() then
+                cmp.select_next_item{behavior = cmp.SelectBehavior.Insert}
+            elseif snippy.can_expand_or_advance() then
+                snippy.expand_or_advance()
+            else
+                fallback()
             end
-        },
-        ["<CR>"] = cmp.mapping{
-            i = cmp.mapping.confirm()
-        }
+        end, {"i", "s"}),
+        ["<S-Tab>"] = cmp.mapping(function(fallback)
+            if cmp.visible() then
+                cmp.select_prev_item{behavior = cmp.SelectBehavior.Insert}
+            elseif snippy.can_jump(-1) then
+                snippy.previous()
+            else
+                fallback()
+            end
+        end, {"i", "s"}),
+        ["<CR>"] = cmp.mapping(cmp.mapping.confirm(), {"i", "s"})
     },
     sources = cmp.config.sources{
         {name = "nvim_lsp"},

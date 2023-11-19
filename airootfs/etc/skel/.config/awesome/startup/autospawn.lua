@@ -10,7 +10,8 @@ gears.timer{
     timeout = 2,
     callback = function()
         autospawn("picom-wrapper")
-    end
+    end,
+    single_shot = true
 }:start()
 
 -- vim:set et sw=4 ts=4:

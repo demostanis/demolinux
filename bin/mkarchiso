@@ -1120,6 +1120,7 @@ _make_bootmode_hybrid.grub.gpt() {
     btrfs subvolume create /mnt/demolinux/root/system/airootfs
     _msg_info "Copying files to the disk image..."
     cp -a "${pacstrap_dir}"/* /mnt/demolinux/root/system/airootfs
+    cp -r "${profile}/packages/db" /mnt/demolinux/root/system/airootfs/packages
 
     _msg_info "Installing grub..."
     # Install grub for both BIOS and UEFI boot

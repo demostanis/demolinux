@@ -1,0 +1,31 @@
+From e8a3b31d451e9eedd04ce48e41d8612bc6cfd4c7 Mon Sep 17 00:00:00 2001
+From: demostanis worlds <demostanis@protonmail.com>
+Date: Wed, 22 Nov 2023 23:56:46 +0100
+Subject: [PATCH] Allow apps to use GPU acceleration
+
+---
+ Xext/security.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/Xext/security.c b/Xext/security.c
+index 859d547..328b514 100644
+--- a/Xext/security.c
++++ b/Xext/security.c
+@@ -67,6 +67,14 @@ typedef struct {
+ static const char *SecurityTrustedExtensions[] = {
+     "XC-MISC",
+     "BIG-REQUESTS",
++    "DRI2",
++    "DRI3",
++    "SYNC",
++    "GLX",
++    "Present",
++    "XFIXES",
++    "RANDR",
++    "RENDER",
+     NULL
+ };
+ 
+-- 
+2.42.1
+

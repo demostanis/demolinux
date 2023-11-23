@@ -70,6 +70,13 @@ local globalkeys = gears.table.join(
                 should_spawn_with_selection = false
             end
         }:start()
+    end),
+
+    awful.key({ }, "XF86AudioRaiseVolume", function()
+        awful.spawn("amixer -q sset Master 3%+", false)
+    end),
+    awful.key({ }, "XF86AudioLowerVolume", function()
+        awful.spawn("amixer -q sset Master 3%-", false)
     end)
 )
 

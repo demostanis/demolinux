@@ -41,6 +41,7 @@ flash(){
 	elevate
 	device=${1:?Missing device}
 	pv out/$(ls -t out/ | head -1) > "$device"
+	sync
 }
 
 without_root(){

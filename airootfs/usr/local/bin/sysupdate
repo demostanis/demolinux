@@ -1,0 +1,43 @@
+#!/bin/sh
+
+if ! checkupdates >/dev/null; then
+	echo "No updates available" >&2
+	exit 1
+fi
+
+if [ $(id -u) != 0 ]; then
+	echo "This program needs to run as root" >&2
+	exit 1
+fi
+
+if [ -z "$(ls /run/archiso/copytoram 2>/dev/null)" ]; then
+	echo "The system wasn't booted with copytoram=y," \
+	"which is required to update the system properly." \
+	"It is likely that you don't have enough RAM." >&2
+	exit 1
+fi
+
+umount /run/archiso/airootfs 2>/dev/null
+
+if ! mount /dev/disk/by-partlabel/system /run/archiso/airootfs -o "rw,subvol=/system/airootfs,compress=zstd,noatime"; then
+	echo "Failed to mount airootfs." >&2
+	exit 1
+fi
+
+if ! btrfs subvolume snapshot /run/archiso/airootfs /run/archiso/snapshots/snapshot-$(date +%d-%m-%Y); then
+	echo "Failed to create snapshot." >&2
+	exit 1
+fi
+
+if [ ! -e /run/archiso/airootfs/etc/pacman.d/gnupg ]; then
+	cp -r /etc/pacman.d/gnupg /run/archiso/airootfs/etc/pacman.d/gnupg
+fi
+if [ ! -e /run/archiso/airootfs/etc/pacman.d/mirrorlist ]; then
+	cp -r /etc/pacman.d/mirrorlist /run/archiso/airootfs/etc/pacman.d/mirrorlist
+fi
+if ! arch-chroot /run/archiso/airootfs pacman -Syu; then
+	echo "Failed to update." >&2
+	exit 1
+fi
+
+echo "Success. Updates will be applied on next reboot."

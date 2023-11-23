@@ -1,13 +1,20 @@
 pkgname=awesome-switcher
-pkgrel=2
+pkgrel=3
 pkgver=1.0.0
 pkgdesc="Familiar Alt-Tab functionality in Awesome WM"
 arch=(any)
-source=(git+https://github.com/troglobit/awesome-switcher)
+source=(git+https://github.com/troglobit/awesome-switcher
+  0001-Add-more-margin-and-don-t-show-minimized-clients.patch)
 makedepends=(git)
 depends=(awesome)
-sha256sums=(SKIP)
+sha256sums=('SKIP'
+            '577d03fe1000033c18dbe520d62405428313a42f5548558aaa5e6eebd6905c78')
 _luaver=5.4
+
+prepare() {
+  cd $pkgname
+  patch -N -p1 < ../0001-Add-more-margin-and-don-t-show-minimized-clients.patch
+}
 
 package() {
   cd $pkgname

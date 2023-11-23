@@ -191,7 +191,11 @@ fun update_status_callback (text) {
   // I hate Plymouth scripting
   if (text != "Welcome to demolinux!" &&
       text != "Starting Awesome..." &&
-      text != "Starting X...")
+      text != "Starting X..." &&
+      text != "Extending filesystems..." &&
+      text != "Creating Btrfs subvolumes..." &&
+      text != "Mouting filesystems..." &&
+      text != "Copying airootfs to RAM...")
     {
       text = "Starting " + text + "...";
     }

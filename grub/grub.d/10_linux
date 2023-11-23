@@ -283,6 +283,9 @@ for linux in ${reverse_sorted_list}; do
   linux_entry "${OS}" "${version}" advanced \
               "${GRUB_CMDLINE_LINUX} ${GRUB_CMDLINE_LINUX_DEFAULT}"
 
+  linux_entry "${OS} (copytoram=n)" "${version}" advanced \
+    "${GRUB_CMDLINE_LINUX} ${GRUB_CMDLINE_LINUX_DEFAULT} copytoram=n"
+
   if test -e "${dirname}/initramfs-${version}-fallback.img" ; then
     initrd="${initrd_early} initramfs-${version}-fallback.img"
 

@@ -80,9 +80,12 @@ vim.api.nvim_create_autocmd("LspAttach", {
         end, opts)
         vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
         vim.keymap.set("n", "gr", function(args)
-            vim.lsp.buf.references(args)
-            vim.cmd.cclose()
-            vim.cmd.Trouble"quickfix"
+            vim.lsp.buf.references(args, {
+                on_list = function(options)
+                    vim.fn.setqflist({}, " ", options)
+                    vim.cmd.Trouble"quickfix"
+                end
+            })
         end, opts)
         vim.keymap.set("n", "Lr", vim.lsp.buf.rename, opts)
         vim.keymap.set("n", "La", vim.lsp.buf.code_action, opts)

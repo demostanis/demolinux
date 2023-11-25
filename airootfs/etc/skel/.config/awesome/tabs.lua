@@ -51,7 +51,7 @@ local function mktabw(text, active)
         textw.old_markup = textw.markup
         textw.markup = string.format(
             [[<span foreground="%s">%s</span>]],
-            beautiful.color13, textw.text
+            beautiful.color13, glib.markup_escape_text(textw.text, #textw.text)
         )
     end)
     tabw:connect_signal("mouse::leave", function()
@@ -81,7 +81,7 @@ local function update_tabs(master)
             end
             local textw = child
                 :get_children_by_id("text")[1]
-            textw.markup = tabs[i].name
+            textw.markup = glib.markup_escape_text(tabs[i].name, #tabs[i].name)
         end
 
         drawn_tabs_count = drawn_tabs_count + 1

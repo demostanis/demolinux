@@ -8,7 +8,7 @@ error()
 }
 
 system_templates_dir=/usr/share/templates
-user_templates_dir="${XDG_TEMPLATES_DIR:="$HOME/Templates"}"
+user_templates_dir="${XDG_TEMPLATES_DIR:="$HOME/templates"}"
 
 template_name="$1"
 destination_path="$2"
@@ -35,23 +35,36 @@ if [ -z "$template_name" ]; then
 else
 substitute()
 {
+	touch .awk_cache
 	awk '
+		@include ".awk_cache"
 		{
-			i = 1
-			match($0, /{{ (.+) }}/, variables)
-			while (variables[i])
-			{
-				variable = variables[i++]
+			match($0, /{{ ([^}]+) }}/, variables)
+			variable = variables[1]
+			if (variable) {
 				if (variable ~ /^shell /) {
 					output = ""
 					command = substr(variable, 6)
 					while ((command | getline line) > 0)
 						output = output line "\n"
-					gsub(/{{ .+ }}/, substr(output, 1, length(output)-1))
+					gsub(/{{ [^}]+ }}/, substr(output, 1, length(output)-1))
 				} else {
-					printf variable ": " > "/dev/stderr"
-					getline value < "/dev/tty"
-					gsub(/{{ .+ }}/, value)
+					# yes thats ugly, but if its way too hard to 
+					# parse the shell way of doing that
+					if (variable ~ /^uppercase /) {
+						uppercase = 1
+						variable = substr(variable, 11)
+					}
+					if (!(variable in cache)) {
+						printf "%s: ", variable > "/dev/stderr"
+						getline value < "/dev/tty"
+						cache[variable] = value
+						printf "BEGIN {	cache[\"%s\"] = \"%s\" }\n", variable, value >> ".awk_cache"
+					}
+					value = cache[variable]
+					if (uppercase)
+						value = toupper(value)
+					gsub(/{{ [^}]+ }}/, value)
 				}
 			}
 			print
@@ -70,9 +83,18 @@ substitute()
 	if [ -d "$template" ]; then
 		mkdir -p "$destination_path"
 		while read -r file; do
-			substitute "$file" > "$destination_path/$(basename "$file")"
-		done < <(find "$template" -type f)
+			mkdir -p "$(dirname "$destination_path"/"${file##"$template"}")"
+			substitute "$file" > "$destination_path"/"${file##"$template"}"
+		done < <(find "$template" -type f -not -path .git)
 	else
 		substitute "$template" > "$destination_path"
+	fi
+	rm -f .awk_cache
+
+	if [ -e "$destination_path/init" ]; then
+		pushd "$destination_path" >/dev/null
+		chmod +x ./init && ./init
+		rm -f ./init
+		popd >/dev/null
 	fi
 fi

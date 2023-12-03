@@ -13,7 +13,7 @@ user_templates_dir="${XDG_TEMPLATES_DIR:="$HOME/templates"}"
 template_name="$1"
 destination_path="$2"
 
-[ -e "$system_templates_dir" -o -e "$templates_dir" ] ||
+[ -e "$system_templates_dir" -o -e "$user_templates_dir" ] ||
 	error neither directory exist: $system_templates_dir, $user_templates_dir
 [ -e "$system_templates_dir" -a ! -d "$system_templates_dir" ] &&
 	error not a directory: $system_templates_dir

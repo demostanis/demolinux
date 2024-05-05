@@ -59,7 +59,7 @@ index d2c600e..a307a2a 100644
      # shellcheck disable=SC2154
      # defined via initcpio's parse_cmdline()
      if [ -n "${cow_label}" ]; then
-@@ -211,21 +200,75 @@ archiso_mount_handler() {
+@@ -211,21 +200,72 @@ archiso_mount_handler() {
      local sigfile cms_sigfile fs_img fs_img_size iso_blockdev
  
      if ! mountpoint -q "/run/archiso/bootmnt"; then
@@ -68,7 +68,7 @@ index d2c600e..a307a2a 100644
      fi
  
 +    btrfs_root=/run/archiso/btrfs
-+    _mnt_dev /dev/disk/by-partlabel/system $btrfs_root "-r" "subvol=system,compress=zstd"
++    _mnt_dev /dev/disk/by-partlabel/system $btrfs_root "-w" "subvol=system,compress=zstd"
      # We need this block at the top for early failure
      # but also to be able to give the fs_img to CMS verification.
      # (sha512sum files contain the image, CMS files does not)
@@ -119,9 +119,6 @@ index d2c600e..a307a2a 100644
 +        btrfs subvol create $btrfs_root/data
 +        btrfs subvol create $btrfs_root/swap
 +        btrfs filesystem mkswapfile --size 4G --uuid clear $btrfs_root/swap/swapfile 2>/dev/null
-+
-+        umount -f $btrfs_root
-+        _mnt_dev /dev/disk/by-partlabel/system $btrfs_root "-r" "subvol=system,compress=zstd"
      fi
  
 +    plymouth update --status="Mouting filesystems..."
@@ -143,7 +140,7 @@ index d2c600e..a307a2a 100644
      # shellcheck disable=SC2154
      # defined via initcpio's parse_cmdline()
      if [ "${checksum}" = "y" ]; then
-@@ -292,10 +335,10 @@ archiso_mount_handler() {
+@@ -292,10 +332,10 @@ archiso_mount_handler() {
      # * the root file system image size is less than 4 GiB,
      # * the estimated available memory is more than the root file system image size + 2 GiB.
      if [ "${copytoram}" = "auto" ]; then
@@ -157,7 +154,7 @@ index d2c600e..a307a2a 100644
                  copytoram="y"
              fi
          fi
-@@ -314,19 +357,25 @@ archiso_mount_handler() {
+@@ -314,19 +354,26 @@ archiso_mount_handler() {
          msg ":: Mounting /run/archiso/cowspace (tmpfs) filesystem, size=${cow_spacesize}..."
          mount --mkdir -t tmpfs -o "size=${cow_spacesize}",mode=0755 cowspace /run/archiso/cowspace
      fi
@@ -189,10 +186,10 @@ index d2c600e..a307a2a 100644
 +	fi
 +        _mnt_overlayfs lowerdir=$lowerdir upperdir=/run/archiso/persistfs/upperdir workdir=/run/archiso/persistfs/workdir mountpoint=/run/archiso/cowspace/lowerdir
 +        _mnt_overlayfs lowerdir=/run/archiso/cowspace/lowerdir upperdir=/run/archiso/cowspace/upperdir workdir=/run/archiso/cowspace/workdir mountpoint="$newroot/"
++        umount $btrfs_root
      fi
  }
  
-diff --git a/install/archiso b/install/archiso
 --- a/install/archiso
 +++ b/install/archiso
 @@ -7,6 +7,7 @@ build() {

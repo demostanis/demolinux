@@ -35,8 +35,19 @@ fi
 if [ ! -e /run/archiso/airootfs/etc/pacman.d/mirrorlist ]; then
 	cp -r /etc/pacman.d/mirrorlist /run/archiso/airootfs/etc/pacman.d/mirrorlist
 fi
-if ! arch-chroot /run/archiso/airootfs pacman -Syu; then
+if ! ( arch-chroot /run/archiso/airootfs pacman -Sy archlinux-keyring &&
+	arch-chroot /run/archiso/airootfs pacman -Syu ); then
 	echo "Failed to update." >&2
+	exit 1
+fi
+
+if ! mount -o remount,rw /run/archiso/bootmnt; then
+	echo "Failed to remount /boot as read-write" >&2
+	exit 1
+fi
+trap "mount -o remount,ro /run/archiso/bootmnt" EXIT
+if ! mv /run/archiso/airootfs/boot/* /run/archiso/bootmnt; then
+	echo "Failed to copy the updated kernel" >&2
 	exit 1
 fi
 

@@ -372,9 +372,7 @@ _make_chroot() {
         mypkgver=${mypkgver##pkgver=}
         mypkgrel=$(grep pkgrel= PKGBUILD)
         mypkgrel=${mypkgrel##pkgrel=}
-        if tar tf "${profile}/packages/db/packages.db.tar.gz" 2>/dev/null | grep "${pkgdir##*/}-$mypkgver-$mypkgrel" >/dev/null 2>&1; then
-            _msg_info "Already built!"
-        else
+        if ! tar tf "${profile}/packages/db/packages.db.tar.gz" 2>/dev/null | grep "${pkgdir##*/}-$mypkgver-$mypkgrel" >/dev/null 2>&1; then
             chown -R $SUDO_USER:$SUDO_USER "${pkgdir}"
 
             # special case for xorg-server
@@ -405,53 +403,61 @@ _make_chroot() {
         cachepkgpath="${profile}/packages/aurcache/$pkg"
         if [ -e "$cachepkgpath" ]; then
             cd "$cachepkgpath"
-            git pull
+            git pull --quiet
         else
             git clone https://aur.archlinux.org/$pkg.git "$cachepkgpath"
         fi
         buildpkg "$cachepkgpath"
     done
+    wait
     for pkg in ${local_pkg_list[@]}; do
         _msg_info "Building package $pkg..."
         buildpkg "${profile}"/packages/tobuild/$pkg
     done
 
     for pkg in ${nvim_pkg_list[@]}; do
-        _msg_info "Cloning nvim package $pkg..."
-        pkgname="${pkg##*/}"
-        cachepkgpath="${profile}/packages/nvimcache/${pkgname}"
-        if [ -e "$cachepkgpath" ]; then
-            cd "$cachepkgpath"
-            git pull
-        else
-            url="$pkg"
-            if [[ "$pkg" != https://* ]]; then
-                url=https://github.com/$pkg
+        (
+            _msg_info "Cloning nvim package $pkg..."
+            pkgname="${pkg##*/}"
+            cachepkgpath="${profile}/packages/nvimcache/${pkgname}"
+            if [ -e "$cachepkgpath" ]; then
+                cd "$cachepkgpath"
+                git pull --quiet
+            else
+                url="$pkg"
+                if [[ "$pkg" != https://* ]]; then
+                    url=https://github.com/$pkg
+                fi
+                git clone $url "$cachepkgpath"
             fi
-            git clone $url "$cachepkgpath"
-        fi
-        # damn, thats a long path
-        path="${pacstrap_dir}/etc/skel/.local/share/nvim/site/pack/${pkgname}/start/${pkgname}/"
-        mkdir -p "$path"
-        cp -r "$cachepkgpath"/* "$path"
+            # damn, thats a long path
+            path="${pacstrap_dir}/etc/skel/.local/share/nvim/site/pack/${pkgname}/start/${pkgname}/"
+            mkdir -p "$path"
+            cp -r "$cachepkgpath"/* "$path"
+        ) &
     done
+    wait
+
     for pkg in ${zsh_pkg_list[@]}; do
-        _msg_info "Cloning zsh package $pkg..."
-        pkgname="${pkg##*/}"
-        cachepkgpath="${profile}/packages/zshcache/${pkgname}"
-        if [ -e "$cachepkgpath" ]; then
-            cd "$cachepkgpath"
-            git pull
-        else
-            url="$pkg"
-            if [[ "$pkg" != https://* ]]; then
-                url=https://github.com/$pkg
+        (
+            _msg_info "Cloning zsh package $pkg..."
+            pkgname="${pkg##*/}"
+            cachepkgpath="${profile}/packages/zshcache/${pkgname}"
+            if [ -e "$cachepkgpath" ]; then
+                cd "$cachepkgpath"
+                git pull --quiet
+            else
+                url="$pkg"
+                if [[ "$pkg" != https://* ]]; then
+                    url=https://github.com/$pkg
+                fi
+                git clone $url "$cachepkgpath"
             fi
-            git clone $url "$cachepkgpath"
-        fi
-        mkdir -p "${pacstrap_dir}/etc/skel/.zplugins/${pkgname}"
-        cp -r "$cachepkgpath"/{.[!.]*,*} "${pacstrap_dir}/etc/skel/.zplugins/${pkgname}"
+            mkdir -p "${pacstrap_dir}/etc/skel/.zplugins/${pkgname}"
+            cp -r "$cachepkgpath"/{.[!.]*,*} "${pacstrap_dir}/etc/skel/.zplugins/${pkgname}"
+        ) &
     done
+    wait
 }
 
 # Install desired packages to the root file system

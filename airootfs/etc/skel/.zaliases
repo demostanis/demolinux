@@ -5,6 +5,8 @@ alias gs="git status"
 alias gl="git log"
 alias gp="git push"
 alias ga="git add"
+alias grc="git rebase --continue"
+alias gsa="git stash apply"
 
 alias imv=imv-hardened
 alias mpv=mpv-hardened

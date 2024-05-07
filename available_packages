@@ -140,6 +140,7 @@ pulseaudio
 pulseaudio-alsa
 xdg-user-dirs
 bubblewrap-suid
+kdeconnect
 local pambase
 clipnotify
 openssh

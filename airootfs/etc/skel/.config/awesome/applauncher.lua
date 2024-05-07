@@ -2,7 +2,7 @@ local app_whitelist = {
     "Firefox Web Browser",
     "urxvt", "Nemo", "Neovim",
     "scrcpy", "GNU Image Manipulation Program",
-    "Kodi", "Transmission", "Tor Browser"
+    "Stremio", "Transmission", "Tor Browser"
 }
 
 return function()

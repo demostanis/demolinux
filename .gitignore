@@ -15,3 +15,5 @@ packages/zshcache/
 packages/db/
 qmk_firmware
 *.log
+# not a log file lol
+!000003.log

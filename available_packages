@@ -116,15 +116,18 @@ nmap
 sudo
 neofetch
 pacman-contrib
+python-pipx
 ripgrep
 websocat
 xclip
 yt-dlp
 aur paru
+tmux
 
 # Development
 lua-language-server
 clang
+github-cli
 
 # System
 base

@@ -1,13 +1,14 @@
 pkgname=firefox-ff2mpv
 pkgver=4.0.0
 pkgrel=5
+commit=16f1f3e299791c238049a36f05d78277be8baace
 pkgdesc="A Firefox/Chrome add-on for playing URLs in mpv"
 url="https://github.com/woodruffw/ff2mpv"
 license=('MIT')
 arch=('any')
 depends=(firefox)
 makedepends=(zip)
-source=("git+https://github.com/woodruffw/ff2mpv"
+source=("git+https://github.com/woodruffw/ff2mpv#commit=$commit"
 	0001-Open-the-first-video-in-the-page-instead-of-the-page.patch)
 sha256sums=('SKIP'
             '70a373076da7e1bedf774f9844df71330f47109ddb72af4c8643ba3e50c65eb2')

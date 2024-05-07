@@ -521,10 +521,10 @@ _make_customize_airootfs() {
     eval -- env -u TMPDIR arch-chroot "${pacstrap_dir}" "/usr/share/oomox/run_oomox.sh"
 
     # Copy SSH public key
-    if [[ "$ssh_access" = y* ]] && [ -e ~/.ssh/id_rsa.pub ]; then
-        _msg_info "Adding your id_rsa.pub to ~/.ssh/authorized_keys..."
+    if [[ "$ssh_access" = y* ]] && [ -e ~/.ssh/id_ed25519.pub ]; then
+        _msg_info "Adding your id_ed25519.pub to ~/.ssh/authorized_keys..."
         mkdir -p "${pacstrap_dir}/etc/skel/.ssh/"
-        cat ~/.ssh/id_rsa.pub >> "${pacstrap_dir}/etc/skel/.ssh/authorized_keys"
+        cat ~/.ssh/id_ed25519.pub >> "${pacstrap_dir}/etc/skel/.ssh/authorized_keys"
         _msg_info "Enabling sshd.service..."
         ln -sf /usr/lib/systemd/system/sshd.service "${pacstrap_dir}/etc/systemd/system/multi-user.target.wants/sshd.service"
         _msg_info "Done!"

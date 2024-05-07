@@ -122,6 +122,9 @@ usage: ${app_name} [options] <profile_dir>
                       Default: '${work_dir}'
 
   profile_dir:        Directory of the archiso profile to build
+
+Please note that many of these options originate from archiso
+and haven't been tested with demolinux.
 ENDUSAGETEXT
     printf '%s' "${usagetext}"
     exit "${1}"

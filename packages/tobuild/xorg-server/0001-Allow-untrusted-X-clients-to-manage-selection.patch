@@ -38,7 +38,7 @@ index 162d07a..859d547 100644
      subj = dixLookupPrivate(&rec->client->devPrivates, stateKey);
      obj = dixLookupPrivate(&wClient(rec->pWin)->devPrivates, stateKey);
  
-+    if (name == 0x1b9 || strcmp(NameForAtom(name), "VT_SELECTION") == 0 || strcmp(NameForAtom(name), "GDK_SELECTION") == 0)
++    if (name == 0x1b9 || strcmp(NameForAtom(name), "VT_SELECTION") == 0 || strcmp(NameForAtom(name), "GDK_SELECTION") == 0 || strcmp(NameForAtom(name), "_QT_SELECTION") == 0)
 +	return;
 +
      if (SecurityDoCheck(subj, obj, requested, allowed) != Success) {

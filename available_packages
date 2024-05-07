@@ -120,6 +120,7 @@ ripgrep
 websocat
 xclip
 yt-dlp
+aur paru
 
 # Development
 lua-language-server

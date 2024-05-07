@@ -5,7 +5,7 @@
 
 pkgname=plymouth
 _pkgname=plymouth
-pkgver=22.02.122.r192.g4a6fcf0b
+pkgver=24.004.60.r34.gedc7c3ea
 pkgrel=1
 pkgdesc='Graphical boot splash screen (git version)'
 arch=('i686' 'x86_64')

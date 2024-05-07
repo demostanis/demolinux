@@ -1,11 +1,11 @@
 pkgname=emoji-test
-pkgver=15.0
+pkgver=15.1
 pkgrel=1
 arch=(any)
 pkgdesc="emoji-test.txt from the Unicode website"
 url="https://unicode.org/Public/emoji"
 source=("$url/$pkgver/emoji-test.txt")
-sha256sums=('8445f23ac8388e096be19d0262e14fceff856ff52093f2356dc89485f1a853db')
+sha256sums=('d876ee249aa28eaa76cfa6dfaa702847a8d13b062aa488d465d0395ee8137ed9')
 
 package() {
 	install -Dm 644 emoji-test.txt "$pkgdir"/usr/share/unicode/emoji-test.txt

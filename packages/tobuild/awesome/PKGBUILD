@@ -10,7 +10,7 @@
 
 _pkgname=awesome
 pkgname=${_pkgname}
-pkgver=4.3.1613.g7ed4dd620
+pkgver=4.3.1654.g8b1f8958b
 pkgrel=1
 pkgdesc='Highly configurable framework window manager'
 arch=('i686' 'x86_64')

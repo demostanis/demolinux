@@ -41,7 +41,7 @@ precmd() {
 	fi
 
 	# beautiful prompt
-	export PROMPT=$VIRTUAL_ENV_PROMPT'%B%(!.%F{9}.%F{6})%n%b%F{white} on %B%F{5}%m%b%f'$format_elapsed$'\n''%# %b'
+	export PROMPT=$VIRTUAL_ENV_PROMPT'%B%(!.%F{9}.%F{6})%n%b%F{white} on %B%F{5}%m%b%f'$format_elapsed$'\n''%b%# '
 	# show exit code
 	export RPROMPT='%B%F{9}%(?..%?)'
 

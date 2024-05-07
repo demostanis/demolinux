@@ -372,7 +372,7 @@ return function(s)
                     {
                         widget = wibox.widget.textbox,
                         font = beautiful.base_icon_font .. " 25",
-                        forced_width = 30,
+                        forced_width = 32,
                         text = "\u{f011}"
                     },
                     widget = wibox.container.background,
@@ -398,7 +398,7 @@ return function(s)
                     end
                 },
                 widget = wibox.container.margin,
-                left = 15, right = 5, bottom = 11, top = 15,
+                left = 15, right = 7, bottom = 11, top = 15,
             },
             {
                 {

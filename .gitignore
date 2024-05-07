@@ -10,7 +10,6 @@ packages/tobuild/*/*.xpi
 !packages/tobuild/firefox-base16/*.xpi
 packages/chroot/
 packages/aurcache/
-packages/kodicache/
 packages/nvimcache/
 packages/zshcache/
 packages/db/

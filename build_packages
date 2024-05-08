@@ -7,6 +7,7 @@ erofs-utils
 git
 gptfdisk
 grub
+libxml2
 pv
 squashfs-tools
 unzip

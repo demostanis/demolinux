@@ -1,0 +1,27 @@
+From 2f48eb1c4a7cec9914ec44df4b5679a57e72edb1 Mon Sep 17 00:00:00 2001
+From: demostanis <demostanis@protonmail.com>
+Date: Wed, 8 May 2024 13:20:11 +0200
+Subject: [PATCH] Don't exit when failing to clone a repo
+
+---
+ src/operations/update.rs | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/src/operations/update.rs b/src/operations/update.rs
+index 83f59cb..11b601b 100644
+--- a/src/operations/update.rs
++++ b/src/operations/update.rs
+@@ -374,7 +374,9 @@ fn update_schemes(dir: &Path, verbose: bool) -> Result<()> {
+     }
+     for child in children {
+         // Unwrap thread result, then check git_clone return status with '?'
+-        child.join().unwrap()?;
++        if let Err(err) = child.join().unwrap() {
++            eprintln!("Failed to clone repo: {}", err);
++        }
+     }
+     // If no errors were raised, return as ok
+     Ok(())
+-- 
+2.45.0
+

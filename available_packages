@@ -20,7 +20,7 @@ xf86-video-intel
 local themix-gui-git
 local themix-plugin-base16-git
 local themix-theme-oomox-git
-aur flavours
+local flavours
 
 # Graphical apps
 local rxvt-unicode-pixbuf

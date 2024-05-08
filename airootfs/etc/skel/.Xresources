@@ -58,4 +58,7 @@ URxvt.iso14755: false
 *color13:      base06
 *color14:      base0F
 *color15:      base07
+
+urxvt*color0:  base0C
+urxvt*color10: base0C
 ! thank you fwavouws

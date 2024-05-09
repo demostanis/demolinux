@@ -1,2 +1,4 @@
 [aliases]
         mv-changes = git-mv-changes
+[init]
+        defaultBranch = master

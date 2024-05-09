@@ -117,6 +117,7 @@ sudo
 neofetch
 pacman-contrib
 python-pipx
+python-pip
 ripgrep
 websocat
 xclip

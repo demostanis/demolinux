@@ -1,36 +1,36 @@
-From 2433676cd72b44286e16166360c3474b2a093bfc Mon Sep 17 00:00:00 2001
+From 197fda32149c495fef6103847ab493973751aa27 Mon Sep 17 00:00:00 2001
 From: demostanis <demostanis@protonmail.com>
-Date: Mon, 31 Jul 2023 22:25:51 +0200
-Subject: [PATCH] patches
+Date: Thu, 9 May 2024 22:06:04 +0200
+Subject: [PATCH] Allow running without root
 
 ---
- riseup_vpn_configurator/__init__.py | 31 ++++++++++++++---------------
- 1 file changed, 15 insertions(+), 16 deletions(-)
+ riseup_vpn_configurator/__init__.py | 36 +++++++++++++++--------------
+ 1 file changed, 19 insertions(+), 17 deletions(-)
 
 diff --git a/riseup_vpn_configurator/__init__.py b/riseup_vpn_configurator/__init__.py
-index 906a037..46e3177 100644
+index 49ecaa6..742f7de 100644
 --- a/riseup_vpn_configurator/__init__.py
 +++ b/riseup_vpn_configurator/__init__.py
-@@ -26,7 +26,7 @@ FORMAT = "%(levelname)s: %(message)s"
+@@ -24,7 +24,8 @@ FORMAT = "%(levelname)s: %(message)s"
  logging.basicConfig(format=FORMAT, level=logging.INFO)
  # logging.getLogger("urllib3").setLevel(logging.WARNING)
  
 -working_dir = Path("/opt/riseup-vpn")
 +working_dir = Path("/usr/share/riseup-vpn")
- api_ca_cert_file = working_dir / Path("api-ca.pem")
++api_ca_cert_file = working_dir / Path("api-ca.pem")
  gateway_json = working_dir / Path("gateways.json")
  
-@@ -42,7 +42,8 @@ PROVIDER_API_URL = "https://riseup.net/provider.json"
+ ca_cert_file = working_dir / Path("vpn-ca.pem")
+@@ -39,6 +40,8 @@ PROVIDER_API_URL = "https://riseup.net/provider.json"
  VPN_CA_CERT_URL = "https://black.riseup.net/ca.crt"
- VPN_CLIENT_CREDENTIALS_URL = "https://api.black.riseup.net/1/cert"
+ VPN_CLIENT_CREDENTIALS_URL = "https://api.black.riseup.net/3/cert"
  
--VPN_USER = "openvpn"
 +VPN_USER = os.getlogin() if os.getuid() else "openvpn"
 +VPN_GROUP = "network"
  VERIFY_SSL_CERTIFICATE = True
  
  
-@@ -172,7 +173,7 @@ def get_excluded_routes() -> str:
+@@ -175,7 +178,7 @@ def get_excluded_routes() -> str:
      with open(config_file) as f:
          y = yaml.safe_load(f)
      out = ""
@@ -39,7 +39,7 @@ index 906a037..46e3177 100644
          try:
              net = ip_network(host, strict=False)
              out += f"route {net.network_address} {net.netmask} net_gateway\n"
-@@ -202,7 +203,7 @@ def check_config_file() -> None:
+@@ -221,7 +224,7 @@ def check_config_file() -> None:
          logging.error(f"Could not parse config file {config_file}")
          print_default_config(1)
  
@@ -48,7 +48,7 @@ index 906a037..46e3177 100644
          if c not in y.keys():
              logging.error(f"Error checking configuration file ({config_file}): '{c}' not specified")
              sys.exit(1)
-@@ -214,7 +215,7 @@ def check_config_file() -> None:
+@@ -233,7 +236,7 @@ def check_config_file() -> None:
          logging.error(f"Error checking configuration file ({config_file}): 'port' must be numeric (specified was '{y['port']}')")
          sys.exit(1)
  
@@ -57,7 +57,7 @@ index 906a037..46e3177 100644
          try:
              _ = ip_network(host, strict=False)
          except ValueError:
-@@ -271,9 +272,10 @@ keepalive 10 60
+@@ -290,9 +293,10 @@ keepalive 10 60
  nobind
  verb 3
  
@@ -68,11 +68,11 @@ index 906a037..46e3177 100644
 +up /etc/openvpn/up
 +down /etc/openvpn/down
 +down-pre
-
+ 
  remote-cert-tls server
  remote-cert-eku "TLS Web Server Authentication"
-@@ -344,10 +345,10 @@ def show_status() -> None:
-     except Exception as e:
+@@ -364,10 +368,10 @@ def show_status() -> None:
+     except requests.RequestException as e:
          logging.warning(f"Error finding your public IPv4 address: {e}")
  
 -    logging.debug("Start/Stop Riseup-VPN")
@@ -84,14 +84,16 @@ index 906a037..46e3177 100644
      logging.debug("systemctl enable openvpn-client@riseup")
      logging.debug("systemctl disable openvpn-client@riseup")
  
-@@ -361,12 +362,12 @@ def check_root_permissions() -> None:
+@@ -381,13 +385,13 @@ def check_root_permissions() -> None:
  def fix_file_permissions(file: Path) -> None:
+     vpn_user, vpn_group = get_openvpn_user_group()
      try:
-         uid = pwd.getpwnam(VPN_USER).pw_uid
--        gid = grp.getgrnam(VPN_USER).gr_gid
+-        uid = pwd.getpwnam(vpn_user).pw_uid
+-        gid = grp.getgrnam(vpn_group).gr_gid
++        uid = pwd.getpwnam(VPN_USER).pw_uid
 +        gid = grp.getgrnam(VPN_GROUP).gr_gid
      except KeyError as e:
-         logging.error(f"Could not find user/group: {e}")
+         logging.error(f"Could not find user/group: {e}. You can adjust user/group in {config_file}")
          sys.exit(1)
      os.chown(file, uid, gid)
 -    file.chmod(0o600)
@@ -99,21 +101,23 @@ index 906a037..46e3177 100644
  
  
  def print_default_config(return_code: int) -> NoReturn:
-@@ -379,11 +380,11 @@ def check_working_directory() -> None:
+@@ -400,12 +404,12 @@ def check_working_directory() -> None:
      if not working_dir.exists():
+         vpn_user, vpn_group = get_openvpn_user_group()
          try:
-             uid = pwd.getpwnam(VPN_USER).pw_uid
--            gid = grp.getgrnam(VPN_USER).gr_gid
+-            uid = pwd.getpwnam(vpn_user).pw_uid
+-            gid = grp.getgrnam(vpn_group).gr_gid
++            uid = pwd.getpwnam(VPN_USER).pw_uid
 +            gid = grp.getgrnam(VPN_GROUP).gr_gid
          except KeyError as e:
-             logging.error(f"Could not find user/group: {e}")
+             logging.error(f"Could not find user/group: {e}. You can adjust user/group in {config_file}")
              sys.exit(1)
 -        working_dir.mkdir(0o700)
 +        working_dir.mkdir(0o770)
          os.chown(working_dir, uid, gid)
  
      if not config_file.exists():
-@@ -479,8 +480,6 @@ def main() -> None:
+@@ -504,8 +508,6 @@ def main() -> None:
      elif args.default_config:
          print_default_config(0)
  
@@ -123,5 +127,5 @@ index 906a037..46e3177 100644
          uninstall()
  
 -- 
-2.41.0
+2.45.0
 

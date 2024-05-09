@@ -135,6 +135,7 @@ base
 base-devel
 systemd-resolvconf
 local python-ping3 # riseup-vpn dependency
+local python-icmplib # riseup-vpn dependency
 local riseup-vpn
 local openvpn-update-systemd-resolved
 aur clipster-git

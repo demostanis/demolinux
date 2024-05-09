@@ -1,9 +1,9 @@
 # Maintainer: kmille github@androidloves.me
 
-_pkgname=riseup-vpn-configurator
 pkgname=riseup-vpn
-pkgver=1.0.1
-pkgrel=11
+_pkgname=riseup-vpn-configurator
+pkgver=1.2.0
+pkgrel=1
 pkgdesc="a simple command line tool to get RiseupVPN up and running"
 arch=('any')
 url="https://github.com/kmille/riseup-vpn-configurator"
@@ -13,20 +13,14 @@ makedepends=(python-poetry-core python-build python-installer python-wheel)
 depends=(openvpn python python-jinja python-requests python-yaml python-pyasn1 python-pyasn1-modules python-psutil python-ping3)
 source=(https://github.com/kmille/riseup-vpn-configurator/archive/refs/tags/v$pkgver.tar.gz
 	riseup-vpn.yaml
-	patches.patch
-	patches2.patch
-        patches3.patch)
-sha256sums=('fe3b4317621a482254fb6cbf7b2c9018abad5636b779eaef984fc6bdd97df958'
+        0001-Allow-running-without-root.patch)
+sha256sums=('69f12dd60ca8247553e4b0bbdb28b6f14a56aa8494cfe9eb89dd665c2ab3ae77'
             '48a75389552766c5573d34354db5970e402d2012c2581cdfbdd0a813b57142f7'
-            '9cf557e08b183842833e6c5a5dbef2b82e68b0c60b25fab3d76ae2b2d93245cf'
-            '7a611a2fc5b8d659d0aaa2c16a25769a485653c30df5b6419a19942da39a4293'
-            '253ee4efc9f528f006709451495e5ad5f7b38397428933e8cb9cce32d392f312')
+            '2bdf9fdb5af3a27107f4e1d7322f6d6521baca5775b49f7e8deaa384fb1b9530')
 
 prepare() {
   cd "$srcdir/$_pkgname-$pkgver"
-  patch -p1 < ../patches.patch
-  patch -p1 < ../patches2.patch
-  patch -p1 < ../patches3.patch
+  patch -p1 < ../0001-Allow-running-without-root.patch
 }
 
 build() {

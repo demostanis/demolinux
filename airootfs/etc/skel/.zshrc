@@ -40,6 +40,10 @@ precmd() {
 		fi
 	fi
 
+	if [ -n "$VIRTUAL_ENV" ]; then
+		VIRTUAL_ENV_PROMPT='('${VIRTUAL_ENV##*/}') '
+	fi
+
 	# beautiful prompt
 	export PROMPT=$VIRTUAL_ENV_PROMPT'%B%(!.%F{9}.%F{6})%n%b%F{white} on %B%F{5}%m%b%f'$format_elapsed$'\n''%b%# '
 	# show exit code

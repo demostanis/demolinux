@@ -1,5 +1,4 @@
-pkgbase='python-icmplib'
-pkgname=('python-icmplib')
+pkgname='python-icmplib'
 _module='icmplib'
 pkgver='3.0.4'
 pkgrel=1

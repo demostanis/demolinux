@@ -29,6 +29,7 @@ case $1 in
 				current="$(dirname "$current")"
 			done
 
+			echo Adding file $file to persistfs...
 			cp -a "$file" /run/archiso/persistfs/upperdir"$parent/$(basename "$file")"
 		done
 		exit $statuscode
@@ -52,7 +53,27 @@ case $1 in
 		exit $statuscode
 		;;
 	pkg)
-		pacman -Ql $2 | cut -d\  -f2 | grep -v /$ | xargs "$0" add 2>/dev/null
+		prog="$0"
+		add_pkg_files() {
+			pkg="$1"
+			echo Adding $pkg to persistfs...
+
+			pacman -Ql "$pkg" | \
+				cut -d\  -f2 | \
+				grep -v /$ | \
+				xargs "$prog" add 2>/dev/null
+			echo /var/lib/pacman/local/$pkg-[0-9]*/{desc,files,mtree} | \
+				xargs "$prog" add 2>/dev/null
+
+			for dep in $(expac %D "$pkg"); do
+				# if it's neither already in the persistfs nor in the airootfs...
+				if ! compgen -G /run/archiso/persistfs/upperdir/var/lib/pacman/local/$dep-[0-9]* >/dev/null && \
+					! compgen -G /run/archiso/airootfs/var/lib/pacman/local/$dep-[0-9]* >/dev/null; then
+					add_pkg_files "$dep"
+				fi
+			done
+		}
+		add_pkg_files "$2"
 		;;
 	ipkg)
 		pacman -S $2 && "$0" pkg "$2"

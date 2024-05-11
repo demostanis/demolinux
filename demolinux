@@ -37,11 +37,20 @@ run(){
 	without_root ./bin/run_archiso -i out/$(ls -t out/ | head -1)
 }
 
+prog="$0"
 flash(){
 	elevate
 	device=${1:?Missing device}
-	pv out/$(ls -t out/ | head -1) > "$device"
-	sync
+	image=$(ls -t out/ | head -1)
+	cmp -jfslkdjflfskddddd >/dev/null 2>&1 # ensure cmp is in the kernel cache
+										   # if we're overwritting the device
+										   # demolinux runs on
+	pv out/"$image" > "$device"
+	sync; sync; sync # just to be sure
+	if ! cmp -n `stat -c %s out/"$image"` out/"$image" "$device"; then
+		echo Image has been incorrectly copied, retrying...
+		"$prog" "$0" "$@"
+	fi
 }
 
 without_root(){

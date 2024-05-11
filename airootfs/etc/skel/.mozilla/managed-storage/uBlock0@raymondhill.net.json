@@ -1,0 +1,39 @@
+{
+	"name": "uBlock0@raymondhill.net",
+	"description": "additional filter lists",
+	"type": "storage",
+	"data": {
+		"toOverwrite": {
+			"filterLists": [
+				"adguard-cookies",
+				"adguard-generic",
+				"adguard-mobile",
+				"adguard-mobile-app-banners",
+				"adguard-other-annoyances",
+				"adguard-popup-overlays",
+				"adguard-social",
+				"adguard-spyware",
+				"adguard-spyware-url",
+				"curben-phishing",
+				"easylist",
+				"easylist-annoyances",
+				"easylist-chat",
+				"easylist-newsletters",
+				"easylist-notifications",
+				"easyprivacy",
+				"fanboy-cookiemonster",
+				"fanboy-social",
+				"fanboy-thirdparty_social",
+				"ublock-annoyances",
+				"ublock-badlists",
+				"ublock-badware",
+				"ublock-cookies-adguard",
+				"ublock-cookies-easylist",
+				"ublock-filters",
+				"ublock-privacy",
+				"ublock-quick-fixes",
+				"ublock-unbreak"
+			]
+		}
+	}
+}

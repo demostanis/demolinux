@@ -55,7 +55,7 @@ case $1 in
 	pkg)
 		prog="$0"
 		add_pkg_files() {
-			pkg="$1"
+			pkg="${1%%=*}"
 			echo Adding $pkg to persistfs...
 
 			pacman -Ql "$pkg" | \

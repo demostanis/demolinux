@@ -206,9 +206,11 @@ fun update_status_callback (text) {
   global.status_box.y = Window.GetY() + Window.GetHeight() * 0.80 - global.status_box.GetHeight() / 2;
   global.status_box.sprite.SetPosition(global.status_box.x, global.status_box.y, 0);
 }
-update_status_callback("Welcome to demolinux!");
 
 Plymouth.SetRefreshRate(10);
-Plymouth.SetDisplayMessageFunction (display_message_callback);
-Plymouth.SetUpdateStatusFunction (update_status_callback);
+if (Plymouth.GetMode() == "boot") {
+  update_status_callback("Welcome to demolinux!");
+  Plymouth.SetDisplayMessageFunction (display_message_callback);
+  Plymouth.SetUpdateStatusFunction (update_status_callback);
+}
 Plymouth.SetHideMessageFunction (hide_message_callback);

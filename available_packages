@@ -39,7 +39,7 @@ gimp
 neovim
 xterm
 cmus
-aur stremio
+local stremio
 
 # Browser & addons
 firefox

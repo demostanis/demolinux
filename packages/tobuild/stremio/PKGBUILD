@@ -3,7 +3,7 @@
 
 pkgname=stremio
 pkgver=4.4.168
-pkgrel=2
+pkgrel=6
 pkgdesc='A one-stop hub for video content aggregation (Movies, TV shows, series, live television or web channels)'
 arch=('x86_64')
 url='https://www.stremio.com/'
@@ -11,21 +11,21 @@ license=('GPL-3.0-only')
 depends=('mpv' 'nodejs' 'openssl' 'qt5-base' 'qt5-declarative' 'qt5-webengine'
          'qt5-quickcontrols' 'qt5-quickcontrols2' 'qt5-translations' 'qt5-webchannel'
          'hicolor-icon-theme')
-makedepends=('git' 'cmake' 'librsvg' 'asar')
+makedepends=('git' 'cmake' 'librsvg')
 source=("git+https://github.com/Stremio/stremio-shell.git#tag=v${pkgver}"
         'git+https://github.com/Ivshti/libmpv.git'
         'git+https://github.com/itay-grudev/SingleApplication.git'
         'git+https://github.com/Ivshti/razerchroma.git'
         "stremio-${pkgver}-server.js"::"https://dl.strem.io/four/v${pkgver}/server.js"
-        "stremio-${pkgver}-stremio.asar"::"https://dl.strem.io/four/v${pkgver}/stremio.asar"
-        '010-stremio-do-not-download-server-js.patch')
+        '010-stremio-do-not-download-server-js.patch'
+        '0001-Download-files-with-curl.patch')
 sha256sums=('30b65909f100ed31b406280077b54fed9a50602dec28c540c6c0dc0c02b5597e'
             'SKIP'
             'SKIP'
             'SKIP'
             '683de7890a60ab512264b69c9c41609aa515f9b738aef18df4803ef53e17175d'
-            'de34860e99a78f37e8c5568e56e605bc04e1853d48d2102421fcf2331a42d207'
-            'b5eff88b30d8c6030e36ca4949ebf6ff9515efbedc0b9bc748110cd1fbc0671a')
+            'b5eff88b30d8c6030e36ca4949ebf6ff9515efbedc0b9bc748110cd1fbc0671a'
+            '452e946e344540330574691d34ef41b32906f42d57220ba57749e122626e774e')
 
 prepare() {
     git -C stremio-shell submodule init
@@ -34,19 +34,14 @@ prepare() {
     git -C stremio-shell config --local submodule.deps/chroma.url "${srcdir}/razerchroma"
     git -C stremio-shell -c protocol.file.allow='always' submodule update
     
-    # download videos with curl instead of opening firefox
-    asar extract "stremio-${pkgver}-stremio.asar" asar.tmp
-    sed -i 's#,e.openExternal(t)#,spawn("curl",[t,"-LJO","--create-dirs","--output-dir",require("os").homedir()+"/movies"])#' asar.tmp/blob.js
-    asar pack asar.tmp "stremio-${pkgver}-stremio.asar"
-    rm -rf asar.tmp
-
     # install to /usr/share instead of /opt
     sed -i 's,/opt/stremio,/usr/share/stremio,' stremio-shell/release.makefile
     sed -i 's,opt/stremio,usr/share/stremio,' stremio-shell/CMakeLists.txt
 
     # do not download server.js during 'make'
-    ln -s "../stremio-${pkgver}-server.js" stremio-shell/server.js
+    ln -sf "../stremio-${pkgver}-server.js" stremio-shell/server.js
     patch -d stremio-shell -Np1 -i "${srcdir}/010-stremio-do-not-download-server-js.patch"
+    patch -d stremio-shell -Np1 -i "${srcdir}/0001-Download-files-with-curl.patch"
 }
 
 build() {
@@ -58,7 +53,6 @@ package() {
     
     # streaming server files
     install -D -m644 "stremio-${pkgver}-server.js"    "${pkgdir}/usr/share/stremio/server.js"
-    install -D -m644 "stremio-${pkgver}-stremio.asar" "${pkgdir}/usr/share/stremio/stremio.asar"
     
     # binary and desktop file
     mkdir -p "${pkgdir}/usr/"{bin,share/applications}

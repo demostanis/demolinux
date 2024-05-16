@@ -1,0 +1,90 @@
+From 44c3a2bcc784687717c1914c8cc4e7fd6fc607a9 Mon Sep 17 00:00:00 2001
+From: demostanis <demostanis@protonmail.com>
+Date: Fri, 17 May 2024 00:38:21 +0200
+Subject: [PATCH] Download files with curl
+
+---
+ main.qml           | 26 +++++++++++++++++++++++++-
+ stremioprocess.cpp |  4 ++++
+ stremioprocess.h   |  2 ++
+ 3 files changed, 31 insertions(+), 1 deletion(-)
+
+diff --git a/main.qml b/main.qml
+index 8954785..81699e6 100644
+--- a/main.qml
++++ b/main.qml
+@@ -82,7 +82,17 @@ ApplicationWindow {
+             if (ev === "control-event") wakeupEvent()
+             if (ev === "wakeup") wakeupEvent()
+             if (ev === "set-window-mode") onWindowMode(args)
+-            if (ev === "open-external") Qt.openUrlExternally(args)
++            if (ev === "open-external") {
++				if (args.includes("download=1"))
++					downloader.start("curl", [
++						"-LJO",
++						"--create-dirs",
++						"--output-dir", downloader.home() + "/movies",
++						args,
++					], "started downloader at ")
++				else
++					Qt.openUrlExternally(args)
++			}
+             if (ev === "win-focus" && !root.visible) {
+                 showWindow();
+             }
+@@ -294,6 +304,20 @@ ApplicationWindow {
+         onTriggered: function () { root.launchServer() }
+     }
+ 
++    Process {
++        id: downloader
++        property string errMessage:
++            "Error while downloading the file :("
++
++		onFinished: function() {
++			console.log("done")
++		}
++
++        onErrorThrown: function (error) {
++			console.error(error)
++		}
++	}
++
+     //
+     // Player
+     //
+diff --git a/stremioprocess.cpp b/stremioprocess.cpp
+index 45386e2..5ad0eb0 100644
+--- a/stremioprocess.cpp
++++ b/stremioprocess.cpp
+@@ -116,3 +116,7 @@ void Process::checkServerAddressMessage(QByteArray message) {
+         //this->setProcessChannelMode(QProcess::ForwardedChannels);
+     }
+ }
++
++QString Process::home() {
++    return QDir::homePath();
++}
+diff --git a/stremioprocess.h b/stremioprocess.h
+index f0b3544..24fb6f3 100644
+--- a/stremioprocess.h
++++ b/stremioprocess.h
+@@ -4,6 +4,7 @@
+ #include <QVariant>
+ #include <QStandardPaths>
+ #include <QObject>
++#include <QDir>
+ #include <iostream>
+ 
+ class Process : public QProcess {
+@@ -12,6 +13,7 @@ class Process : public QProcess {
+ public:
+     Process(QObject *parent = 0) : QProcess(parent) { }
+     Q_INVOKABLE void start(const QString &program, const QVariantList &arguments, const QString mPattern);
++    Q_INVOKABLE QString home();
+ 
+ private:
+     void checkServerAddressMessage(QByteArray message);
+-- 
+2.45.0
+

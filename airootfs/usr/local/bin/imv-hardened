@@ -1,5 +1,9 @@
 #!/bin/sh
 
+# we assume the image we want to look at is the first argument
+file="$(realpath -- "${@: -1}")"
+args="${@:1: -1}"
+
 exec bwrap \
 	`# For dynamically linked executables` \
 	--ro-bind /usr/bin /usr/bin --symlink /usr/bin /bin \
@@ -16,7 +20,7 @@ exec bwrap \
 	--ro-bind ~/.Xauthority ~/.Xauthority \
 	--bind /tmp/.X11-unix/X${DISPLAY##:} /tmp/.X11-unix/X${DISPLAY##:} \
 	`# Media to display` \
-	--ro-bind-try "${@: -1}" "$(realpath -- "${@: -1}")" \
+	--ro-bind "$file" "$file" \
 	--unshare-all --new-session \
-	/usr/bin/imv-x11 "$(realpath -- "${@: -1}")"
+	/usr/bin/imv-x11 "$args" "$file"
 

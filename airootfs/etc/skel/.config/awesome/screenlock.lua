@@ -113,7 +113,7 @@ return function(s)
             elseif #key == 1 then
                 if mods[1] == "Shift" or mods[1] == "Lock" then
                     input = input .. (key:upper())
-                elseif #mods == 0 then
+                elseif #mods == 0 or mods[1] == "Mod2" then
                     input = input .. key
                 end
             end

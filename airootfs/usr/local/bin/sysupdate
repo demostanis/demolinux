@@ -32,11 +32,9 @@ fi
 if [ ! -e /run/archiso/airootfs/etc/pacman.d/gnupg ]; then
 	cp -r /etc/pacman.d/gnupg /run/archiso/airootfs/etc/pacman.d/gnupg
 fi
-if [ ! -e /run/archiso/airootfs/etc/pacman.d/mirrorlist ]; then
-	cp -r /etc/pacman.d/mirrorlist /run/archiso/airootfs/etc/pacman.d/mirrorlist
-fi
-if ! ( arch-chroot /run/archiso/airootfs pacman -Sy archlinux-keyring &&
-	arch-chroot /run/archiso/airootfs pacman -Syu ); then
+cp -r /etc/pacman.d/mirrorlist /run/archiso/airootfs/etc/pacman.d/mirrorlist
+if ! ( arch-chroot /run/archiso/airootfs pacman --noconfirm -Sy archlinux-keyring && \
+	arch-chroot /run/archiso/airootfs pacman --noconfirm -Syu ); then
 	echo "Failed to update." >&2
 	exit 1
 fi

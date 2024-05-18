@@ -30,7 +30,7 @@ case $1 in
 			done
 
 			echo Adding file $file to persistfs...
-			cp -a "$file" /run/archiso/persistfs/upperdir"$parent/$(basename "$file")"
+			cp -Trfa "$file" /run/archiso/persistfs/upperdir"$parent/$(basename "$file")"
 		done
 		exit $statuscode
 		;;

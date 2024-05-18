@@ -1,0 +1,2 @@
+#!/bin/sh
+awesome-client 'hide_screenlock()'

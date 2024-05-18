@@ -3,6 +3,7 @@ local password_set = false
 local invalid_password = false
 local first_try_input = ""
 local second_try = false
+local grabber
 
 local function update_text()
     local text = "Please set your temporary password:"
@@ -26,6 +27,11 @@ end
 
 local popup = nil
 local text = update_text()
+
+function hide_screenlock()
+    popup.visible = false
+    awful.keygrabber.stop(grabber)
+end
 
 return function(s)
     -- TODO: maybe we should spawn the popup on every screen?
@@ -75,7 +81,6 @@ return function(s)
 
     function read_input()
         local input = ""
-        local grabber
         grabber = awful.keygrabber.run(function(mods, key, status)
             if status == "release" then return end
 
@@ -84,8 +89,7 @@ return function(s)
             elseif key == "Return" then
                 if password_set then
                     if input == password then
-                        popup.visible = false
-                        awful.keygrabber.stop(grabber)
+                        hide_screenlock()
                     else
                         invalid_password = true
                     end
@@ -126,5 +130,7 @@ return function(s)
                 hidden_password
         end)
     end
+
+    hide_screenlock()
     read_input()
 end

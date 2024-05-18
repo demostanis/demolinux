@@ -281,10 +281,10 @@ for linux in ${reverse_sorted_list}; do
   fi
 
   linux_entry "${OS}" "${version}" advanced \
-              "${GRUB_CMDLINE_LINUX} ${GRUB_CMDLINE_LINUX_DEFAULT}"
+              "${GRUB_CMDLINE_LINUX} ${GRUB_CMDLINE_LINUX_DEFAULT} copytoram=n"
 
-  linux_entry "${OS} (copytoram=n)" "${version}" advanced \
-    "${GRUB_CMDLINE_LINUX} ${GRUB_CMDLINE_LINUX_DEFAULT} copytoram=n"
+  linux_entry "${OS} (copytoram=y)" "${version}" advanced \
+    "${GRUB_CMDLINE_LINUX} ${GRUB_CMDLINE_LINUX_DEFAULT} copytoram=y"
 
   if test -e "${dirname}/initramfs-${version}-fallback.img" ; then
     initrd="${initrd_early} initramfs-${version}-fallback.img"

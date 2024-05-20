@@ -124,6 +124,9 @@ zstyle ':completion:*:manuals'    separate-sections true
 zstyle ':completion:*:manuals.*'  insert-sections   true
 zstyle ':completion:*:man:*'      menu yes select
 
+# correct xx to xx [nyae]?
+setopt correct
+
 COMP_CACHE_DIR=${COMP_CACHE_DIR:-${ZDOTDIR:-$HOME}/.cache}
 if [[ ! -d ${COMP_CACHE_DIR} ]]; then
 	command mkdir -p "${COMP_CACHE_DIR}"

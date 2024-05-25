@@ -53,6 +53,8 @@ case $1 in
 		exit $statuscode
 		;;
 	pkg)
+		[ -z "$2" ] && echo Missing package to install && exit 1
+
 		prog="$0"
 		add_pkg_files() {
 			pkg="${1%%=*}"
@@ -76,13 +78,38 @@ case $1 in
 		add_pkg_files "$2"
 		;;
 	ipkg)
-		pacman -S $2 && "$0" pkg "$2"
+		[ -z "$2" ] && echo Missing package to install && exit 1
+
+		pacman -S "$2" && "$0" pkg "$2"
+		;;
+	diff)
+		[ -z "$2" ] && echo Missing file to diff && exit 1
+		[ ! -e /run/archiso/airootfs/"$2" ] && echo Missing file does not exist && exit 1
+		[ ! -e /run/archiso/persistfs/upperdir/"$2" ] && echo Missing file not in persistfs && exit 1
+
+		diff -u /run/archiso/airootfs/"$2" /run/archiso/persistfs/upperdir/"$2" | bat --file-name "$2"
 		;;
 	list)
-		cat /run/archiso/persistfs/upperdir/index
+		if [ "$2" = --all ]; then
+			cat /run/archiso/persistfs/upperdir/index
+		else
+			 cat /run/archiso/persistfs/upperdir/index | xargs pacman -Qo 2>&1 | grep -v /var/lib/pacman/local | grep 'error: No package owns' | sed 's/.*No package owns \(.*\)/\1/' | sort -u
+		fi
 		;;
 	*)
-		echo Unknown subcommand >&2
+		echo usage: "$0 [add|remove|pkg|ipkg|list] [--all]" >&2
+		echo
+		echo \ add: add a file to persistfs.
+		echo
+		echo \ remove: remove a file from persistfs.
+		echo
+		echo \ pkg: copy an existing pacman package to persistfs.
+		echo
+		echo \ ipkg: install a package with pacman -S and copy it to persistfs.
+		echo
+		echo \ diff: show a diff between a file in the airootfs and in the persistfs.
+		echo
+		echo \ list: list files in the persistfs. if --all is specified, files from packages are also listed.
 		exit 1
 		;;
 esac

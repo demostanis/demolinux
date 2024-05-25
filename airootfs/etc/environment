@@ -3,5 +3,6 @@
 #
 # Syntax: simple "KEY=VAL" pairs on separate lines
 #
+PAGER=less
 EDITOR=nvim
 QT_QPA_PLATFORMTHEME=qt5ct

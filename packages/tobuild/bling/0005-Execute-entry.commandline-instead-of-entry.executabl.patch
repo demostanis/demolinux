@@ -1,0 +1,37 @@
+From 4738d63a05df4385912173637d1fd7c59fdf13bc Mon Sep 17 00:00:00 2001
+From: demostanis <demostanis@protonmail.com>
+Date: Sun, 26 May 2024 20:41:22 +0200
+Subject: [PATCH] Execute entry.commandline instead of entry.executable
+
+---
+ widget/app_launcher/init.lua | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/widget/app_launcher/init.lua b/widget/app_launcher/init.lua
+index 3a52eab..65983d1 100755
+--- a/widget/app_launcher/init.lua
++++ b/widget/app_launcher/init.lua
+@@ -194,16 +194,16 @@ local function create_app_widget(self, entry)
+         if entry.terminal == true then
+             if self.terminal ~= nil then
+                 local terminal_command = terminal_commands_lookup[self.terminal] or self.terminal
+-                awful.spawn(terminal_command .. " " .. entry.executable)
++                awful.spawn(terminal_command .. " " .. entry.commandline)
+             else
+-                awful.spawn.easy_async("gtk-launch " .. entry.executable, function(stdout, stderr)
++                awful.spawn.easy_async("gtk-launch " .. entry.commandline, function(stdout, stderr)
+                     if stderr then
+-                        awful.spawn(entry.executable)
++                        awful.spawn(entry.commandline)
+                     end
+                 end)
+             end
+         else
+-            awful.spawn(entry.executable)
++            awful.spawn(entry.commandline)
+         end
+ 
+         if self.hide_on_launch then
+-- 
+2.45.1
+

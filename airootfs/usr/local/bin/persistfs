@@ -39,6 +39,10 @@ case $1 in
 		statuscode=0
 
 		for file in ${@:2}; do
+			if [ ! "${file:0:1}" = / ]; then
+				file="$(pwd)/$file"
+			fi
+
 			if [ ! -e /run/archiso/persistfs/upperdir/"$file" ]; then
 				echo File does not exist: $file >&2
 				statuscode=1

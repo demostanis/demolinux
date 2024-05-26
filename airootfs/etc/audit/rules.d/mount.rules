@@ -1,0 +1,2 @@
+-a always,exit -F arch=b64 -S mount_setattr
+-a always,exit -F arch=b32 -S mount_setattr

@@ -1,0 +1,2 @@
+-a always,exit -F arch=b64 -S execve -F path=/usr/bin/sudo
+-a always,exit -F arch=b32 -S execve -F path=/usr/bin/sudo

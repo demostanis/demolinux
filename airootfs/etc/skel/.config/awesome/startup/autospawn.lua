@@ -16,4 +16,6 @@ gears.timer{
     single_shot = true
 }:start()
 
+autospawn("notifitor")
+
 -- vim:set et sw=4 ts=4:

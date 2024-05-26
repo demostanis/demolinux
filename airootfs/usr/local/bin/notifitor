@@ -1,0 +1,4 @@
+#!/bin/sh
+
+sudo stdbuf -oL monitor | \
+	xargs -d\\n -n1 notify-send -u CRITICAL -t 0 auditd -i warning

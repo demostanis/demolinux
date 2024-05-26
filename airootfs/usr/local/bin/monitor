@@ -1,0 +1,33 @@
+#!/bin/sh
+
+tail -n0 -f /var/log/audit/audit.log |\
+awk '
+@load "filefuncs"
+/persistfs/&&/type=PATH/&&!/nametype=PARENT/&&
+match($4,/name="\/run\/archiso\/persistfs\/upperdir\/?(\/.*)"/,f){
+	if(f[1]!="/index") {
+		rc=stat(f[1],fstat)
+		if(rc>=0&&fstat["type"]!="directory"&&
+			match($16,/OUID="(.*)"/,u)){
+			printf "User %s added file %s to persistfs\n", u[1], f[1]
+		}
+	}
+}
+(/syscall=442/||/syscall=1073742266/)&&/exit=0/{ # 32/64bit mount_setattr
+	cmd="mount"
+	while ((cmd|getline line)>0){
+		if(match(line, /on \/run\/archiso\/(bootmnt|airootfs) type (vfat|btrfs) \(rw/, m)){
+			printf "%s was remounted in read-write mode\n", m[1]
+		}
+	}
+	close(cmd)
+}
+/type=EXECVE/&&/a0="sudo"/{
+	if(patsplit($0,c,/a[0-9]+="([^"]+)"/)){
+		for(i in c){
+			if(match(c[i],/="([^"]+)"/,t))
+			printf "%s ", t[1]
+		}
+	}
+	print "was executed as root"
+}'

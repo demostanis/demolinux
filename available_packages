@@ -118,6 +118,7 @@ neofetch
 pacman-contrib
 python-pipx
 python-pip
+translate-shell
 ripgrep
 websocat
 xclip

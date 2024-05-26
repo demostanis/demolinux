@@ -139,6 +139,7 @@ local python-icmplib # riseup-vpn dependency
 local riseup-vpn
 aur namespaced-openvpn-git
 local openvpn-update-systemd-resolved
+python-websockets # for wa
 aur clipster-git
 aur localepurge
 ufw

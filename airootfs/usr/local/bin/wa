@@ -1,11 +1,68 @@
-#!/bin/sh
+#!/usr/bin/env python3
 
-f=$(mktemp)
-trap 'rm $f && kill $p 2>/dev/null' EXIT
-( (websocat -n wss://www.wolframalpha.com/n/v1/api/fetcher/results <<DATA 2>/dev/null | grep '"type":"pods"' | grep -v asyncPod.jsp | head
-{"type":"newQuery","locationId":"xulcz","language":"en","category":"results","input":"$@"}
-DATA
-) > $f )& p=$!
-tail -f $f | sed q | \
-  jq -r '.pods[] | select(.id == "Result").subpods[].plaintext'
+from websockets.sync.client import connect
+from websockets.exceptions import ConnectionClosedError
+import subprocess
+import base64
+import json
+import sys
+import os
 
+# we have to os._exit() everywhere cuz Python sucks.
+
+RENDER_IMAGES = False
+
+input = " ".join(sys.argv[1:])
+
+if input == "":
+    print("Usage: wa [input...]", file=sys.stderr)
+    print(" Prompts WolframAlpha about a subject", file=sys.stderr)
+    print("Examples:", file=sys.stderr)
+    print(" wa weight of a cat", file=sys.stderr)
+    print(" wa capital of pakistan", file=sys.stderr)
+    os._exit(2)
+
+def print_result(pod):
+    any = False
+    for subpod in pod["subpods"]:
+        if "img" in subpod and RENDER_IMAGES:
+            p = subprocess.Popen(["chafa", "-"], stdin=subprocess.PIPE)
+            p.communicate(base64.b64decode(subpod["img"]["data"]))
+            any = True
+        if "plaintext" in subpod:
+            print(subpod["plaintext"])
+            any = True
+    return any
+
+def main():
+    with connect("wss://www.wolframalpha.com/n/v1/api/fetcher/results") as c:
+        try:
+            c.send(json.dumps(dict(
+                type="newQuery",
+                locationId="xulcz",
+                language="en",
+                category="results",
+                input=input
+            )))
+
+            while msg := c.recv():
+                data = json.loads(msg)
+                if data["type"] == "errorCode":
+                    print("WolframAlpha returned an error", file=sys.stderr)
+                    os._exit(1)
+                elif data["type"] == "pods":
+                    any = False
+                    for pod in data["pods"]:
+                        if "subpods" in pod and pod["id"] != "Input":
+                            any = print_result(pod)
+                    if not any:
+                        print("Nothing to render", file=sys.stderr)
+                    os._exit(int(not any))
+        except ConnectionClosedError:
+            print("WebSocket closed before receiving response", file=sys.stderr)
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except KeyboardInterrupt:
+        pass

@@ -8,7 +8,7 @@
 
 namespace=stremio-$$
 
-sudo namespaced-openvpn --namespace $namespace \
+namespaced-openvpn --namespace $namespace \
 	--config =(
 	# do not run up and down scripts (which are
 	# systemd-resolved/ufw related)
@@ -22,11 +22,11 @@ while :; do
 	sleep 0.5
 done
 
-sudo bwrap \
+bwrap \
 	--dev-bind / / `# no real sandboxing here` \
 	--bind /dev/null /run/user/1000/bus \
 	--bind /run/systemd/resolve/stub-resolv.conf \
 		   =(echo nameserver 8.8.8.8) \
 	ip netns exec $namespace \
-	sudo -u $USER stremio
+	sudo -u ${SUDO_USER:-demostanis} stremio
 

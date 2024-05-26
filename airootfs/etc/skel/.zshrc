@@ -17,7 +17,9 @@ export SAVEHIST=10000
 
 preexec() {
 	# set window title
-	1="$(sed s/%/%%/g<<<"$1")"
+	1="$(sed 's/%/%%/g;s/\\//g'<<<"$1")"
+	1="$(tr \\n \ <<<"$1")"
+	1="$(tr -d \\t <<<"$1")"
 	printf "\x1b]0;$1\a"
 
 	# reset cursor

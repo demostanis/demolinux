@@ -124,6 +124,7 @@ websocat
 xclip
 yt-dlp
 aur paru
+openbsd-netcat
 tmux
 
 # Development

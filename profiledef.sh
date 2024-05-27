@@ -17,9 +17,8 @@ file_permissions=(
   ["/etc/openvpn/up"]="0:0:+x"
   ["/etc/openvpn/down"]="0:0:+x"
 
-  ["/etc/skel/.local/bin/xterm"]="0:0:+x"
-  ["/etc/skel/.local/bin/picom-wrapper"]="0:0:+x"
+  ["/usr/lib/xrandr.sh"]="0:0:+x"
 )
-for file in $(find airootfs/usr/local/bin -type f); do
+for file in $(find airootfs/usr/local/bin airootfs/etc/skel/.local/bin -type f); do
   file_permissions+=( ["${file##airootfs}"]="0:0:755" )
 done

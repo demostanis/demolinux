@@ -20,7 +20,7 @@ function tpopup(text)
 end
 
 function autospawn(command)
-    awful.spawn.easy_async(command, function(out, err, reason, code)
+    awful.spawn.easy_async_with_shell(command, function(out, err, reason, code)
         if code ~= 0 then
             gears.timer{
                 timeout = 1,

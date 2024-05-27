@@ -1,0 +1,12 @@
+[Unit]
+Description=Install nix channels
+Requires=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/nix-channel --add https://nixos.org/channels/nixos-unstable nixpkgs
+ExecStart=/usr/bin/nix-channel --update
+
+[Install]
+WantedBy=multi-user.target

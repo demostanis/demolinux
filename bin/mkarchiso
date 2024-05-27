@@ -2166,7 +2166,7 @@ _finalize_disk_image() {
     _msg_info "Moving disk image to ${out_dir}/$image_name..."
     local image_name="${iso_name}-${iso_version}-${arch}.img"
     mkdir -p "${out_dir}"
-    cp "${work_dir}/disk.img" "${out_dir}/$image_name"
+    mv "${work_dir}/disk.img" "${out_dir}/$image_name"
     local user=${SUDO_USER:-1000}
     chown $user:$user "${out_dir}/$image_name"
     _msg_info "Done!"

@@ -88,10 +88,16 @@ case $1 in
 		;;
 	diff)
 		[ -z "$2" ] && echo Missing file to diff && exit 1
-		[ ! -e /run/archiso/airootfs/"$2" ] && echo Missing file does not exist && exit 1
-		[ ! -e /run/archiso/persistfs/upperdir/"$2" ] && echo Missing file not in persistfs && exit 1
 
-		diff -u /run/archiso/airootfs/"$2" /run/archiso/persistfs/upperdir/"$2" | bat --file-name "$2"
+		file="$2"
+		if [ ! "${file:0:1}" = / ]; then
+			file="$(pwd)/$file"
+		fi
+
+		[ ! -e /run/archiso/airootfs/"$file" ] && echo File does not exist && exit 1
+		[ ! -e /run/archiso/persistfs/upperdir/"$file" ] && echo File not in persistfs && exit 1
+
+		diff -u /run/archiso/airootfs/"$file" /run/archiso/persistfs/upperdir/"$file" | bat --file-name "$file"
 		;;
 	list)
 		if [ "$2" = --all ]; then

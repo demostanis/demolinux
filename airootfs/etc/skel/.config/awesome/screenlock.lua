@@ -29,11 +29,22 @@ local popup = nil
 local text = update_text()
 
 function hide_screenlock()
-    popup.visible = false
-    awful.keygrabber.stop(grabber)
+    if popup then
+        popup.visible = false
+        popup.widget:get_children_by_id("hidden-password")[1].text =
+            ""
+    end
+    if grabber then
+        awful.keygrabber.stop(grabber)
+    end
+    naughty.resume()
 end
 
 return function(s)
+    hide_screenlock()
+
+    naughty.suspend()
+
     -- TODO: maybe we should spawn the popup on every screen?
     s = s or mouse.screen
     if not popup then
@@ -130,7 +141,5 @@ return function(s)
                 hidden_password
         end)
     end
-
-    hide_screenlock()
     read_input()
 end

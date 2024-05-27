@@ -1,7 +1,7 @@
 #!/bin/zsh
 
 # we assume the video we want to play is the last argument
-file="$(realpath -- "${@: -1}")"
+file="${@: -1}"
 args="${@:1: -1}"
 
 exec bwrap \
@@ -19,7 +19,7 @@ exec bwrap \
 	`# PulseAudio` \
 	--tmpfs /run --ro-bind /run/user/"$(id -u)"/pulse /run/user/"$(id -u)"/pulse \
 	`# Media to play` \
-	--ro-bind "$file" "$file" \
+	--ro-bind-try "$file" "$(realpath "$file")" \
 	--unshare-net --new-session \
-	/usr/bin/mpv "$args" "$file"
+	/usr/bin/mpv $args "$file"
 

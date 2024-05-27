@@ -27,7 +27,7 @@ rebuild_schemes(){
 	XDG_CONFIG_HOME=$PWD without_root flavours -c flavours/flavours.conf apply ${1:-mellow-purple} ||\
 		([ ! "$2" = second_try ] &&
 			(echo Fetching schemes and templates...
-			without_root flavours update all >/dev/null 2>&1
+			without_root flavours update all # >/dev/null 2>&1
 			rebuild_schemes "$1" second_try))
 }
 

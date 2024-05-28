@@ -373,14 +373,11 @@ _make_chroot() {
         mypkgver=${mypkgver##pkgver=}
         mypkgrel=$(grep pkgrel= PKGBUILD)
         mypkgrel=${mypkgrel##pkgrel=}
-        if ! tar tf "${profile}/packages/db/packages.db.tar.gz" 2>/dev/null | grep "${pkgdir##*/}-$mypkgver-$mypkgrel" >/dev/null 2>&1; then
+        pkg="${pkgdir##*/}"
+        if ! tar tf "${profile}/packages/db/packages.db.tar.gz" 2>/dev/null | grep "$pkg-$mypkgver-$mypkgrel" >/dev/null 2>&1; then
             chown -R $SUDO_USER:$SUDO_USER "${pkgdir}"
 
-            # special case for xorg-server
-            # since it builds many packages
-            if [ "$pkg" = xorg-server ]; then
-                rm -f "${profile}"/packages/db/$pkg{,-{common,devel,xephyr,xnest,xvfb}}*pkg.tar*
-            elif compgen -G "${profile}"/packages/db/*"$pkg"-[0-9]*pkg.tar*; then
+            if compgen -G "${profile}"/packages/db/*"$pkg"-[0-9]*pkg.tar*; then
                 rm "${profile}"/packages/db/*"$pkg"-[0-9]*pkg.tar*
             fi
 

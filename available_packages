@@ -12,6 +12,7 @@ local flameshot
 local screencast
 local slop
 qt5ct
+qt6ct
 xorg
 xorg-xinit
 xf86-video-intel

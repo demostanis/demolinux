@@ -1,0 +1,5 @@
+[Service]
+ExecStart=/usr/local/bin/notifitor
+
+[Install]
+WantedBy=graphical-session.target

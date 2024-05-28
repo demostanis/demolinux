@@ -41,20 +41,27 @@ run(){
 	without_root ./bin/run_archiso -i out/$(ls -t out/ | head -1)
 }
 
-prog="$0"
 flash(){
 	elevate
 	device=${1:?Missing device}
 	image=$(ls -t out/ | head -1)
-	cmp -jfslkdjflfskddddd >/dev/null 2>&1 # ensure cmp is in the kernel cache
-										   # if we're overwritting the device
-										   # demolinux runs on
-	pv out/"$image" > "$device"
-	sync; sync; sync # just to be sure
-	if ! cmp -n `stat -c %s out/"$image"` out/"$image" "$device"; then
+
+	# ensure dd, head and md5sum are in
+	# the kernel cache if we're overwritting
+	# the device demolinux runs on
+	( sync kci; dd -aaa; head -\; md5sum -. ) >/dev/null 2>&1
+
+	size="$(stat -c %s out/"$image")"
+	image_checksum="$(md5sum out/"$image" | cut -d\  -f1)"
+	pv -Y out/"$image" > "$device"
+	disk_checksum="$(dd if="$device" | head -c "$size" | md5sum | cut -d\  -f1)"
+
+	if [ ! "$image_checksum" = "$disk_checksum" ]; then
+		echo Checksum mismatch! expected $image_checksum got $disk_checksum
 		echo Image has been incorrectly copied, retrying...
-		"$prog" "$0" "$@"
+		"$0" flash "$@"
 	fi
+	sync; sync; sync # just to be sure
 }
 
 without_root(){

@@ -1,4 +1,4 @@
-URxvt.font: xft:FiraCode Nerd Font Mono,xft:Noto Sans Symbols 2:size=8,xft:Noto Color Emoji:size=12
+URxvt.font: xft:FiraCode Nerd Font Mono:size=12,xft:Noto Sans Symbols 2:size=8,xft:Noto Color Emoji:size=9
 URxvt.internalBorder: 5
 URxvt.iconFile: /usr/share/icons/la-capitaine/apps/scalable/terminal.svg
 URxvt.scrollBar: true
@@ -8,7 +8,10 @@ URxvt.scrollTtyOutput: false
 URxvt.scrollTtyKeypress: true
 URxvt.keysym.Shift-Control-C: eval:selection_to_clipboard
 URxvt.keysym.Shift-Control-V: eval:paste_clipboard
-URxvt.perl-ext-common: default,-confirm-paste,-selection,vtwheel,matcher
+URxvt.keysym.C-minus: resize-font:smaller
+URxvt.keysym.C-plus: resize-font:bigger
+URxvt.keysym.C-equal: resize-font:reset
+URxvt.perl-ext-common: default,-confirm-paste,-selection,vtwheel,matcher,resize-font
 URxvt.url-launcher: /usr/bin/xdg-open
 URxvt.matcher.rend.0: Uline bg5
 URxvt.matcher.button: 1

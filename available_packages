@@ -25,6 +25,7 @@ local flavours
 
 # Graphical apps
 local rxvt-unicode-pixbuf
+aur urxvt-resize-font-git
 pavucontrol
 scrcpy
 nemo

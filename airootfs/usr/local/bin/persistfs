@@ -72,6 +72,8 @@ case $1 in
 				xargs "$prog" add 2>/dev/null
 
 			for dep in $(expac %D "$pkg"); do
+				dep="${dep%%=*}"
+
 				# if it's neither already in the persistfs nor in the airootfs...
 				if ! compgen -G /run/archiso/persistfs/upperdir/var/lib/pacman/local/$dep-[0-9]* >/dev/null && \
 					! compgen -G /run/archiso/airootfs/var/lib/pacman/local/$dep-[0-9]* >/dev/null; then

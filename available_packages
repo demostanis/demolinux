@@ -24,7 +24,7 @@ local themix-theme-oomox-git
 local flavours
 
 # Graphical apps
-local rxvt-unicode-pixbuf
+local rxvt-unicode-pixbuf-sixel-patched
 aur urxvt-resize-font-git
 pavucontrol
 scrcpy
@@ -122,6 +122,7 @@ python-pipx
 python-pip
 translate-shell
 ripgrep
+ripgrep-all
 websocat
 xclip
 yt-dlp

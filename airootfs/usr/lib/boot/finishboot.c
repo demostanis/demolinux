@@ -6,6 +6,6 @@
 int main()
 {
 	setuid(geteuid());
-	system("plymouth quit && chvt 2");
+	system("/usr/bin/plymouth quit && /usr/bin/chvt 2");
 	return 0;
 }

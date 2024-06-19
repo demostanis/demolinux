@@ -20,3 +20,15 @@ nvimpkg() {
 	done
 	wait
 }
+
+#ssh() {
+#	SSH_USER=...
+#	SSH_HOST=...
+#	SSH_PORT=...
+#
+#	if [ $# = 0 ]; then
+#		ssh -p $SSH_PORT $SSH_USER@$SSH_HOST
+#	else
+#		command ssh "$@"
+#	fi
+#}

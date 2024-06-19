@@ -1,6 +1,6 @@
 #!/bin/sh
 
-OUTPUT_NAME=Virtual1
+OUTPUT_NAME=Virtual-1
 RESOLUTION=1920x1080
 
 xrandr | grep $OUTPUT_NAME || exit 1

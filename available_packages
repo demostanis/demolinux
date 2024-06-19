@@ -134,6 +134,8 @@ tmux
 lua-language-server
 clang
 github-cli
+gopls
+go-tools # goimports
 
 # System
 base

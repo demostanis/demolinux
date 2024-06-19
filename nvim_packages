@@ -44,3 +44,6 @@ nvim-tree/nvim-web-devicons
 tpope/vim-eunuch
 # jump to last position in file on open
 farmergreg/vim-lastplace
+
+# golang tools
+mattn/vim-goimports

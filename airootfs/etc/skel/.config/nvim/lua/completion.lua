@@ -2,6 +2,9 @@ local snippy = require"snippy"
 local cmp = require"cmp"
 
 cmp.setup{
+    -- workaround for gopls: https://github.com/hrsh7th/nvim-cmp/issues/1809
+    preselect = cmp.PreselectMode.None,
+
     snippet = {
         expand = function(args)
             snippy.expand_snippet(args.body)

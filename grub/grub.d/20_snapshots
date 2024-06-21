@@ -171,8 +171,16 @@ uuid=$(blkid $(findmnt /mnt/demolinux/root -o SOURCE | tail -1) -s UUID -o value
 echo '
 insmod regexp
 search --no-floppy --fs-uuid --set=btrfs_root '$uuid'
-snapshot_list=($btrfs_root)/system/snapshots/*
-if [ ! $snapshot_list = ($btrfs_root)/system/snapshots/\* ]; then
+
+has_snapshots=0
+# seems like the only way know if a directory is empty...
+for snapshot in ($btrfs_root)/system/snapshots/*; do
+    if [ "$snapshot" != "($btrfs_root)/system/snapshots/*" ]; then
+	has_snapshots=1
+    fi
+done
+
+if [ "$has_snapshots" = 1 ]; then
 	export btrfs_root
 	submenu "Boot to previous snapshot..." {
 		insmod regexp

@@ -103,10 +103,8 @@ return gears.table.join(
             dy = initial.mouse.y - my
 
             local geo = corner_handler_table[corner](c)
-            for _, v in pairs(geo) do
-                if v < 1 then
-                    return true
-                end
+            if geo.width < 1 or geo.height < 1 then
+                return true
             end
 
             c:emit_signal(

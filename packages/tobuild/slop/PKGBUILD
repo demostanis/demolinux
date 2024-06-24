@@ -4,7 +4,7 @@
 # Contributor: demostanis
 
 pkgname=slop
-pkgver=7.7
+pkgver=7.8.2
 pkgrel=1
 pkgdesc='Utility to query the user for a selection and print the region to stdout'
 arch=('x86_64')
@@ -13,7 +13,7 @@ license=('GPL3')
 depends=('libxext' 'libx11' 'mesa' 'glew' 'libxrender')
 makedepends=('cmake' 'glm')
 source=("${pkgname}-${pkgver}.tar.gz::$url/archive/refs/tags/v${pkgver}.tar.gz")
-sha256sums=('bcf973072de643a433897be9c116acaabfd9bdd047b613527cb835597cf95f66')
+sha256sums=('5e304e96650bb9282f8013847c327d0cfa61c0e0a4966a1942cbeac1e3e8e095')
           
 
 build() {

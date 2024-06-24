@@ -9,6 +9,7 @@ alias ga="git add"
 alias grc="git rebase --continue"
 alias gsa="git stash apply"
 alias gcl="git clone"
+alias gpl="git pull"
 
 alias imv=imv-hardened
 alias mpv=mpv-hardened

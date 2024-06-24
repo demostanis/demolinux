@@ -315,10 +315,12 @@ return function(s)
                                         font = beautiful.base_font.." 15",
                                         halign = "center",
                                         text = "...",
-                                        id = "music-player-message"
+                                        id = "music-player-message",
+                                        forced_height = 30,
                                     },
                                     widget = wibox.container.margin,
-                                    top = 20, bottom = 10
+                                    top = 20, bottom = 10,
+                                    left = 15, right = 15
                                 },
                                 {
                                     {

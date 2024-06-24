@@ -33,7 +33,7 @@ print(open('$OOMOX_PATH/additions').read(), file=sys.stderr, end='')
 
 mkdir -p "$DEST"/oomox-mellow-purple/gtk-4.0
 themix-base16-cli \
-	"$OOMOX_PATH"/plugins/base16/templates/gtk4/templates/gtk.mustache \
+	"$OOMOX_PATH"/plugins/base16/templates/gtk4-oodwaita/templates/gtk.mustache \
 	"$OOMOX_PATH"/plugins/base16/schemes/mellow/mellow-purple.yaml \ |
 	grep -v ^ERROR: | grep -v '^Import Colors' \
 	> "$DEST"/oomox-mellow-purple/gtk-4.0/gtk-dark.css

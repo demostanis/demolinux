@@ -1,7 +1,8 @@
 #!/bin/zsh
 
 # we assume the image we want to look at is the first argument
-file="$(realpath -- "${@: -1}")"
+file="${@: -1}"
+realfile="$(realpath -- "$file")"
 args="${@:1: -1}"
 
 exec bwrap \
@@ -20,7 +21,7 @@ exec bwrap \
 	--ro-bind ~/.Xauthority ~/.Xauthority \
 	--bind /tmp/.X11-unix/X${DISPLAY##:} /tmp/.X11-unix/X${DISPLAY##:} \
 	`# Media to display` \
-	--ro-bind "$file" "$file" \
+	--ro-bind-try "$file" "$realfile" \
 	--unshare-all --new-session \
-	/usr/bin/imv-x11 "$args" "$file"
+	/usr/bin/imv-x11 $args "$realfile"
 

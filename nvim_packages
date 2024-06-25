@@ -12,7 +12,9 @@ hrsh7th/nvim-cmp
 # git integration
 tpope/vim-fugitive
 # git diff markers
-airblade/vim-gitgutter
+lewis6991/gitsigns.nvim
+# ease conflicts resolution
+rhysd/conflict-marker.vim
 
 # use sudo if needed to write files
 lambdalisue/suda.vim
@@ -28,6 +30,7 @@ nvim-lualine/lualine.nvim
 nvim-lua/plenary.nvim
 # find, filter, preview, pick
 nvim-telescope/telescope.nvim
+LukasPietzschmann/telescope-tabs
 # case sensitive substitute (:S),
 # coerce to different casing conventions (cr...)
 tpope/vim-abolish

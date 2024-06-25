@@ -91,8 +91,10 @@ vim.api.nvim_create_autocmd("LspAttach", {
                 end
             })
         end, opts)
+        vim.keymap.set("n", "L", function() end)
         vim.keymap.set("n", "Lr", vim.lsp.buf.rename, opts)
         vim.keymap.set("n", "La", vim.lsp.buf.code_action, opts)
+        vim.keymap.set("n", "Lf", vim.lsp.buf.format, opts)
 
         local c = vim.lsp.get_client_by_id(event.data.client_id)
         c.server_capabilities.semanticTokensProvider = nil

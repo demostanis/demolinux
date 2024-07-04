@@ -36,6 +36,7 @@ mpv
 zathura
 zathura-pdf-mupdf
 torbrowser-launcher
+rz-cutter
 local iwgtk
 gimp
 neovim
@@ -109,6 +110,8 @@ man-db
 man-pages
 expac
 patchutils
+rizin
+rz-ghidra
 lsof
 irssi
 btop
@@ -128,6 +131,7 @@ xclip
 yt-dlp
 aur paru
 openbsd-netcat
+tinyxxd
 tmux
 
 # Development

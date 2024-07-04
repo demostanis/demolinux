@@ -6,4 +6,4 @@ Target = *
 [Action]
 Description = Purge unneeded locales
 When = PostTransaction
-Exec = /bin/sh -c '/usr/bin/localepurge-config && /usr/bin/localepurge'
+Exec = /bin/sh -c '( /usr/bin/localepurge-config && /usr/bin/localepurge ) & >/dev/null 2>&1'

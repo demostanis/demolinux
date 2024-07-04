@@ -309,8 +309,10 @@ _make_pacman_conf() {
     # append CacheDir and HookDir to [options] section
     # HookDir is *always* set to the airootfs' override directory
     # see `man 8 pacman` for further info
+    packagesdb="$(realpath -- ${profile}/packages/db)"
     pacman-conf --config "${pacman_conf}" | \
         sed "/CacheDir/d;/DBPath/d;/HookDir/d;/LogFile/d;/RootDir/d;/\[options\]/a CacheDir = ${_cache_dirs}
+        s,<packagesdb>,${packagesdb},
         /\[options\]/a HookDir = ${pacstrap_dir}/etc/pacman.d/hooks/" > "${work_dir}/${buildmode}.pacman.conf"
 }
 
@@ -1860,10 +1862,6 @@ _read_profile() {
             bootstrap_packages="$(realpath -- "${bootstrap_packages}")"
             pacman_conf="$(realpath -- "${pacman_conf}")"
         fi
-
-        packagesdb="$(realpath -- ${profile}/packages/db)"
-        sed -i "s,<packagesdb>,${packagesdb}," "${pacman_conf}"
-        trap 'sed -i "s,${packagesdb},<packagesdb>," "${pacman_conf}"' EXIT
 
         cd -- "${OLDPWD}"
     fi

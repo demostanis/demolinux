@@ -61,6 +61,7 @@ build() {
   mkdir -p build
   cd build
   cmake ../$pkgname \
+    -DGENERATE_DOC=OFF \
     -DCMAKE_BUILD_TYPE=RELEASE \
     -DCMAKE_INSTALL_PREFIX=/usr \
     -DSYSCONFDIR=/etc \

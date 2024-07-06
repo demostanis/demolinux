@@ -2,6 +2,8 @@
 # demolinux build&run script
 #  Usage: ./demolinux [run|clean|build|all|flash|schemes]
 
+set -x
+
 A=( $@ )
 elevate(){
 	[ $(id -u) -ne 0 ] && exec sudo -E ./"$0" ${A[@]}
@@ -32,7 +34,7 @@ rebuild_schemes(){
 }
 
 build(){
-	ensure_installed
+	#ensure_installed
 	elevate
 	./bin/mkarchiso -o out/ -w work/ -v .
 }

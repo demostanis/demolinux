@@ -19,7 +19,7 @@ source=("git+https://github.com/Stremio/stremio-shell.git#tag=v${pkgver}"
         "stremio-${pkgver}-server.js"::"https://dl.strem.io/four/v${pkgver}/server.js"
         '010-stremio-do-not-download-server-js.patch'
         '0001-Download-files-with-curl.patch')
-sha256sums=('30b65909f100ed31b406280077b54fed9a50602dec28c540c6c0dc0c02b5597e'
+sha256sums=('SKIP'
             'SKIP'
             'SKIP'
             'SKIP'

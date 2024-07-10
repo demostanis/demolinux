@@ -27,10 +27,19 @@ jobs:
           echo Server = 'https://geo.mirror.pkgbuild.com/$repo/os/$arch' | sudo tee /etc/pacman.d/mirrorlist >/dev/null
 
           sudo cp /bin/bash /bin/sh
+          sudo cp /usr/share/keyrings /usr/share/pacman/keyrings -r
 
           sudo pacman-key --init
-          sudo pacman-key --populate
+          sudo pacman-key --populate archlinux
           sudo pacman -Sy --noconfirm
+
+          # Ubuntu's archlinux-keyring is outdated...
+          sudo pacman -Sddw --noconfirm archlinux-keyring
+          # why does Ubuntu's pacman looks for keys in
+          # /usr/share/keyrings instead of /usr/share/pacman/keyrings??
+          sudo bsdtar -C /usr/share/keyrings -xf /var/cache/pacman/pkg/archlinux-keyring-*.zst --strip-components 4 \
+            usr/share/pacman/keyrings
+          sudo pacman-key --populate archlinux
 
           # we don't let ./demolinux install these packages
           # since it'd overwrite existing files

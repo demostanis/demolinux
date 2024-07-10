@@ -1,6 +1,6 @@
-pkgname='python-icmplib'
+pkgname=python-icmplib
 _module='icmplib'
-pkgver='3.0.4'
+pkgver=3.0.4
 pkgrel=1
 pkgdesc="Easily forge ICMP packets and make your own ping and traceroute."
 url="https://github.com/ValentinBELYN/icmplib"

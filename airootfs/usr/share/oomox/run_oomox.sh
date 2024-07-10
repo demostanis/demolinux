@@ -2,6 +2,7 @@
 
 DEST=${DEST:-/etc/skel/.themes}
 OOMOX_PATH=/usr/share/oomox
+XDG_CONFIG_HOME="$DEST"/.config
 
 # TODO: use CUSTOM_PATHLIST
 

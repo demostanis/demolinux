@@ -1141,7 +1141,7 @@ _make_bootmode_hybrid.grub.gpt() {
         s,GRUB_DEVICE=.*,GRUB_DEVICE=/dev/loop0p3,
         s,GRUB_DEVICE_BOOT=.*,GRUB_DEVICE_BOOT=/dev/loop0p2,
         s,grub_mkconfig_dir=.*,grub_mkconfig_dir='"$profile"'/grub/grub.d,
-        /\/default\/grub ; then/{N;N;a . '"$profile"'/grub/config
+        /\/default\/grub ; then/{N;N;N;N;N;N;N;a . '"$profile"'/grub/config
     d}' `which grub-mkconfig` | bash -
 
     _make_boot_on_disk_image

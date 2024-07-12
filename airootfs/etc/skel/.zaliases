@@ -26,7 +26,8 @@ alias emojipicker='awesome-client require\"emojipicker\"\(\)'
 alias restart='awesome-client awesome.restart\(\)'
 alias panel='awesome-client show_panel\(\)'
 
-alias -g TMP='cd "$(mktemp -d)"'
+alias tmp='cd "$(mktemp -d)"'
+gclt(){ tmp; gcl "$@" }
 
 alias vim=nvim
 alias vi=nvim

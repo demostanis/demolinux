@@ -70,7 +70,6 @@ linux-firmware
 linux
 local mkinitcpio-archiso
 mkinitcpio-nfs-utils
-nbd
 local plymouth
 edk2-shell
 efibootmgr

@@ -11,7 +11,7 @@ arch=('x86_64' 'i686')
 url="https://github.com/themix-project/${_reponame}"
 license=('GPL3')
 source=(
-	"${_reponame}::git+https://github.com/themix-project/${_reponame}.git#branch=master"
+	"${_reponame}::git+https://github.com/themix-project/${_reponame}.git#commit=54e3df27d3c90ae5911a1c3371e69be43d92a788"
 	0001-Make-oomox-generate-dark-themes.patch
 )
 md5sums=('SKIP'
@@ -35,11 +35,6 @@ conflicts=(
     'oomox'
     'oomox-git'
 )
-
-pkgver() {
-	cd "${srcdir}/${_reponame}"
-	git describe --always --tags | sed 's/\([^-]*-g\)/r\1/;s/-/./g'
-}
 
 prepare() {
 	cd "${srcdir}/${_reponame}"

@@ -38,12 +38,10 @@ zathura-pdf-mupdf
 torbrowser-launcher
 rz-cutter
 local iwgtk
-gimp
 neovim
 xterm
 cmus
 local stremio
-ghidra
 
 # Browser & addons
 firefox
@@ -164,6 +162,7 @@ kdeconnect
 local pambase
 clipnotify
 openssh
+yad
 iwd
 zsh
 nix

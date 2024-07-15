@@ -1,0 +1,3 @@
+ALL ALL=(root) NOPASSWD: /usr/bin/pacman -S --noconfirm ghidra
+ALL ALL=(root) NOPASSWD: /usr/bin/pacman -S --noconfirm chromium
+ALL ALL=(root) NOPASSWD: /usr/bin/pacman -S --noconfirm gimp

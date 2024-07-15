@@ -106,6 +106,12 @@ awful.rules.rules = {{
     properties = {
         placement = awful.placement.centered
     }
+},
+{
+    rule_any = {class = {"deferedinstall"}},
+    properties = {
+        placement = awful.placement.centered
+    }
 }}
 
 client.connect_signal("request::titlebars", function(c)

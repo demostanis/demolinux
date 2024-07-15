@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Ghidra
+Comment=SRE tool
+Exec=/usr/local/bin/deferedinstall ghidra
+Icon=ghidra
+Terminal=false
+StartupNotify=true

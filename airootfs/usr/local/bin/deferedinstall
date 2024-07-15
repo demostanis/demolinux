@@ -1,0 +1,17 @@
+#!/bin/sh
+
+exe="$1"
+pkgname="${2:-"$exe"}"
+
+if ! which "$exe" >/dev/null 2>&1; then
+	(
+		sudo pacman -S --noconfirm "$exe" 2>&1 | \
+			awk 'BEGIN{a=0}{printf"#%s\n%d\n",$0,a++;fflush("/dev/stdout")}'
+	) | \
+		yad --progress --log-expanded \
+		--enable-log=pacman --auto-close \
+		--geometry=600x400 --class=deferedinstall \
+		--title="Installing $pkgname..."
+fi
+
+exec "$exe"

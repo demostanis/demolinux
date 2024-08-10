@@ -2,6 +2,8 @@ set -o vi
 bindkey ^R history-incremental-pattern-search-backward
 bindkey '^[[Z' reverse-menu-complete # Shift-Tab
 
+setopt autocontinue # automatically kill -CONT after disown
+
 autoload run-help
 unalias run-help
 

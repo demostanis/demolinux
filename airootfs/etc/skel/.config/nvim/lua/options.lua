@@ -15,3 +15,4 @@ vim.api.nvim_create_autocmd("TermOpen", {
         vim.o.signcolumn = "no"
     end
 })
+vim.o.sol = false

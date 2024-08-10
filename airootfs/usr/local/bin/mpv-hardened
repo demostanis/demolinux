@@ -3,6 +3,9 @@
 # we assume the video we want to play is the last argument
 file="${@: -1}"
 realfile="$(realpath -- "$file")"
+if [ ! -e "$realfile" ]; then
+	realfile="$file"
+fi
 args="${@:1: -1}"
 
 exec bwrap \

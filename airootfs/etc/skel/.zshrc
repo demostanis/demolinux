@@ -31,8 +31,6 @@ preexec() {
 }
 
 precmd() {
-	[[ "$(fc -l -1)" = *pacman*-S* ]] && rehash
-
 	printf "\x1b]0;Untitled\a"
 
 	if [ -n "$initial_seconds" ]; then
@@ -130,6 +128,8 @@ zstyle ':completion:*:man:*'      menu yes select
 
 # correct xx to xx [nyae]?
 setopt correct
+# always rehash on completion
+setopt hashlistall
 
 COMP_CACHE_DIR=${COMP_CACHE_DIR:-${ZDOTDIR:-$HOME}/.cache}
 if [[ ! -d ${COMP_CACHE_DIR} ]]; then

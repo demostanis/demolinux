@@ -33,6 +33,8 @@ nemo-fileroller
 transmission-gtk
 imv
 mpv
+aur mpv-uosc
+aur mpv-thumbfast-git
 zathura
 zathura-pdf-mupdf
 torbrowser-launcher

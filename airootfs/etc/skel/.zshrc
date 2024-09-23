@@ -128,6 +128,7 @@ zstyle ':completion:*:man:*'      menu yes select
 
 # correct xx to xx [nyae]?
 setopt correct
+export CORRECT_IGNORE="[_|.]*"
 # always rehash on completion
 setopt hashlistall
 

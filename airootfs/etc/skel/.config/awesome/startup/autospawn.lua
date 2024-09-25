@@ -11,7 +11,7 @@ autospawn("/usr/lib/kdeconnectd")
 gears.timer{
     timeout = 2,
     callback = function()
-        autospawn("picom-wrapper")
+        --autospawn("picom-wrapper")
     end,
     single_shot = true
 }:start()

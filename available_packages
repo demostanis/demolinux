@@ -102,6 +102,7 @@ fd
 fzf
 sd
 git
+tree
 local jargon
 local git-mv-changes
 imagemagick

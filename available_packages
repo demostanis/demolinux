@@ -95,6 +95,7 @@ luarocks
 pv
 reflector
 xdotool
+rsync
 
 # Utilities
 bat

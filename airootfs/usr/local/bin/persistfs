@@ -1,41 +1,61 @@
 #!/bin/sh
 
+pfs_dir=/run/archiso/persistfs
+airfs_dir=/run/archiso/airootfs
+pacmandb_dir=/var/lib/pacman/local
+
 if [ $(id -u) -ne 0 ]; then
 	echo You need root >&2
 	exit 1
 fi
 
+is_adding_pkg=
+
+absolute_path() {
+	echo "$(cd "$(dirname "$file")" && pwd)/$(basename "$file")"
+}
+
+add_files() {
+	statuscode=0
+
+	for file in "$@"; do
+		if [ ! -e "$file" ]; then
+			# locales are deleted by localepurge
+			if [[ ! "$is_adding_pkg" = 1 && "$file" = /usr/share/locale/* ]]; then
+				echo File does not exist: $file >&2
+			fi
+			statuscode=1
+			continue
+		fi
+
+		file=$(absolute_path "$file")
+		printf "%s\0" "$file" >> $pfs_dir/upperdir/index
+
+		if [ "$is_adding_pkg" = 1 ]; then
+			echo -e "\033[2A"
+			echo -ne "\033[2K"
+		fi
+		maxsize=$(tput cols)
+		printf "%.${maxsize}s\n" "Adding file $file to persistfs..."
+
+		(
+			exec 3> >( awk '
+				{if(/File exists/){print"\033[2A"}else{print$0}}
+			' ) # --ignore-existing doesn't work...
+			rsync -arq --mkpath "$file" $pfs_dir/upperdir/"$(dirname "$file")" 2>&3
+		)
+	done
+
+	return $statuscode
+}
+
 case $1 in
 	add)
-		(( $# < 2 )) && echo Missing files to add && exit 1
-		statuscode=0
-
-		for file in ${@:2}; do
-			if [ ! -e "$file" ]; then
-				echo File does not exist: $file >&2
-				statuscode=1
-				continue
-			fi
-
-			echo "$(realpath "$file")" >> /run/archiso/persistfs/upperdir/index
-
-			current="$(realpath "$(dirname "$file")")"
-			parent="$current"
-
-			while [ ! "$current" = / ]; do
-				mkdir -p /run/archiso/persistfs/upperdir/"$current"
-				chown --reference="$current" /run/archiso/persistfs/upperdir/"$current"
-				chmod --reference="$current" /run/archiso/persistfs/upperdir/"$current"
-				current="$(dirname "$current")"
-			done
-
-			echo Adding file $file to persistfs...
-			cp -Trfa "$file" /run/archiso/persistfs/upperdir"$parent/$(basename "$file")"
-		done
-		exit $statuscode
+		(( $# < 2 )) && echo Missing files to add >&2 && exit 1
+		add_files "${@:2}"
 		;;
 	remove)
-		(( $# < 2 )) && echo Missing files to remove && exit 1
+		(( $# < 2 )) && echo Missing files to remove >&2 && exit 1
 		statuscode=0
 
 		for file in ${@:2}; do
@@ -43,40 +63,45 @@ case $1 in
 				file="$(pwd)/$file"
 			fi
 
-			if [ ! -e /run/archiso/persistfs/upperdir/"$file" ]; then
+			if [ ! -e $pfs_dir/upperdir/"$file" ]; then
 				echo File does not exist: $file >&2
 				statuscode=1
 				continue
 			fi
 
-			file="$(realpath "$file")"
-			rm -rf /run/archiso/persistfs/upperdir/"$file"
-			e=$(echo "$file" | sed 's,/,\\\/,g')
-			sed /"$e"/d -i /run/archiso/persistfs/upperdir/index
+			file=$(absolute_path "$file")
+			rm -rf $pfs_dir/upperdir/"$file"
+			perl -0777 -i -pe 's/\Q$ENV{file}\E\x00?//' $pfs_dir/upperdir/index
 		done
+
 		exit $statuscode
 		;;
 	pkg)
 		[ -z "$2" ] && echo Missing package to install && exit 1
 
-		prog="$0"
+		is_adding_pkg=1
 		add_pkg_files() {
 			pkg="${1%%=*}"
-			echo Adding $pkg to persistfs...
+			# if the provided package name is not the actual name of the
+			# package to be installed (e.g. installing xorriso actually
+			# installs libisoburn since libisoburn provides xorriso),
+			# find the actual name...
+			pkg=$(pacman -Qi "$pkg" | awk -F': ' '{if(NR==1)print$2}')
+			echo -e Adding "\033[1;31m$pkg\033[0m" to persistfs...
+			echo
 
-			pacman -Ql "$pkg" | \
+			for file in $(pacman -Ql "$pkg" | \
 				cut -d\  -f2 | \
-				grep -v /$ | \
-				xargs "$prog" add 2>/dev/null
-			echo /var/lib/pacman/local/$pkg-[0-9]*/{desc,files,mtree} | \
-				xargs "$prog" add 2>/dev/null
+				grep -v /$) $pacmandb_dir/$pkg-[0-9]*/{desc,files,mtree}; do
+				add_files "$file"
+			done
 
 			for dep in $(expac %D "$pkg"); do
 				dep="${dep%%=*}"
 
 				# if it's neither already in the persistfs nor in the airootfs...
-				if ! compgen -G /run/archiso/persistfs/upperdir/var/lib/pacman/local/$dep-[0-9]* >/dev/null && \
-					! compgen -G /run/archiso/airootfs/var/lib/pacman/local/$dep-[0-9]* >/dev/null; then
+				if ! compgen -G $pfs_dir/upperdir$pacmandb_dir/$dep-[0-9]* >/dev/null && \
+					! compgen -G $airfs_dir$pacmandb_dir/$dep-[0-9]* >/dev/null; then
 					add_pkg_files "$dep"
 				fi
 			done
@@ -84,28 +109,28 @@ case $1 in
 		add_pkg_files "$2"
 		;;
 	ipkg)
-		[ -z "$2" ] && echo Missing package to install && exit 1
+		[ -z "$2" ] && echo Missing package to install >&2 && exit 1
 
 		pacman -S "$2" && "$0" pkg "$2"
 		;;
 	diff)
-		[ -z "$2" ] && echo Missing file to diff && exit 1
+		[ -z "$2" ] && echo Missing file to diff >&2 && exit 1
 
 		file="$2"
 		if [ ! "${file:0:1}" = / ]; then
 			file="$(pwd)/$file"
 		fi
 
-		[ ! -e /run/archiso/airootfs/"$file" ] && echo File does not exist && exit 1
-		[ ! -e /run/archiso/persistfs/upperdir/"$file" ] && echo File not in persistfs && exit 1
+		[ ! -e $airfs_dir/"$file" ] && echo File does not exist >&2 && exit 1
+		[ ! -e $pfs_dir/upperdir/"$file" ] && echo File not in persistfs >&2 && exit 1
 
-		diff -u /run/archiso/airootfs/"$file" /run/archiso/persistfs/upperdir/"$file" | bat --file-name "$file"
+		diff -u $airfs_dir/"$file" $pfs_dir/upperdir/"$file" | bat --file-name "$file"
 		;;
 	list)
 		if [ "$2" = --all ]; then
-			cat /run/archiso/persistfs/upperdir/index
+			cat $pfs_dir/upperdir/index | tr '\0' '\n'
 		else
-			 cat /run/archiso/persistfs/upperdir/index | xargs pacman -Qo 2>&1 | grep -v /var/lib/pacman/local | grep 'error: No package owns' | sed 's/.*No package owns \(.*\)/\1/' | sort -u
+			cat $pfs_dir/upperdir/index | xargs -0 pacman -Qo 2>&1 | grep -v $pacmandb_dir | grep 'error: No package owns' | sed 's/.*No package owns \(.*\)/\1/' | sort -u
 		fi
 		;;
 	*)

@@ -58,7 +58,7 @@ case $1 in
 		(( $# < 2 )) && echo Missing files to remove >&2 && exit 1
 		statuscode=0
 
-		for file in ${@:2}; do
+		for file in "${@:2}"; do
 			if [ ! "${file:0:1}" = / ]; then
 				file="$(pwd)/$file"
 			fi

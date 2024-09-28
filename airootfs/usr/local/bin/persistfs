@@ -16,15 +16,10 @@ absolute_path() {
 }
 
 add_files() {
-	statuscode=0
+	files=()
 
 	for file in "$@"; do
-		if [ ! -e "$file" ]; then
-			# locales are deleted by localepurge
-			if [[ ! "$is_adding_pkg" = 1 && "$file" = /usr/share/locale/* ]]; then
-				echo File does not exist: $file >&2
-			fi
-			statuscode=1
+		if [[ "$file" = /usr/share/locale/* ]]; then
 			continue
 		fi
 
@@ -38,20 +33,41 @@ add_files() {
 		maxsize=$(tput cols)
 		printf "%.${maxsize}s\n" "Adding file $file to persistfs..."
 
-		(
-			exec 3> >( awk '
-				{if(/File exists/){print"\033[2A"}else{print$0}}
-			' ) # --ignore-existing doesn't work...
-			rsync -arq --mkpath "$file" $pfs_dir/upperdir/"$(dirname "$file")" 2>&3
-		)
+		files+=( "$file" )
 	done
 
-	return $statuscode
+	(
+		exec 3> >( awk '
+			{if(/File exists/){print"\033[2A"}else{print$0}}
+		' ) # --ignore-existing doesn't work...
+		for f in "${files[@]}"; do printf "%s\n" "$f"; done | \
+			rsync -arq --mkpath --files-from=- / $pfs_dir/upperdir 2>&3
+	)
+}
+
+actual_pkg() {
+	pkg="${1%%=*}"
+	# if the provided package name is not the actual name of the
+	# package to be installed (e.g. installing xorriso actually
+	# installs libisoburn since libisoburn provides xorriso),
+	# find the actual name...
+	pacman -Qi "$pkg" | awk -F': ' '{if(NR==1)print$2}'
 }
 
 case $1 in
 	add)
 		(( $# < 2 )) && echo Missing files to add >&2 && exit 1
+
+		for file in "${@:2}"; do
+			if [ ! -e "$file" ]; then
+				# locales are deleted by localepurge
+				if [[ ! "$is_adding_pkg" = 1 && "$file" = /usr/share/locale/* ]]; then
+					echo File does not exist: $file >&2
+					exit 1
+				fi
+			fi
+		done
+
 		add_files "${@:2}"
 		;;
 	remove)
@@ -81,23 +97,16 @@ case $1 in
 
 		is_adding_pkg=1
 		add_pkg_files() {
-			pkg="${1%%=*}"
-			# if the provided package name is not the actual name of the
-			# package to be installed (e.g. installing xorriso actually
-			# installs libisoburn since libisoburn provides xorriso),
-			# find the actual name...
-			pkg=$(pacman -Qi "$pkg" | awk -F': ' '{if(NR==1)print$2}')
+			pkg=$(actual_pkg "$1")
 			echo -e Adding "\033[1;31m$pkg\033[0m" to persistfs...
 			echo
 
-			for file in $(pacman -Ql "$pkg" | \
+			add_files $(pacman -Ql "$pkg" | \
 				cut -d\  -f2 | \
-				grep -v /$) $pacmandb_dir/$pkg-[0-9]*/{desc,files,mtree}; do
-				add_files "$file"
-			done
+				grep -v /$) $pacmandb_dir/$pkg-[0-9]*/{desc,files,mtree}
 
 			for dep in $(expac %D "$pkg"); do
-				dep="${dep%%=*}"
+				dep=$(actual_pkg "$dep")
 
 				# if it's neither already in the persistfs nor in the airootfs...
 				if ! compgen -G $pfs_dir/upperdir$pacmandb_dir/$dep-[0-9]* >/dev/null && \
@@ -106,12 +115,17 @@ case $1 in
 				fi
 			done
 		}
-		add_pkg_files "$2"
+
+		for pkg in "${@:2}"; do
+			add_pkg_files "$pkg"
+		done
 		;;
 	ipkg)
 		[ -z "$2" ] && echo Missing package to install >&2 && exit 1
 
-		pacman -S "$2" && "$0" pkg "$2"
+		for pkg in "${@:2}"; do
+			pacman -S "$pkg" && "$0" pkg "$pkg"
+		done
 		;;
 	diff)
 		[ -z "$2" ] && echo Missing file to diff >&2 && exit 1

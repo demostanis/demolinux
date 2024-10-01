@@ -9,7 +9,7 @@ if [ $(id -u) -ne 0 ]; then
 	exit 1
 fi
 
-is_adding_pkg=
+is_adding_pkg=0
 
 absolute_path() {
 	echo "$(cd "$(dirname "$file")" && pwd)/$(basename "$file")"
@@ -23,7 +23,8 @@ add_files() {
 			continue
 		fi
 
-		file=$(absolute_path "$file")
+		export file=$(absolute_path "$file")
+		perl -0777 -i -pe 's/\Q$ENV{file}\E\x00?//' $pfs_dir/upperdir/index
 		printf "%s\0" "$file" >> $pfs_dir/upperdir/index
 
 		if [ "$is_adding_pkg" = 1 ]; then
@@ -61,7 +62,7 @@ case $1 in
 		for file in "${@:2}"; do
 			if [ ! -e "$file" ]; then
 				# locales are deleted by localepurge
-				if [[ ! "$is_adding_pkg" = 1 && "$file" = /usr/share/locale/* ]]; then
+				if [[ "$is_adding_pkg" = 0 || "$file" = /usr/share/locale/* ]]; then
 					echo File does not exist: $file >&2
 					exit 1
 				fi
@@ -85,7 +86,7 @@ case $1 in
 				continue
 			fi
 
-			file=$(absolute_path "$file")
+			export file=$(absolute_path "$file")
 			rm -rf $pfs_dir/upperdir/"$file"
 			perl -0777 -i -pe 's/\Q$ENV{file}\E\x00?//' $pfs_dir/upperdir/index
 		done

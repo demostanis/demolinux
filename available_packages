@@ -57,6 +57,7 @@ local firefox-ff2mpv
 local firefox-sponsorblock
 local firefox-vimfx
 local firefox-ytarb
+local firefox-fetchv
 
 # Fonts
 local ttf-font-awesome-pro

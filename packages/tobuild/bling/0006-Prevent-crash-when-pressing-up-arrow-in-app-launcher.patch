@@ -1,0 +1,26 @@
+From 4ba43383a2ea7f258d516aafb56788517145eee6 Mon Sep 17 00:00:00 2001
+From: demostanis <demostanis@protonmail.com>
+Date: Tue, 1 Oct 2024 02:45:38 +0200
+Subject: [PATCH] Prevent crash when pressing up arrow in app launcher
+
+-_-
+---
+ widget/app_launcher/init.lua | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/widget/app_launcher/init.lua b/widget/app_launcher/init.lua
+index 65983d1..34e5ec2 100755
+--- a/widget/app_launcher/init.lua
++++ b/widget/app_launcher/init.lua
+@@ -370,7 +370,7 @@ local function page_backward(self, direction)
+         end
+     elseif self.wrap_page_scrolling then
+         if direction == "up" then
+-            select_app(self, math.min(rows, #self._private.grid.children % self.apps_per_row), columns)
++            select_app(self, math.max(rows, #self._private.grid.children % self.apps_per_row), columns)
+         else
+             -- Keep the same row from last page
+             select_app(self, math.min(pos.row, #self._private.grid.children % self.apps_per_row), columns)
+-- 
+2.46.2
+

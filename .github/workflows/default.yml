@@ -73,6 +73,10 @@ jobs:
         run: |
           split -b 2GB out/demolinux*.img demolinux-
 
+      - name: Generate checksums file
+        run: |
+          sha256sum demolinux-* out/demolinux*.img > sha256sums.txt
+
       - name: Publish release
         uses: actions/create-release@v1
         id: create_release
@@ -90,5 +94,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          file: "demolinux-*"
+          file: "demolinux-*;sha256sums.txt"
           release_id: ${{ steps.create_release.outputs.id }}

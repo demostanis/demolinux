@@ -56,6 +56,9 @@ try {
 		window.hijackCtrlW = () => window.goDoCommand('cmd_deleteWordBackward')
 		document.querySelector('#cmd_close').setAttribute('oncommand', 'hijackCtrlW()')
 
+		// in recent firefox versions, overriding oncommand
+		// still calls closeTabOrWindow()...
+		BrowserCommands.closeTabOrWindow = function() {}
         }
       }
     }

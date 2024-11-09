@@ -24,7 +24,9 @@ add_files() {
 		fi
 
 		export file=$(absolute_path "$file")
-		perl -0777 -i -pe 's/\Q$ENV{file}\E\x00?//' $pfs_dir/upperdir/index
+		if [ -e $pfs_dir/upperdir/index ]; then
+			perl -0777 -i -pe 's/\Q$ENV{file}\E\x00?//' $pfs_dir/upperdir/index
+		fi
 		printf "%s\0" "$file" >> $pfs_dir/upperdir/index
 
 		if [ "$is_adding_pkg" = 1 ]; then

@@ -53,12 +53,14 @@ try {
 		// this disables Ctrl-W to close a tab and replaces
 		// it with readline-like behavior, deleting the word
 		// behind the cursor.
-		window.hijackCtrlW = () => window.goDoCommand('cmd_deleteWordBackward')
-		document.querySelector('#cmd_close').setAttribute('oncommand', 'hijackCtrlW()')
+		window.hijackCtrlW = () => {
+			// in recent firefox versions, overriding oncommand
+			// still calls closeTabOrWindow()...
 
-		// in recent firefox versions, overriding oncommand
-		// still calls closeTabOrWindow()...
-		BrowserCommands.closeTabOrWindow = function() {}
+			window.BrowserCommands.closeTabOrWindow = function() {}
+			window.goDoCommand('cmd_deleteWordBackward')
+		}
+		document.querySelector('#cmd_close').setAttribute('oncommand', 'hijackCtrlW()')
         }
       }
     }

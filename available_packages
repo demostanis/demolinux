@@ -111,6 +111,7 @@ local git-mv-changes
 imagemagick
 man-db
 man-pages
+libqalculate
 expac
 patchutils
 rizin

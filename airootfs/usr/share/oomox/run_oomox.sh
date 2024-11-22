@@ -38,3 +38,10 @@ themix-base16-cli \
 	"$OOMOX_PATH"/plugins/base16/schemes/mellow/mellow-purple.yaml \ |
 	grep -v ^ERROR: | grep -v '^Import Colors' \
 	> "$DEST"/oomox-mellow-purple/gtk-4.0/gtk-dark.css
+
+mkdir -p "$DEST"/oomox-mellow-purple/qt6ct
+themix-base16-cli \
+	"$OOMOX_PATH"/plugins/base16/templates/qt6ct/templates/breeze.mustache \
+	"$OOMOX_PATH"/plugins/base16/schemes/mellow/mellow-purple.yaml \ |
+	grep -v ^ERROR: | grep -v '^Import Colors' \
+	> "$DEST"/oomox-mellow-purple/qt6ct/colors.conf

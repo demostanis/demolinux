@@ -1,0 +1,53 @@
+From e29d9a71862110a8a5ea0e39ac4b55fd8600d8fa Mon Sep 17 00:00:00 2001
+From: demostanis <demostanis@protonmail.com>
+Date: Fri, 22 Nov 2024 05:09:36 +0100
+Subject: [PATCH] ensure the windows key is still being grabbed before running
+ keygrabber
+
+this requires the little supernotifier script
+---
+ init.lua | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
+
+diff --git a/init.lua b/init.lua
+index 4b4edff..230bda2 100644
+--- a/init.lua
++++ b/init.lua
+@@ -443,6 +443,14 @@ function _M.showPreview()
+ 	_M.clientOpacity()
+ end
+ 
++local super_released = true
++awesome.connect_signal("super::press", function()
++	super_released = false
++end)
++awesome.connect_signal("super::release", function()
++	super_released = true
++end)
++
+ function _M.switch(dir, mod_key1, release_key, mod_key2, key_switch)
+ 	_M.populateAltTabTable()
+ 
+@@ -466,6 +474,19 @@ function _M.switch(dir, mod_key1, release_key, mod_key2, key_switch)
+ 	end)
+ 	_M.previewDelayTimer:start()
+ 
++	if super_released then
++		-- quick bro
++		_M.cycle( 1)
++
++		-- raise
++		local c = _M.altTabTable[_M.altTabIndex].client
++		c:raise()
++		c:jump_to()
++		client.focus = c
++
++		return
++	end
++
+ 	-- Now that we have collected all windows, we should run a keygrabber
+ 	-- as long as the user is alt-tabbing:
+ 	keygrabber.run(
+-- 
+2.47.0
+

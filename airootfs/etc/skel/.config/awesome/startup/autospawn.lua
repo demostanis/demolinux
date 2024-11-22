@@ -16,6 +16,8 @@ gears.timer{
     single_shot = true
 }:start()
 
+autospawn("supernotifier")
+
 --autospawn("/usr/lib/xrandr.sh")
 
 -- vim:set et sw=4 ts=4:

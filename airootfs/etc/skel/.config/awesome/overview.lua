@@ -65,13 +65,41 @@ return function()
         hide_free_popups()
         for _, c in ipairs(previously_visible_clients) do
             c.minimized = false
+            c.keybinds = nil
         end
         awful.keygrabber.stop(grabber)
         overview_shown = false
         awesome.emit_signal("overview::display", false)
     end
 
+    local keys = "fjdksla"
+    local comb_1 = {}
+    local comb_2 = {}
+
+    for i=1,#keys do
+        comb_1[i] = keys:sub(i, i)
+    end
+    for i=1,#keys do
+        for j=1,#keys do
+            table.insert(comb_2,
+                string.char(keys:byte(i))
+                    ..
+                string.char(keys:byte(j))
+                )
+        end
+    end
+
     function draw_clients(clients, filter)
+        for _, c in ipairs(clients) do
+            if not c.keybinds then
+                local comb = comb_1
+                if #clients > #keys then
+                    comb = comb_2
+                end
+                c.keybinds = table.remove(comb, 1)
+            end
+        end
+
         -- Map each line to a table of clients
         -- 3 clients for uneven lines, 2 for even ones
         local window_count_in_line = 3
@@ -201,7 +229,7 @@ return function()
                         {
                             widget = wibox.widget.textbox,
                             font = beautiful.bold_font,
-                            text = c.name,
+                            text = c.keybinds,
                         },
                         widget = wibox.container.margin,
                         margins = 5
@@ -329,8 +357,6 @@ return function()
             -- ignore key
         elseif key == "BackSpace" then
             filter = filter:sub(1, -2)
-        elseif key == "Return" then
-            focus_first = true
         elseif key == "u" and is_ctrling then
             filter = ""
         elseif #key == 1 and #mods == 0 then
@@ -341,12 +367,12 @@ return function()
 
         local filtered_clients = {}
         for _, c in ipairs(clients) do
-            if c.name:lower():match(filter:lower()) then
+            if c.keybinds:lower():match("^"..filter:lower()) then
                 table.insert(filtered_clients, c)
             end
         end
         free_popups()
-        if focus_first and #filtered_clients ~= 0 then
+        if #filtered_clients == 1 then
             local c = filtered_clients[1]
             quit_overview()
             client.focus = c

@@ -81,10 +81,22 @@ local function first_window()
 end
 
 local function set_global_x(new)
+	local ended = false
 	rubato.timed{
 		pos = global_x,
 		duration = 0.3,
 		subscribed = function(w)
+			-- rubato sometimes generates weird curves that go
+			-- past the target value... so correct it...
+			if new > global_x and w > new then
+				w = new
+			elseif new < global_x and w < new then
+				w = new
+			end
+			if ended then return end
+			if w == new then
+				ended = true
+			end
 			global_x = w
 			awful.layout.arrange(mouse.screen)
 		end

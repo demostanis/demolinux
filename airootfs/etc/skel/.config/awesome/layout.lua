@@ -204,7 +204,7 @@ client.connect_signal("raised", function(c)
 	end
 end)
 
-client.connect_signal("unmanage", function()
+local function on_window_appearance_change()
 	gears.timer{
 		timeout = 0.1,
 		single_shot = true,
@@ -213,7 +213,10 @@ client.connect_signal("unmanage", function()
 			set_global_x(global_x_to_client(client.focus))
 		end
 	}:start()
-end)
+end
+
+client.connect_signal("unmanage", on_window_appearance_change)
+client.connect_signal("property::minimized", on_window_appearance_change)
 
 function scroll.move_handler(c, context, hints)
 	-- default move handler, but we don't swap

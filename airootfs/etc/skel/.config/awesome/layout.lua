@@ -80,9 +80,19 @@ local function first_window()
 	return nearest
 end
 
+local timed = nil
+local last_new = nil
 local function set_global_x(new)
+	-- so we don't abort 1000 times when holding the switch key
+	if new == last_new then return end
+	last_new = new
+
+	if timed and timed.started then
+		timed:abort()
+	end
+
 	local ended = false
-	rubato.timed{
+	timed = rubato.timed{
 		pos = global_x,
 		duration = 0.3,
 		subscribed = function(w)
@@ -100,7 +110,8 @@ local function set_global_x(new)
 			global_x = w
 			awful.layout.arrange(mouse.screen)
 		end
-	}.target = new
+	}
+	timed.target = new
 end
 
 local function move_right()

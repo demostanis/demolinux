@@ -55,7 +55,7 @@ return function()
         end
     end
 
-    local function quit_overview()
+    local function quit_overview(clients)
         if filter_popup then
             filter_popup.visible = false
         end
@@ -65,6 +65,8 @@ return function()
         hide_free_popups()
         for _, c in ipairs(previously_visible_clients) do
             c.minimized = false
+        end
+        for _, c in ipairs(clients) do
             c.keybinds = nil
         end
         awful.keygrabber.stop(grabber)
@@ -270,7 +272,7 @@ return function()
 
                     popup:buttons(gears.table.join(
                         awful.button({ }, 1, function()
-                            quit_overview()
+                            quit_overview(clients)
                             client.focus = c
                             c:raise()
                         end)
@@ -349,7 +351,7 @@ return function()
 
         local focus_first = false
         if key == "Escape" or (is_mod4 and key == "o") then
-            quit_overview()
+            quit_overview(clients)
             return
         elseif key == "Shift_L" then
             -- ignore key
@@ -374,7 +376,7 @@ return function()
         free_popups()
         if #filtered_clients == 1 then
             local c = filtered_clients[1]
-            quit_overview()
+            quit_overview(clients)
             client.focus = c
             c:raise()
         else

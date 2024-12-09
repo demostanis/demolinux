@@ -74,13 +74,9 @@ end
 return gears.table.join(
     awful.button({ }, 1, raise),
     awful.button({ modkey }, 1, function (c)
-        raise(c)
-
         awful.mouse.client.move(c)
     end),
     awful.button({ modkey }, 3, function (c)
-        raise(c)
-
         local coords = mouse.coords()
         initial = {
             width = c.width,

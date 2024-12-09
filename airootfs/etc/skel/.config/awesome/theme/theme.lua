@@ -70,6 +70,7 @@ theme.wibar_widget_hover_color = theme.color13
 theme.panel_width = 415
 theme.panel_height = 415
 theme.dock_width = 50
+theme.dock_height = 100
 theme.dock_indicator_color = theme.color7
 theme.border_radius = 5
 

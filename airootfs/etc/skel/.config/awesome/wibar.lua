@@ -32,7 +32,7 @@ return function(s)
     mywibar:setup {
         {
             require"panel"(s),
-            require"taglist"(s),
+            nil,
             {
                 {
                     {

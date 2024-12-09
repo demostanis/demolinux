@@ -2,7 +2,6 @@
 local xorg-server
 local awesome
 aur awesome-rubato-git
-local awesome-switcher
 aur la-capitaine-icon-theme
 picom
 local emoji-test

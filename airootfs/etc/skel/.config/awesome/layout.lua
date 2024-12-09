@@ -147,12 +147,14 @@ end
 
 local function move_left_window()
 	local lefthand = lefthand_window()
+	if not lefthand then return end
 	set_global_x(global_x_to_client(lefthand))
 	client.focus = lefthand
 end
 
 local function move_right_window()
 	local righthand = righthand_window()
+	if not righthand then return end
 	set_global_x(global_x_to_client(righthand))
 	client.focus = righthand
 end

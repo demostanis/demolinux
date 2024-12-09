@@ -34,9 +34,6 @@ local function app_shortcut(app, key)
 end
 
 local globalkeys = gears.table.join(
-    awful.key({ modkey }, "l",  awful.tag.viewnext),
-    awful.key({ modkey }, "h",   awful.tag.viewprev),
-
     awful.key({ modkey, "Shift" }, "l",  function() moveclient("down") end),
     awful.key({ modkey, "Shift" }, "h", function() moveclient("up") end),
 
@@ -47,17 +44,11 @@ local globalkeys = gears.table.join(
 
     awful.key({ modkey }, "r", awesome.restart),
 
-    awful.key({ modkey }, "Tab", function()
-        switcher.switch(1, modkey, "Super_L", "Shift", "Tab")
-    end),
-    awful.key({ modkey, "Shift" }, "Tab", function()
-        switcher.switch(-1, modkey, "Super_L", "Shift", "Tab")
-    end),
-
     awful.key({ modkey }, "p", function() show_panel() end, nil),
     awful.key({ modkey }, "k", require"screenlock", nil),
     awful.key({ modkey }, "o", require"overview", nil),
     awful.key({ modkey }, "space", require"applauncher", nil),
+    awful.key({ modkey }, "u", function() awful.spawn("nemo /home/demostanis/programming/subjects") end, nil),
     -- God, why is it trying to call some on_release when I don't specify nil??
     awful.key({ modkey }, "e", require"emojipicker", nil),
 
@@ -77,9 +68,20 @@ local globalkeys = gears.table.join(
     end),
     awful.key({ }, "XF86AudioLowerVolume", function()
         awful.spawn("amixer -q sset Master 3%-", false)
-    end)
+    end),
+
+    awful.key({ modkey }, "h", layout.move_left_window),
+    awful.key({ modkey }, "l", layout.move_right_window),
+
+    awful.key({ modkey }, "Tab", layout.cycle_window_focus)
 )
 
 root.keys(globalkeys)
+
+root.buttons(gears.table.join(
+    -- scroll
+    awful.button({ modkey }, 5, layout.move_left),
+    awful.button({ modkey }, 4, layout.move_right)
+))
 
 -- vim:set et sw=4 ts=4:

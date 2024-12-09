@@ -1,4 +1,3 @@
-
 local cursors = {
     ["left"] = "sb_h_double_arrow",
     ["right"] = "sb_h_double_arrow",
@@ -108,12 +107,20 @@ return gears.table.join(
                 return true
             end
 
+            -- with scroll layout
+            c.width = geo.width
+            -- with floating layout
             c:emit_signal(
                 "request::geometry", "mouse.resize",
                 geo)
             return true
         end, cursors[corner])
-    end)
+    end),
+
+    awful.key({ modkey }, "h", layout.move_left_window),
+    awful.key({ modkey }, "l", layout.move_right_window),
+
+    awful.key({ modkey }, "Tab", layout.cycle_window_focus)
 )
 
 -- vim:set et sw=4 ts=4:

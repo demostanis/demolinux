@@ -16,6 +16,7 @@ bling = require"bling"
 utils = require"utils"
 cairo = require"lgi".cairo
 glib = require"lgi".GLib
+layout = require"layout"
 
 terminal = "urxvt"
 modkey = "Mod4"
@@ -33,7 +34,7 @@ awful.screen.connect_for_each_screen(function(s)
     -- Why is it not the same color??? Why do I have to hardcode this one??
     gears.wallpaper.centered(beautiful.wallpaper, s, "#1E0427", 0.1)
 
-    awful.tag({ "1", "2", "3", "4", "5" }, s, awful.layout.suit.floating)
+    awful.tag({ "1", "2", "3", "4", "5" }, s, layout.scroll)
 
     s.mywibar = require"wibar"(s)
     s.mydock = require"dock"(s)
@@ -70,13 +71,27 @@ client.connect_signal("manage", function(c)
     end)
 end)
 
+function grabmouse(fn)
+    return function(c)
+        c:emit_signal("request::activate", "mouse_click", {raise = true})
+        mousegrabber.run(function()
+            fn()
+            return false
+        end, "mouse")
+    end
+end
+
 awful.rules.rules = {{
     rule = { },
     properties = {
         focus = awful.client.focus.filter,
         raise = true,
         keys = require"clientkeys",
-        buttons = require"windowcontrols",
+        buttons = gears.table.join(
+            require"windowcontrols",
+            awful.button({ modkey }, 5, grabmouse(layout.move_left)),
+            awful.button({ modkey }, 4, grabmouse(layout.move_right))
+        ),
         screen = awful.screen.preferred,
         placement = awful.placement.no_overlap+awful.placement.no_offscreen,
         size_hints_honor = false
@@ -117,6 +132,10 @@ awful.rules.rules = {{
 client.connect_signal("request::titlebars", function(c)
     require"titlebar"(c)
     require"tabs"(c)
+end)
+
+client.connect_signal("mouse::enter", function(c)
+    c:activate { context = "mouse_enter", raise = false }
 end)
 
 -- vim:set et sw=4 ts=4:

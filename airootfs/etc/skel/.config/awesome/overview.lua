@@ -273,6 +273,7 @@ return function()
                     popup:buttons(gears.table.join(
                         awful.button({ }, 1, function()
                             quit_overview(clients)
+                            c.minimized = false
                             client.focus = c
                             c:raise()
                         end)
@@ -377,6 +378,7 @@ return function()
         if #filtered_clients == 1 then
             local c = filtered_clients[1]
             quit_overview(clients)
+            c.minimized = false
             client.focus = c
             c:raise()
         else

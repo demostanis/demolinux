@@ -190,6 +190,43 @@ client.connect_signal("unmanage", function()
 	}:start()
 end)
 
+function scroll.move_handler(c, context, hints)
+	-- default move handler, but we don't swap
+	-- clients too early to prevent flickering.
+    if context ~= "mouse.move" then return end
+
+    if mouse.screen ~= c.screen then
+        c.screen = mouse.screen
+    end
+
+    local l = c.screen.selected_tag and c.screen.selected_tag.layout or nil
+    if l == awful.layout.suit.floating then return end
+
+    local c_u_m = mouse.current_client
+    if c_u_m and not c_u_m.floating then
+        if c_u_m ~= c then
+			local smallest = c
+			local biggest = c_u_m
+			if c.width > c_u_m.width then
+				smallest = c_u_m
+				biggest = c
+			end
+			local mouse_x = mouse.coords().x
+			local diff = biggest.width-smallest.width
+			if mouse_x > smallest.x+smallest.width
+				and mouse_x < smallest.x+smallest.width+diff then
+				return
+			end
+
+            c:swap(c_u_m)
+        end
+    end
+end
+
+-- replace default client move handler
+client.disconnect_signal("request::geometry", awful.layout.move_handler)
+client.connect_signal("request::geometry", scroll.move_handler)
+
 return {
 	move_left = move_left,
 	move_right = move_right,

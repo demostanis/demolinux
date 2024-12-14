@@ -188,6 +188,7 @@ local function cycle_window_focus()
 end
 
 client.connect_signal("raised", function(c)
+	if c.floating then return end
 	if c.x == 5 then
 		local function callback(c)
 			local new_global_x = global_x_to_client(c)

@@ -251,9 +251,24 @@ function scroll.move_handler(c, context, hints)
     end
 end
 
+local function maximize(c)
+	if c.kinda_maximized then
+		c.width = c.oldwidth
+	else
+		c.oldwidth = c.width
+		c.width = c.screen.geometry.width-100
+	end
+	c.kinda_maximized = not c.kinda_maximized
+end
+
 -- replace default client move handler
 client.disconnect_signal("request::geometry", awful.layout.move_handler)
 client.connect_signal("request::geometry", scroll.move_handler)
+
+client.connect_signal("property::maximized", function(c)
+	-- disable since it fucks up the layout
+	c.maximized = false
+end)
 
 return {
 	move_left = move_left,
@@ -261,5 +276,5 @@ return {
 	move_left_window = move_left_window,
 	move_right_window = move_right_window,
 	cycle_window_focus = cycle_window_focus,
-	scroll = scroll,
+	scroll = scroll, maximize = maximize,
 }

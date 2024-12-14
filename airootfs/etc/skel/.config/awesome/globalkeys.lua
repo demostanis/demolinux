@@ -48,7 +48,6 @@ local globalkeys = gears.table.join(
     awful.key({ modkey }, "k", require"screenlock", nil),
     awful.key({ modkey }, "o", require"overview", nil),
     awful.key({ modkey }, "space", require"applauncher", nil),
-    awful.key({ modkey }, "u", function() awful.spawn("nemo /home/demostanis/programming/subjects") end, nil),
     -- God, why is it trying to call some on_release when I don't specify nil??
     awful.key({ modkey }, "e", require"emojipicker", nil),
 

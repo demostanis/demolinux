@@ -1,3 +1,13 @@
+local function maximizedbutton(c)
+    local widget = awful.titlebar.widget.button(c, "maximized", function(cl)
+        return cl.kinda_maximized or false
+    end, function(cl, state)
+        layout.maximize(cl)
+    end)
+    c:connect_signal("property::kinda_maximized", widget.update)
+    return widget
+end
+
 return function(c)
     local buttons = gears.table.join(
         awful.button({ }, 1, function()
@@ -65,7 +75,7 @@ return function(c)
                     right = 2
                 }),
                 titlebar_button_with_hover_effect(wibox.widget{
-                    awful.titlebar.widget.maximizedbutton(c),
+                    maximizedbutton(c),
                     widget = wibox.container.margin,
                     left = 2,
                     right = 2

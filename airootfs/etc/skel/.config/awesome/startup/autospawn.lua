@@ -4,7 +4,7 @@ autospawn("clipster -d")
 -- screenshots to the clipboard.
 autospawn("flameshot")
 
-autospawn("/usr/lib/kdeconnectd")
+autospawn("kdeconnectd")
 
 -- We need a small timeout because
 -- Picom acts weird on first start.

@@ -1,15 +1,15 @@
-From 47236c5c418e867ec9866918b2b973e9b3391af2 Mon Sep 17 00:00:00 2001
+From d87b919847dc7da119f1013cb87700ed2596083c Mon Sep 17 00:00:00 2001
 From: demostanis <demostanis@protonmail.com>
-Date: Mon, 30 Oct 2023 22:02:24 +0000
+Date: Mon, 30 Dec 2024 23:26:47 +0100
 Subject: [PATCH] Adapt to how demolinux works
 
 ---
- hooks/archiso   | 119 ++++++++++++++++++++++++++++++++----------------
- install/archiso |   4 ++
- 2 files changed, 85 insertions(+), 38 deletions(-)
+ hooks/archiso   | 120 +++++++++++++++++++++++++++++++++---------------
+ install/archiso |   5 ++
+ 2 files changed, 87 insertions(+), 38 deletions(-)
 
 diff --git a/hooks/archiso b/hooks/archiso
-index d2c600e..a307a2a 100644
+index d2c600e..05fbf64 100644
 --- a/hooks/archiso
 +++ b/hooks/archiso
 @@ -45,13 +45,13 @@ _mnt_dmsnapshot() {
@@ -59,7 +59,7 @@ index d2c600e..a307a2a 100644
      # shellcheck disable=SC2154
      # defined via initcpio's parse_cmdline()
      if [ -n "${cow_label}" ]; then
-@@ -211,21 +200,72 @@ archiso_mount_handler() {
+@@ -211,21 +200,69 @@ archiso_mount_handler() {
      local sigfile cms_sigfile fs_img fs_img_size iso_blockdev
  
      if ! mountpoint -q "/run/archiso/bootmnt"; then
@@ -86,10 +86,7 @@ index d2c600e..a307a2a 100644
 +        umount -f $btrfs_root
 +        # i wonder why i do all this work when
 +        # i could just hardcode everything...
-+        device="$(readlink /dev/disk/by-partlabel/system)"
-+        part="${device##*/}"
-+        disk="${part%%?}"
-+        partid="${part##"$disk"}"
++        disk="$(lsblk -no pkname /dev/disk/by-partlabel/system)"
 +        (
 +            echo d # delete
 +            echo 3 # 3rd partition
@@ -140,7 +137,7 @@ index d2c600e..a307a2a 100644
      # shellcheck disable=SC2154
      # defined via initcpio's parse_cmdline()
      if [ "${checksum}" = "y" ]; then
-@@ -292,10 +332,10 @@ archiso_mount_handler() {
+@@ -292,10 +329,10 @@ archiso_mount_handler() {
      # * the root file system image size is less than 4 GiB,
      # * the estimated available memory is more than the root file system image size + 2 GiB.
      if [ "${copytoram}" = "auto" ]; then
@@ -154,7 +151,7 @@ index d2c600e..a307a2a 100644
                  copytoram="y"
              fi
          fi
-@@ -314,19 +354,26 @@ archiso_mount_handler() {
+@@ -314,19 +351,26 @@ archiso_mount_handler() {
          msg ":: Mounting /run/archiso/cowspace (tmpfs) filesystem, size=${cow_spacesize}..."
          mount --mkdir -t tmpfs -o "size=${cow_spacesize}",mode=0755 cowspace /run/archiso/cowspace
      fi
@@ -190,6 +187,7 @@ index d2c600e..a307a2a 100644
      fi
  }
  
+diff --git a/install/archiso b/install/archiso
 --- a/install/archiso
 +++ b/install/archiso
 @@ -7,6 +7,7 @@ build() {
@@ -200,7 +198,7 @@ index d2c600e..a307a2a 100644
  
      add_runscript
  
-@@ -14,6 +15,10 @@ build() {
+@@ -14,6 +15,11 @@ build() {
      add_binary dmsetup
      add_binary losetup
      add_binary openssl
@@ -208,9 +206,12 @@ index d2c600e..a307a2a 100644
 +    add_binary fdisk
 +    add_binary gdisk
 +    add_binary plymouth
++    add_binary lsblk
  
      if command -v pv >/dev/null 2>&1; then
          add_binary pv
 -- 
-2.42.0
+2.47.1
+
+2.47.1
 

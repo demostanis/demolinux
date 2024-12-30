@@ -3,7 +3,7 @@
 pkgname=mkinitcpio-archiso
 pkgver=68
 _commit=2ac885187f6dc610254c2fd1a6bb8e13f6e739fa  #refs/tags/v68
-pkgrel=48
+pkgrel=49
 pkgdesc="Initcpio scripts used by archiso"
 arch=(any)
 url="https://gitlab.archlinux.org/mkinitcpio/mkinitcpio-archiso"
@@ -22,7 +22,7 @@ optdepends=(
 source=(git+https://gitlab.archlinux.org/mkinitcpio/$pkgname.git#tag=$_commit
 	0001-Adapt-to-how-demolinux-works.patch)
 sha256sums=('SKIP'
-            'a2dae9884345d9b18995117839ff8540d7530fdf9cb605d40d033852b5ade669')
+            'fc7b59050dd612659750386c1d0aca977d6474ea1dce3a6310adcc69eac1a8e6')
 
 check() {
   #make -k check -C $pkgname

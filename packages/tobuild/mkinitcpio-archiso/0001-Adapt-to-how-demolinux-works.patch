@@ -93,7 +93,7 @@ index d2c600e..05fbf64 100644
 +            echo n # new partition
 +            echo   # choose defaults
 +            echo   # (= take up all empty space)
-+            echo   # don't remove the existing signature
++            echo n # don't remove the existing signature
 +            echo w # write changes
 +        ) | fdisk /dev/"$disk"
 +        (

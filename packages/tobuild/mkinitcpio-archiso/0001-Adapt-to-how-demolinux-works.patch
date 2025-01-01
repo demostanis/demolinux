@@ -1,15 +1,15 @@
-From d87b919847dc7da119f1013cb87700ed2596083c Mon Sep 17 00:00:00 2001
+From aed5cb1e475c2508a6d2ff2f7d33c45f7e9756d4 Mon Sep 17 00:00:00 2001
 From: demostanis <demostanis@protonmail.com>
-Date: Mon, 30 Dec 2024 23:26:47 +0100
+Date: Tue, 31 Dec 2024 18:04:12 +0100
 Subject: [PATCH] Adapt to how demolinux works
 
 ---
- hooks/archiso   | 120 +++++++++++++++++++++++++++++++++---------------
- install/archiso |   5 ++
- 2 files changed, 87 insertions(+), 38 deletions(-)
+ hooks/archiso   | 110 ++++++++++++++++++++++++++++++------------------
+ install/archiso |   5 +++
+ 2 files changed, 74 insertions(+), 41 deletions(-)
 
 diff --git a/hooks/archiso b/hooks/archiso
-index d2c600e..05fbf64 100644
+index d2c600e..dba239c 100644
 --- a/hooks/archiso
 +++ b/hooks/archiso
 @@ -45,13 +45,13 @@ _mnt_dmsnapshot() {
@@ -59,7 +59,7 @@ index d2c600e..05fbf64 100644
      # shellcheck disable=SC2154
      # defined via initcpio's parse_cmdline()
      if [ -n "${cow_label}" ]; then
-@@ -211,21 +200,69 @@ archiso_mount_handler() {
+@@ -211,21 +200,53 @@ archiso_mount_handler() {
      local sigfile cms_sigfile fs_img fs_img_size iso_blockdev
  
      if ! mountpoint -q "/run/archiso/bootmnt"; then
@@ -67,11 +67,9 @@ index d2c600e..05fbf64 100644
 +        _mnt_dev /dev/disk/by-partlabel/boot "/run/archiso/bootmnt" "-r" "defaults"
      fi
  
-+    btrfs_root=/run/archiso/btrfs
-+    _mnt_dev /dev/disk/by-partlabel/system $btrfs_root "-w" "subvol=system,compress=zstd"
-     # We need this block at the top for early failure
-     # but also to be able to give the fs_img to CMS verification.
-     # (sha512sum files contain the image, CMS files does not)
+-    # We need this block at the top for early failure
+-    # but also to be able to give the fs_img to CMS verification.
+-    # (sha512sum files contain the image, CMS files does not)
 -    if [ -f "/run/archiso/bootmnt/${archisobasedir}/${arch}/airootfs.sfs" ]; then
 -        fs_img="/run/archiso/bootmnt/${archisobasedir}/${arch}/airootfs.sfs"
 -    elif [ -f "/run/archiso/bootmnt/${archisobasedir}/${arch}/airootfs.erofs" ]; then
@@ -79,30 +77,19 @@ index d2c600e..05fbf64 100644
 -    else
 -        echo "ERROR: no root file system image found"
 -        launch_interactive_shell
++    btrfs_root=/run/archiso/btrfs
++    _mnt_dev /dev/disk/by-partlabel/system $btrfs_root "-w" "subvol=system,compress=zstd"
++
++    # yes, this syntax is required...
 +    if [ $(( $(btrfs subvol list $btrfs_root | wc -l) < 6 )) = 1 ]; then
 +        plymouth update --status="Extending filesystems..."
 +
 +        # first, resize the filesystem
 +        umount -f $btrfs_root
-+        # i wonder why i do all this work when
-+        # i could just hardcode everything...
++        # TODO: multiple system partitions
 +        disk="$(lsblk -no pkname /dev/disk/by-partlabel/system)"
-+        (
-+            echo d # delete
-+            echo 3 # 3rd partition
-+            echo n # new partition
-+            echo   # choose defaults
-+            echo   # (= take up all empty space)
-+            echo n # don't remove the existing signature
-+            echo w # write changes
-+        ) | fdisk /dev/"$disk"
-+        (
-+            echo c # change partlabel
-+            echo 3 # 3rd partition
-+            echo system
-+            echo w # write
-+            echo y # confirm
-+        ) | gdisk /dev/"$disk"
++        # then, resize the partition to fit the whole disk...
++        sgdisk -d 3 -N 3 -c 3:system /dev/"$disk"
 +        partprobe
 +
 +        plymouth update --status="Creating Btrfs subvolumes..."
@@ -137,7 +124,7 @@ index d2c600e..05fbf64 100644
      # shellcheck disable=SC2154
      # defined via initcpio's parse_cmdline()
      if [ "${checksum}" = "y" ]; then
-@@ -292,10 +329,10 @@ archiso_mount_handler() {
+@@ -292,10 +313,10 @@ archiso_mount_handler() {
      # * the root file system image size is less than 4 GiB,
      # * the estimated available memory is more than the root file system image size + 2 GiB.
      if [ "${copytoram}" = "auto" ]; then
@@ -151,7 +138,7 @@ index d2c600e..05fbf64 100644
                  copytoram="y"
              fi
          fi
-@@ -314,19 +351,26 @@ archiso_mount_handler() {
+@@ -314,19 +335,26 @@ archiso_mount_handler() {
          msg ":: Mounting /run/archiso/cowspace (tmpfs) filesystem, size=${cow_spacesize}..."
          mount --mkdir -t tmpfs -o "size=${cow_spacesize}",mode=0755 cowspace /run/archiso/cowspace
      fi
@@ -198,20 +185,17 @@ diff --git a/install/archiso b/install/archiso
  
      add_runscript
  
-@@ -14,6 +15,11 @@ build() {
+@@ -14,6 +15,10 @@ build() {
      add_binary dmsetup
      add_binary losetup
      add_binary openssl
 +    add_binary btrfs
-+    add_binary fdisk
-+    add_binary gdisk
++    add_binary sgdisk
 +    add_binary plymouth
 +    add_binary lsblk
  
      if command -v pv >/dev/null 2>&1; then
          add_binary pv
 -- 
-2.47.1
-
 2.47.1
 

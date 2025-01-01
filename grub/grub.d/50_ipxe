@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+prefix="/usr"
+exec_prefix="${prefix}"
+
+datarootdir="/usr/share"
+datadir="${datarootdir}"
+
+. "${datadir}/grub/grub-mkconfig_lib"
+
+IPXE_IMAGE="/mnt/demolinux/boot/ipxe.lkrn"
+CLASS="--class memtest86 --class gnu --class tool"
+
+if [ -e "${IPXE_IMAGE}" ] && is_path_readable_by_grub "${IPXE_IMAGE}" ; then
+    ## image exists, create menu entry
+    echo "Found iPXE image: ${IPXE_IMAGE}" >&2
+    _GRUB_MEMTEST_HINTS_STRING="$(${grub_probe} --target=hints_string ${IPXE_IMAGE})"
+    _GRUB_MEMTEST_FS_UUID="$(${grub_probe} --target=fs_uuid ${IPXE_IMAGE})"
+    _GRUB_MEMTEST_REL_PATH="$(make_system_path_relative_to_its_root ${IPXE_IMAGE})"
+    cat << EOF
+    menuentry "iPXE" ${CLASS} {
+        search --fs-uuid --no-floppy --set=root ${_GRUB_MEMTEST_HINTS_STRING} ${_GRUB_MEMTEST_FS_UUID}
+        linux16 ${_GRUB_MEMTEST_REL_PATH} ${GRUB_CMDLINE_IPXE}
+    }
+EOF
+fi

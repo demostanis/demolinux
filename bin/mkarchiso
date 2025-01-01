@@ -389,7 +389,7 @@ _make_chroot() {
                     additional_opts+=( -I "$file" )
                 done
             fi
-            "$correct_makechrootpkg" -U $SUDO_USER -c -r "${chroot_dir}" ${additional_opts[@]}
+            "$correct_makechrootpkg" -U $SUDO_USER -r "${chroot_dir}" ${additional_opts[@]}
             repo-add "${profile}"/packages/db/packages.db.tar.gz *pkg.tar*
             mv *pkg.tar* "${profile}"/packages/db/
             _msg_info "Done!"

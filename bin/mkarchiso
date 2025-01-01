@@ -1145,6 +1145,13 @@ _make_bootmode_hybrid.grub.gpt() {
         /\/default\/grub ; then/{N;N;N;N;N;N;N;a . '"$profile"'/grub/config
     d}' `which grub-mkconfig` | bash -
 
+    mkdir -p /mnt/demolinux/boot/boot/grub
+    cat > /mnt/demolinux/boot/boot/grub/grub.cfg <<-EOF
+    # fix an issue where ubuntu's grub tries to load \$prefix/boot/grub.cfg instead of \$prefix/grub.cfg on some firmware
+    set prefix="(\$root)"/grub
+    configfile "\$prefix"/grub.cfg
+EOF
+
     _make_boot_on_disk_image
     umount /mnt/demolinux/{b,r}oot
     losetup -d /dev/loop0

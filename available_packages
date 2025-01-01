@@ -14,7 +14,6 @@ qt5ct
 qt6ct
 xorg
 xorg-xinit
-xf86-video-intel
 
 # Theming
 local themix-gui-git

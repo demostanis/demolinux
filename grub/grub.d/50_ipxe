@@ -1,4 +1,6 @@
-#!/usr/bin/env bash
+#! /bin/sh
+# from debian
+set -e
 
 prefix="/usr"
 exec_prefix="${prefix}"
@@ -8,19 +10,30 @@ datadir="${datarootdir}"
 
 . "${datadir}/grub/grub-mkconfig_lib"
 
-IPXE_IMAGE="/mnt/demolinux/boot/ipxe.lkrn"
-CLASS="--class memtest86 --class gnu --class tool"
+prepare_boot_cache="$(prepare_grub_to_access_device ${GRUB_DEVICE_BOOT} | sed -e "s/^/\t/")"
 
-if [ -e "${IPXE_IMAGE}" ] && is_path_readable_by_grub "${IPXE_IMAGE}" ; then
-    ## image exists, create menu entry
-    echo "Found iPXE image: ${IPXE_IMAGE}" >&2
-    _GRUB_MEMTEST_HINTS_STRING="$(${grub_probe} --target=hints_string ${IPXE_IMAGE})"
-    _GRUB_MEMTEST_FS_UUID="$(${grub_probe} --target=fs_uuid ${IPXE_IMAGE})"
-    _GRUB_MEMTEST_REL_PATH="$(make_system_path_relative_to_its_root ${IPXE_IMAGE})"
-    cat << EOF
-    menuentry "iPXE" ${CLASS} {
-        search --fs-uuid --no-floppy --set=root ${_GRUB_MEMTEST_HINTS_STRING} ${_GRUB_MEMTEST_FS_UUID}
-        linux16 ${_GRUB_MEMTEST_REL_PATH} ${GRUB_CMDLINE_IPXE}
-    }
+IPXE=/mnt/demolinux/boot/ipxe.lkrn
+
+if test -e "$IPXE" ; then
+  IPXEPATH=$( make_system_path_relative_to_its_root "$IPXE" )
+  # Remove the .lkrn extension
+  IPXEPATH=${IPXEPATH%.lkrn}
+  echo "Found iPXE image: $IPXE" >&2
+  cat << EOF
+menuentry "Network boot (iPXE)" --users "" --class network --id ipxe {
+${prepare_boot_cache}
+EOF
+  save_default_entry | grub_add_tab
+  cat << EOF
+	if [ "\$grub_platform" = "efi" ]; then
+		chainloader $IPXEPATH.efi
+	else
+		linux16 $IPXEPATH.lkrn
+		# If the user provided an iPXE script, load it
+		if [ -f $IPXEPATH.ipxe ]; then
+			initrd16 $IPXEPATH.ipxe
+		fi
+	fi
+}
 EOF
 fi

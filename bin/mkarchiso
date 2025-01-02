@@ -1070,7 +1070,6 @@ copy_boot_files() {
 
     if [ -e /usr/share/ipxe/ipxe.lkrn ]; then
         cp /usr/share/ipxe/ipxe.lkrn /mnt/demolinux/boot
-        ls /mnt/demolinux/boot
     fi
     if [ -e /boot/memtest86+/memtest.bin ]; then
         cp /boot/memtest86+/memtest.bin /mnt/demolinux/boot

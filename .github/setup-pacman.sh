@@ -45,8 +45,9 @@ sudo apt-get install arch-install-scripts \
   git gdisk grub-pc libxml2 pv squashfs-tools \
   unzip xfsprogs grub-ipxe memtest86+
 
-sudo mkdir /usr/share/ipxe
+sudo mkdir -p /usr/share/ipxe/x86_64
 sudo cp /boot/ipxe.lkrn /usr/share/ipxe
+sudo cp /boot/ipxe.efi /usr/share/ipxe/x86_64
 
 sudo mkdir /boot/memtest86+
 sudo cp /boot/memtest86+x64.bin /boot/memtest86+/memtest.bin

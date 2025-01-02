@@ -14,7 +14,7 @@ return function(c)
             awful.mouse.client.move(c)
         end),
         awful.button({ }, 2, function()
-            c.maximized = not c.maximized
+            return layout.maximize(c)
         end)
     )
 

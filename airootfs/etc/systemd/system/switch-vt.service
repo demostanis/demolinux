@@ -1,6 +1,6 @@
 [Unit]
 Description=Switch to TTY2
-After=systemd-user-sessions.service
+After=getty.target
 
 [Service]
 ExecStart=/usr/bin/chvt 2

@@ -1,15 +1,19 @@
 alias gap="git add --patch"
 alias gc="git commit"
+alias gca="git commit --amend"
 alias gd="git diff"
+alias gdc="git diff --cached"
 alias gs="git status"
 alias gl="git log"
 alias gp="git push"
 alias gpf="git push --force-with-lease"
+alias gpff="git push -f"
 alias ga="git add"
 alias grc="git rebase --continue"
 alias gsa="git stash apply"
 alias gcl="git clone"
 alias gpl="git pull"
+alias gab="git-absorb --and-rebase"
 
 alias imv=imv-hardened
 alias mpv=mpv-hardened

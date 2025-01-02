@@ -104,6 +104,7 @@ fd
 fzf
 sd
 git
+git-absorb
 tree
 local jargon
 local git-mv-changes

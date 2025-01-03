@@ -4,7 +4,6 @@ devtools
 dosfstools
 erofs-utils
 git
-gptfdisk
 grub
 ipxe
 libxml2

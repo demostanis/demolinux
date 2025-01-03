@@ -55,7 +55,7 @@ index d2c600e..34a8788 100644
      # defined via initcpio's parse_cmdline()
      [ -z "${archisodevice}" ] && archisodevice="/dev/disk/by-label/${archisolabel}"
 -    [ -z "${cow_spacesize}" ] && cow_spacesize="256M"
-+    [ -z "${cow_spacesize}" ] && cow_spacesize="6G"
++    [ -z "${cow_spacesize}" ] && cow_spacesize=$(free | awk '{if(NR==2)print int($2/2/100000)/10"G"}')
      # shellcheck disable=SC2154
      # defined via initcpio's parse_cmdline()
      if [ -n "${cow_label}" ]; then

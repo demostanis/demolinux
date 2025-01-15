@@ -34,9 +34,6 @@ local function app_shortcut(app, key)
 end
 
 local globalkeys = gears.table.join(
-    awful.key({ modkey, "Shift" }, "l",  function() moveclient("down") end),
-    awful.key({ modkey, "Shift" }, "h", function() moveclient("up") end),
-
     awful.key({ modkey }, "s", function() awful.spawn("flameshot gui") end),
 
     app_shortcut(terminal, "Return"),
@@ -71,6 +68,8 @@ local globalkeys = gears.table.join(
 
     awful.key({ modkey }, "h", layout.move_left_window),
     awful.key({ modkey }, "l", layout.move_right_window),
+
+    awful.key({ modkey }, "-", layout.maximize_two_windows),
 
     awful.key({ modkey }, "Tab", layout.cycle_window_focus)
 )

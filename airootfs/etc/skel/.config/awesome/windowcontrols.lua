@@ -67,12 +67,19 @@ local corner_handler_table = {
     end
 }
 
-function raise(c)
-    c:emit_signal("request::activate", "mouse_click", {raise = true})
+-- TODO: move to theme.lua
+local margin_before_window_on_focus = 56
+
+function activate(c)
+    local raise = c.x > c.screen.geometry.width-margin_before_window_on_focus
+        or c.x+c.width < margin_before_window_on_focus
+
+    client.focus = c
+    c:activate{raise = raise}
 end
 
 return gears.table.join(
-    awful.button({ }, 1, raise),
+    awful.button({ }, 1, activate),
     awful.button({ modkey }, 1, function (c)
         awful.mouse.client.move(c)
     end),
@@ -115,6 +122,8 @@ return gears.table.join(
 
     awful.key({ modkey }, "h", layout.move_left_window),
     awful.key({ modkey }, "l", layout.move_right_window),
+
+    awful.key({ modkey }, "-", layout.maximize_two_windows),
 
     awful.key({ modkey }, "Tab", layout.cycle_window_focus)
 )

@@ -133,8 +133,4 @@ client.connect_signal("request::titlebars", function(c)
     require"tabs"(c)
 end)
 
-client.connect_signal("mouse::enter", function(c)
-    c:activate { context = "mouse_enter", raise = false }
-end)
-
 -- vim:set et sw=4 ts=4:

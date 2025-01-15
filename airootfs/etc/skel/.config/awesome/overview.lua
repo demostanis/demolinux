@@ -344,10 +344,8 @@ return function()
         if status == "release" then return end
 
         local is_mod4 = false
-        for i, mod in ipairs(mods) do
-            if mod == "Mod2" then -- numlock
-                table.remove(mods, i)
-            elseif mod == "Mod4" then
+        for _, mod in ipairs(mods) do
+            if mod == "Mod4" then
                 is_mod4 = true
             end
         end

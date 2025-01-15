@@ -1,5 +1,5 @@
 local step = 500
-local margin_before_window_on_focus = 50
+local margin_before_window_on_focus = 56
 
 local global_x = 0
 local scroll = {name = "scroll"}
@@ -140,7 +140,7 @@ local function global_x_to_client(c)
 	if new_global_x <= 0 then
 		new_global_x = 0
 	else
-		new_global_x = new_global_x - margin_before_window_on_focus
+		new_global_x = new_global_x - (margin_before_window_on_focus-6)
 	end
 	return -new_global_x
 end
@@ -163,7 +163,8 @@ local function cycle_window_focus()
 	local windows_in_viewport = {}
 	for _, c in ipairs(mouse.screen.clients) do
 		-- don't judge those magic numbers please
-		if c.x+c.width > 56 and c.x < c.screen.geometry.width-56 then
+		if c.x+c.width > margin_before_window_on_focus and
+			c.x < c.screen.geometry.width-margin_before_window_on_focus then
 			table.insert(windows_in_viewport, c)
 		end
 	end
@@ -187,37 +188,22 @@ local function cycle_window_focus()
 	end
 end
 
-client.connect_signal("raised", function(c)
-	if c.floating then return end
-	if c.x == 5 then
-		local function callback(c)
-			local new_global_x = global_x_to_client(c)
-			-- not sure why that happens, but sometimes the
-			-- second window changes its x property twice...
-			if not (new_global_x == 0 and c ~= client.focus) then
-				c:disconnect_signal("property::x", callback)
-				set_global_x(new_global_x)
-			end
-		end
-		c:connect_signal("property::x", callback)
-	else
-		set_global_x(global_x_to_client(c))
-	end
-end)
-
-local function on_window_appearance_change()
-	gears.timer{
-		timeout = 0.1,
-		single_shot = true,
-		call_once = true,
-		callback = function()
+local function on_window_appearance_change(c)
+	delayed(function()
+		local is_valid = pcall(function() return c.valid end) and c.valid
+		if is_valid then
+			set_global_x(global_x_to_client(c))
+		else
 			set_global_x(global_x_to_client(client.focus))
 		end
-	}:start()
+	end, 0.1)
 end
 
-client.connect_signal("unmanage", on_window_appearance_change)
-client.connect_signal("property::minimized", on_window_appearance_change)
+for _, event in ipairs({
+	"raised", "manage", "unmanage", "property::minimized"
+}) do
+	client.connect_signal(event, on_window_appearance_change)
+end
 
 function scroll.move_handler(c, context, hints)
 	-- default move handler, but we don't swap
@@ -248,6 +234,7 @@ function scroll.move_handler(c, context, hints)
 			end
 
             c:swap(c_u_m)
+			on_window_appearance_change()
         end
     end
 end
@@ -257,7 +244,7 @@ local function maximize(c)
 		c.width = c.oldwidth
 	else
 		c.oldwidth = c.width
-		c.width = c.screen.geometry.width-100
+		c.width = c.screen.geometry.width-margin_before_window_on_focus
 	end
 	c.kinda_maximized = not c.kinda_maximized
 end
@@ -271,6 +258,20 @@ client.connect_signal("property::maximized", function(c)
 	c.maximized = false
 end)
 
+local function maximize_two_windows()
+	local leftmost = leftmost_window()
+	local righthand = righthand_window()
+
+	if leftmost and righthand and leftmost ~= righthand then
+		local mid = margin_before_window_on_focus/2
+		if leftmost ~= first_window() then
+			mid = mid * 2
+		end
+		leftmost.width = leftmost.screen.geometry.width/2-mid+1
+		righthand.width = righthand.screen.geometry.width/2-mid+1
+	end
+end
+
 return {
 	move_left = move_left,
 	move_right = move_right,
@@ -278,4 +279,5 @@ return {
 	move_right_window = move_right_window,
 	cycle_window_focus = cycle_window_focus,
 	scroll = scroll, maximize = maximize,
+	maximize_two_windows = maximize_two_windows,
 }

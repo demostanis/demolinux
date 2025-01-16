@@ -13,25 +13,6 @@ cmp.setup{
 
     mapping = {
         ["<Tab>"] = cmp.mapping(function(fallback)
-            i = 0
-            while true do
-                if vim.fn.col('.')-i == 1 then break end
-                local hi = vim.fn.synstack(vim.fn.line('.'), vim.fn.col('.')-i)
-                if #hi ~= 0 then
-                    local found = false
-                    for j=1,#hi do
-                        if vim.fn.synIDattr(hi[j], "name") == "cType" then
-                            found = true
-                        end
-                    end
-                    if found then
-                        fallback()
-                        return
-                    end
-                end
-                i = i + 1
-            end
-
             if cmp.visible() then
                 cmp.select_next_item{behavior = cmp.SelectBehavior.Insert}
             elseif snippy.can_expand_or_advance() then

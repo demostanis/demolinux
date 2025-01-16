@@ -205,6 +205,12 @@ for _, event in ipairs({
 }) do
 	client.connect_signal(event, on_window_appearance_change)
 end
+-- sometimes "raised" event is not called, but request::activate is...
+client.connect_signal("request::activate", function(c, _, o)
+	if o.raise then
+		on_window_appearance_change(c)
+	end
+end)
 
 function scroll.move_handler(c, context, hints)
 	-- default move handler, but we don't swap

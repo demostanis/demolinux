@@ -34,9 +34,9 @@ local function leftmost_window()
 	return leftmost
 end
 
-local function lefthand_window()
+local function lefthand_window(c)
 	local lefthand = nil
-	local leftmost = leftmost_window()
+	local leftmost = c or leftmost_window()
 	for _, c in ipairs(mouse.screen.clients) do
 		if not lefthand or (
 			math.abs(c.x+c.width-leftmost.x) <
@@ -47,9 +47,9 @@ local function lefthand_window()
 	return lefthand
 end
 
-local function righthand_window()
+local function righthand_window(c)
 	local righthand = nil
-	local leftmost = leftmost_window()
+	local leftmost = c or leftmost_window()
 	for _, c in ipairs(mouse.screen.clients) do
 		if not righthand or (
 			math.abs(c.x-(leftmost.x+leftmost.width)) <
@@ -192,7 +192,9 @@ local function on_window_appearance_change(c)
 	delayed(function()
 		local is_valid = pcall(function() return c.valid end) and c.valid
 		if is_valid then
-			set_global_x(global_x_to_client(c))
+			if not c.floating then
+				set_global_x(global_x_to_client(c))
+			end
 		else
 			set_global_x(global_x_to_client(client.focus))
 		end
@@ -272,6 +274,34 @@ local function maximize_two_windows()
 	end
 end
 
+local function swap_left()
+	local c = client.focus
+	if c then
+		local lefthand = lefthand_window(c)
+		if lefthand and lefthand ~= c then
+			c:swap(lefthand)
+			delayed(function()
+				client.focus:raise()
+				on_window_appearance_change()
+			end, 0.1)
+		end
+	end
+end
+
+local function swap_right()
+	local c = client.focus
+	if c then
+		local righthand = righthand_window(c)
+		if righthand and righthand ~= c then
+			c:swap(righthand)
+			delayed(function()
+				client.focus:raise()
+				on_window_appearance_change()
+			end, 0.1)
+		end
+	end
+end
+
 return {
 	move_left = move_left,
 	move_right = move_right,
@@ -280,4 +310,5 @@ return {
 	cycle_window_focus = cycle_window_focus,
 	scroll = scroll, maximize = maximize,
 	maximize_two_windows = maximize_two_windows,
+	swap_left = swap_left, swap_right = swap_right,
 }

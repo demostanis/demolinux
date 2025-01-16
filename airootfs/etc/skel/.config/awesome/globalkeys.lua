@@ -69,6 +69,9 @@ local globalkeys = gears.table.join(
     awful.key({ modkey }, "h", layout.move_left_window),
     awful.key({ modkey }, "l", layout.move_right_window),
 
+    awful.key({ modkey, "Shift" }, "h", layout.swap_left),
+    awful.key({ modkey, "Shift" }, "l", layout.swap_right),
+
     awful.key({ modkey }, "-", layout.maximize_two_windows),
 
     awful.key({ modkey }, "Tab", layout.cycle_window_focus)

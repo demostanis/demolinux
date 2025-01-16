@@ -162,7 +162,6 @@ end
 local function cycle_window_focus()
 	local windows_in_viewport = {}
 	for _, c in ipairs(mouse.screen.clients) do
-		-- don't judge those magic numbers please
 		if c.x+c.width > margin_before_window_on_focus and
 			c.x < c.screen.geometry.width-margin_before_window_on_focus then
 			table.insert(windows_in_viewport, c)

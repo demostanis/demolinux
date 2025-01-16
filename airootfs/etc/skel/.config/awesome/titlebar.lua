@@ -11,7 +11,9 @@ end
 return function(c)
     local buttons = gears.table.join(
         awful.button({ }, 1, function()
-            awful.mouse.client.move(c)
+            if not c.floating then
+                awful.mouse.client.move(c)
+            end
         end),
         awful.button({ }, 2, function()
             return layout.maximize(c)

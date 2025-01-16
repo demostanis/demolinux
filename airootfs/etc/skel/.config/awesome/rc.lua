@@ -38,6 +38,14 @@ awful.screen.connect_for_each_screen(function(s)
     s.mywibar = require"wibar"(s)
     s.mydock = require"dock"(s)
 
+    s:connect_signal("arrange", function(s)
+        for _, client in ipairs(s.clients) do
+            if client.floating then
+                awful.placement.centered(client, {parent = client.transient_for})
+            end
+        end
+    end)
+
     if c == screen.count() then
         -- Hide the boot splash when last screen is ready
         awful.spawn("/usr/lib/boot/finishboot", false)
@@ -54,6 +62,9 @@ client.connect_signal("manage", function(c)
     if c.transient_for then
         awful.placement.centered(c, {parent = c.transient_for})
         awful.placement.no_offscreen(c)
+        c.ontop = true
+    else
+        c.floating = false
     end
 
     if c.class == "Kodi" then

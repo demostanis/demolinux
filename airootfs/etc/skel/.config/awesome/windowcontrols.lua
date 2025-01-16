@@ -69,10 +69,11 @@ local corner_handler_table = {
 
 -- TODO: move to theme.lua
 local margin_before_window_on_focus = 56
+local margin_window_move_on_click = 200
 
 function activate(c)
-    local raise = c.x > c.screen.geometry.width-margin_before_window_on_focus
-        or c.x+c.width < margin_before_window_on_focus
+    local raise = c.x > c.screen.geometry.width-margin_window_move_on_click
+        or c.x+c.width < margin_window_move_on_click
 
     client.focus = c
     c:activate{raise = raise}
@@ -81,7 +82,9 @@ end
 return gears.table.join(
     awful.button({ }, 1, activate),
     awful.button({ modkey }, 1, function (c)
-        awful.mouse.client.move(c)
+        if not c.floating then
+            awful.mouse.client.move(c)
+        end
     end),
     awful.button({ modkey }, 3, function (c)
         local coords = mouse.coords()

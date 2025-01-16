@@ -13,7 +13,7 @@ URxvt.keysym.C-plus: resize-font:bigger
 URxvt.keysym.C-equal: resize-font:reset
 URxvt.perl-ext-common: default,-confirm-paste,-selection,vtwheel,matcher,resize-font
 URxvt.url-launcher: /usr/bin/xdg-open
-URxvt.matcher.rend.0: Uline bg5
+URxvt.matcher.rend.0: Uline
 URxvt.matcher.button: 1
 URxvt.iso14755: false
 

@@ -1,5 +1,8 @@
 #!/bin/sh
 
+echo sysupdate is deprecated >&2
+exit 2
+
 if ! checkupdates >/dev/null; then
 	echo "No updates available" >&2
 	exit 1

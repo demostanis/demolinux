@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+set -e
+
+dir=${1:-missing file}
+
+if [ ! -d "$dir" ]; then
+	echo only directories are supported >&2
+	exit 1
+fi
+
+dest=/data/$(realpath "$dir" | tr / _)
+mkdir -vp "$dest"
+chmod --reference="$dir" -- "$dest"
+cp -va -- "$dir"/* "$dest"
+rm -vrf -- "$dir"
+ln -vs -- "$dest" "$dir"
+sudo persistfs add "$dir"

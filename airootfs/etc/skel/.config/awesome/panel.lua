@@ -35,6 +35,17 @@ local footerw = {
     bottom = -30, left = -10
 }
 
+local function spawn_wifi()
+    awful.spawn("iwgtk", false)
+end
+local function spawn_vpn()
+    local verb = "start"
+    if state == "active" then
+        verb = "stop"
+    end
+    awful.spawn("systemctl "..verb.." openvpn-client@riseup", false)
+end
+
 local function mkpanew(icon, text, command, opts)
     return {
         {
@@ -154,7 +165,14 @@ function show_panel()
         end, "arrow")
         mykeygrabber = awful.keygrabber{
             keybindings = {
-                {{ }, "Escape", mypanel.hide}
+                {{ }, "Escape", mypanel.hide},
+                {{ }, "w", function()
+                    spawn_wifi()
+                    mypanel:hide()
+                end},
+                {{ }, "v", function()
+                    spawn_vpn()
+                end}
             }
         }
         mykeygrabber:start()
@@ -293,14 +311,10 @@ return function(s)
             {
                 {
                     mkpanew("\u{f1eb}", "WiFi", function()
-                        awful.spawn("iwgtk", false)
+                        spawn_wifi()
                     end, {hide_panel_on_click = true}),
                     mkpanew("\u{e4e2}", "VPN", function()
-                        local verb = "start"
-                        if state == "active" then
-                            verb = "stop"
-                        end
-                        awful.spawn("systemctl "..verb.." openvpn-client@riseup", false)
+                        spawn_vpn()
                     end),
                     layout = wibox.layout.fixed.horizontal,
                     spacing = 5

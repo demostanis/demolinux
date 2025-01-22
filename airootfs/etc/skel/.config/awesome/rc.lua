@@ -59,7 +59,7 @@ client.connect_signal("manage", function(c)
         c.icon = icon
     end
 
-    if c.transient_for then
+    if c.transient_for or awful.rules.match_any(c, beautiful.standalone_floating_windows) then
         awful.placement.centered(c, {parent = c.transient_for})
         awful.placement.no_offscreen(c)
         c.ontop = true
@@ -67,10 +67,6 @@ client.connect_signal("manage", function(c)
         c.floating = false
     end
 
-    if c.class == "Kodi" then
-        c.screen.mywibar.visible = false
-        c.screen.mydock.visible = false
-    end
     c:connect_signal("property::fullscreen", function()
         c.screen.mywibar.visible = not c.fullscreen
         c.screen.mydock.visible = not c.fullscreen
@@ -127,16 +123,11 @@ awful.rules.rules = {{
     }
 },
 {
-    rule_any = {name = {"GIMP Startup"}, class = {"Iwdgui"}},
+    rule_any = beautiful.standalone_floating_windows,
     properties = {
-        placement = awful.placement.centered
-    }
-},
-{
-    rule_any = {class = {"deferedinstall"}},
-    properties = {
-        placement = awful.placement.centered
-    }
+        placement = awful.placement.centered,
+        floating = true
+     }
 }}
 
 client.connect_signal("request::titlebars", function(c)

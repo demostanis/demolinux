@@ -262,6 +262,8 @@ return function(s)
                         message = "Disconnected"
                     elseif status == "connected" then
                         message = "Connected"
+                    else
+                        message = "Connecting..."
                     end
                 end
 

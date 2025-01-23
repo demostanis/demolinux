@@ -45,7 +45,7 @@ try {
     handleEvent: function (aEvent) {
       let document = aEvent.originalTarget; let window = document.defaultView; let location = window.location;
       if (/^(chrome:(?!\/\/(global\/content\/commonDialog|browser\/content\/webext-panels)\.x?html)|about:(?!blank))/i.test(location.href)) {
-        if (window._gBrowser) {
+        if (window.Tabbrowser) {
 
 		// this is not really VimFx related
 		// but i didn't know where to put it...
@@ -61,6 +61,7 @@ try {
 			window.goDoCommand('cmd_deleteWordBackward')
 		}
 		document.querySelector('#cmd_close').setAttribute('oncommand', 'hijackCtrlW()')
+		window.BrowserCommands.closeTabOrWindow = function() {}
         }
       }
     }

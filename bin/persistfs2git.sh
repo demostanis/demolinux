@@ -7,9 +7,25 @@ if [ ! -d "$gitdir" ]; then
 fi
 
 sudo persistfs list | while read -r path; do
+  # bigger than 10M
+  size=$(du -s "$path" 2>/dev/null | awk '{print $1}')
+  if [ -z "$size" ]; then continue; fi
+  if (( "$size" > 10000 )); then continue; fi
+
+  dest="$gitdir/airootfs"
   if [[ "$path" = /home/demostanis/* ]]; then
-    newpath=${path##/home/demostanis/}
-    cp -vr "$path"/* "$gitdir/airootfs/etc/skel/$newpath"
+    dest+=/etc/skel/${path##/home/demostanis/}
+  else
+    dest+=$path
+  fi
+
+  if [ ! -h "$path" ]; then
+    if [ -d "$path" ]; then
+      mkdir -p "$dest"
+      cp -vr "$path"/* "$dest"
+    else
+      cp -vr "$path" "$dest"
+    fi
   fi
 done
 

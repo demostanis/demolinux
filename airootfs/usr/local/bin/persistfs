@@ -1,5 +1,7 @@
 #!/bin/sh
 
+export IFS=$'\n';
+
 pfs_dir=/run/archiso/persistfs
 airfs_dir=/run/archiso/airootfs
 pacmandb_dir=/var/lib/pacman/local
@@ -12,18 +14,20 @@ fi
 is_adding_pkg=0
 
 absolute_path() {
-	echo "$(cd "$(dirname "$file")" && pwd)/$(basename "$file")"
+	echo $(realpath -s "$(dirname "$1")")/"$(basename "$1")"
 }
 
 add_files() {
 	files=()
 
 	for file in "$@"; do
-		if [[ "$file" = /usr/share/locale/* ]]; then
+		export file=$(absolute_path "$file")
+
+		# e.g. files removed by localepurge
+		if [ ! -e "$file" ]; then
 			continue
 		fi
 
-		export file=$(absolute_path "$file")
 		if [ -e $pfs_dir/upperdir/index ]; then
 			perl -0777 -i -pe 's/\Q$ENV{file}\E\x00?//' $pfs_dir/upperdir/index
 		fi
@@ -63,11 +67,8 @@ case $1 in
 
 		for file in "${@:2}"; do
 			if [ ! -e "$file" ]; then
-				# locales are deleted by localepurge
-				if [[ "$is_adding_pkg" = 0 || "$file" = /usr/share/locale/* ]]; then
-					echo File does not exist: $file >&2
-					exit 1
-				fi
+				echo File does not exist: $file >&2
+				exit 1
 			fi
 		done
 
@@ -82,13 +83,13 @@ case $1 in
 				file="$(pwd)/$file"
 			fi
 
+			export file=$(absolute_path "$file")
 			if [ ! -e $pfs_dir/upperdir/"$file" ]; then
 				echo File does not exist: $file >&2
 				statuscode=1
 				continue
 			fi
 
-			export file=$(absolute_path "$file")
 			rm -rf $pfs_dir/upperdir/"$file"
 			perl -0777 -i -pe 's/\Q$ENV{file}\E\x00?//' $pfs_dir/upperdir/index
 		done
@@ -101,6 +102,9 @@ case $1 in
 		is_adding_pkg=1
 		add_pkg_files() {
 			pkg=$(actual_pkg "$1")
+			if [ -z "$pkg" ]; then
+				exit 1
+			fi
 			echo -e Adding "\033[1;31m$pkg\033[0m" to persistfs...
 			echo
 
@@ -108,6 +112,7 @@ case $1 in
 				cut -d\  -f2 | \
 				grep -v /$) $pacmandb_dir/$pkg-[0-9]*/{desc,files,mtree}
 
+			unset IFS
 			for dep in $(expac %D "$pkg"); do
 				dep=$(actual_pkg "$dep")
 
@@ -117,6 +122,7 @@ case $1 in
 					add_pkg_files "$dep"
 				fi
 			done
+			export IFS=$'\n'
 		}
 
 		for pkg in "${@:2}"; do
@@ -149,6 +155,10 @@ case $1 in
 		else
 			cat $pfs_dir/upperdir/index | xargs -0 pacman -Qo 2>&1 | grep -v $pacmandb_dir | grep 'error: No package owns' | sed 's/.*No package owns \(.*\)/\1/' | sort -u
 		fi
+		;;
+	rmfromindex)
+		export file="${2?missing file}"
+		perl -0777 -i -pe 's/\Q$ENV{file}\E\x00?//' $pfs_dir/upperdir/index
 		;;
 	*)
 		echo usage: "$0 [add|remove|pkg|ipkg|list] [--all]" >&2

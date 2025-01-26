@@ -251,7 +251,16 @@ local function maximize(c)
 		c.width = c.oldwidth
 	else
 		c.oldwidth = c.width
-		c.width = c.screen.geometry.width-margin_before_window_on_focus
+		local width = c.screen.geometry.width-10
+		local lefthand = lefthand_window(c)
+		local righthand = righthand_window(c)
+		if lefthand and lefthand ~= c then
+			width = width - margin_before_window_on_focus
+		end
+		if righthand and righthand ~= c then
+			width = width - margin_before_window_on_focus
+		end
+		c.width = width
 	end
 	c.kinda_maximized = not c.kinda_maximized
 end

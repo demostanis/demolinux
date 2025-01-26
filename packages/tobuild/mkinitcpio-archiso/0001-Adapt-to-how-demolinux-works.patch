@@ -55,11 +55,11 @@ index d2c600e..34a8788 100644
      # defined via initcpio's parse_cmdline()
      [ -z "${archisodevice}" ] && archisodevice="/dev/disk/by-label/${archisolabel}"
 -    [ -z "${cow_spacesize}" ] && cow_spacesize="256M"
-+    [ -z "${cow_spacesize}" ] && cow_spacesize=$(free | awk '{if(NR==2)print int($2/2/100000)/10"G"}')
++    [ -z "${cow_spacesize}" ] && cow_spacesize=$(free | awk '{if(NR==2)print int($2/2/10000)"G"}')
      # shellcheck disable=SC2154
      # defined via initcpio's parse_cmdline()
      if [ -n "${cow_label}" ]; then
-@@ -210,22 +199,54 @@ archiso_mount_handler() {
+@@ -210,22 +199,66 @@ archiso_mount_handler() {
      local newroot="${1}"
      local sigfile cms_sigfile fs_img fs_img_size iso_blockdev
  
@@ -104,7 +104,19 @@ index d2c600e..34a8788 100644
 -        echo "ERROR: no root file system image found"
 -        launch_interactive_shell
 +    if ! mountpoint -q "/run/archiso/bootmnt"; then
-+        _mnt_dev /dev/disk/by-partlabel/boot "/run/archiso/bootmnt" "-r" "defaults"
++        _mnt_dev /dev/disk/by-partlabel/boot "/run/archiso/bootmnt" "-w" "defaults"
++        offset_magic=99999199999
++        if grep $offset_magic /run/archiso/bootmnt/grub/grub.cfg; then
++             plymouth update --status="Updating boot params for hibernation..."
++             _mnt_dev /dev/disk/by-partlabel/boot "/run/archiso/bootmnt" "-w" "defaults"
++             offset=$(btrfs inspect-internal map-swapfile -r /run/archiso/btrfs/swap/swapfile)
++             sed -i 's/'$offset_magic'/'$offset/ /run/archiso/bootmnt/grub/grub.cfg
++             cmdline=$(sed 's/'$offset_magic'/'$offset/ /proc/cmdline)
++             kexec -l /run/archiso/bootmnt/vmlinuz-linux --initrd=/run/archiso/bootmnt/initramfs-linux.img --command-line="$cmdline"
++             kexec -e
++        else
++             _mnt_dev /dev/disk/by-partlabel/boot "/run/archiso/bootmnt" "-r" "defaults,remount"
++        fi
      fi
  
 +    plymouth update --status="Mouting filesystems..."
@@ -126,7 +138,7 @@ index d2c600e..34a8788 100644
      # shellcheck disable=SC2154
      # defined via initcpio's parse_cmdline()
      if [ "${checksum}" = "y" ]; then
-@@ -292,10 +313,10 @@ archiso_mount_handler() {
+@@ -292,10 +325,10 @@ archiso_mount_handler() {
      # * the root file system image size is less than 4 GiB,
      # * the estimated available memory is more than the root file system image size + 2 GiB.
      if [ "${copytoram}" = "auto" ]; then
@@ -140,7 +152,7 @@ index d2c600e..34a8788 100644
                  copytoram="y"
              fi
          fi
-@@ -314,19 +335,26 @@ archiso_mount_handler() {
+@@ -314,19 +347,26 @@ archiso_mount_handler() {
          msg ":: Mounting /run/archiso/cowspace (tmpfs) filesystem, size=${cow_spacesize}..."
          mount --mkdir -t tmpfs -o "size=${cow_spacesize}",mode=0755 cowspace /run/archiso/cowspace
      fi
@@ -186,7 +198,7 @@ index d2c600e..34a8788 100644
  
      add_runscript
  
-@@ -14,6 +15,13 @@ build() {
+@@ -14,6 +15,14 @@ build() {
      add_binary dmsetup
      add_binary losetup
      add_binary openssl
@@ -197,6 +209,7 @@ index d2c600e..34a8788 100644
 +    # growpart deps
 +    add_binary sgdisk
 +    add_binary flock
++    add_binary kexec
  
      if command -v pv >/dev/null 2>&1; then
          add_binary pv

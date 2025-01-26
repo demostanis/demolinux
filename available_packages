@@ -43,6 +43,7 @@ xterm
 cmus
 local stremio
 aur freetube
+flatpak
 
 # Browser & addons
 firefox
@@ -128,6 +129,8 @@ pacman-contrib
 python-pipx
 python-pip
 translate-shell
+qemu-desktop
+kdeconnect
 ripgrep
 ripgrep-all
 websocat
@@ -136,6 +139,7 @@ yt-dlp
 aur paru
 openbsd-netcat
 tinyxxd
+aria2
 tmux
 
 # Development
@@ -144,6 +148,10 @@ clang
 github-cli
 gopls
 go-tools # goimports
+podman
+fuse-overlayfs # for podman
+docker-compose
+podman-docker
 
 # System
 base
@@ -163,8 +171,7 @@ xdg-dbus-proxy
 pulseaudio
 pulseaudio-alsa
 xdg-user-dirs
-bubblewrap-suid
-kdeconnect
+bubblewrap
 local pambase
 clipnotify
 openssh

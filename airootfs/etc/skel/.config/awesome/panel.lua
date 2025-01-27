@@ -428,7 +428,7 @@ return function(s)
                     widget = wibox.container.background,
                     id = "system",
                     command = function()
-                        awful.spawn("systemctl suspend")
+                        awful.spawn("systemctl hibernate")
                     end
                 },
                 widget = wibox.container.margin,

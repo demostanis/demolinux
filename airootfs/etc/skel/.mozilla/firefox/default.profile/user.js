@@ -26,6 +26,9 @@ user_pref("browser.tabs.searchclipboardfor.middleclick",        false);
 // Do not show "Show previous tabs" popup
 user_pref("browser.startup.couldRestoreSession.count",          2);
 
+// Do not show addon ad
+user_pref("browser.newtabpage.activity-stream.asrouter.userprefs.cfr.addons", false);
+
 // Disable Firefox Home
 user_pref("browser.startup.page",                               0);
 user_pref("browser.startup.homepage",                           "about:blank");

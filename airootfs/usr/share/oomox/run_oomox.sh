@@ -2,7 +2,7 @@
 
 DEST=${DEST:-/etc/skel/.themes}
 OOMOX_PATH=/usr/share/oomox
-XDG_CONFIG_HOME="$DEST"/.config
+XDG_CONFIG_HOME="$DEST"/../.config
 
 # TODO: use CUSTOM_PATHLIST
 
@@ -45,3 +45,10 @@ themix-base16-cli \
 	"$OOMOX_PATH"/plugins/base16/schemes/mellow/mellow-purple.yaml \ |
 	grep -v ^ERROR: | grep -v '^Import Colors' \
 	> "$DEST"/oomox-mellow-purple/qt6ct/colors.conf
+
+mkdir -p "$XDG_CONFIG_HOME"
+themix-base16-cli \
+	"$OOMOX_PATH"/plugins/base16/templates/kde/templates/default.mustache \
+	"$OOMOX_PATH"/plugins/base16/schemes/mellow/mellow-purple.yaml \ |
+	grep -v ^ERROR: | grep -v '^Import Colors' \
+	> "$XDG_CONFIG_HOME"/kdeglobals

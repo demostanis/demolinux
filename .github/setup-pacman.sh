@@ -43,22 +43,21 @@ sudo pacman-key --populate archlinux
 sudo apt-get install arch-install-scripts \
   btrfs-progs dosfstools erofs-utils \
   git gdisk grub-pc libxml2 pv squashfs-tools \
-  unzip xfsprogs grub-ipxe memtest86+
-
-sudo mkdir -p /usr/share/ipxe/x86_64
-sudo cp /boot/ipxe.lkrn /usr/share/ipxe
-sudo cp /boot/ipxe.efi /usr/share/ipxe/x86_64
+  unzip xfsprogs memtest86+
 
 sudo mkdir /boot/memtest86+
 sudo cp /boot/memtest86+x64.bin /boot/memtest86+/memtest.bin
 sudo cp /boot/memtest86+x64.efi /boot/memtest86+/memtest.efi
 
-sudo pacman -Sddw --noconfirm devtools grub
+sudo pacman -Sddw --noconfirm devtools grub ipxe
 sudo bsdtar -C / -xf /var/cache/pacman/pkg/devtools-*.zst \
   usr/bin/makechrootpkg \
   usr/bin/mkarchroot \
   usr/bin/arch-nspawn \
   usr/share/devtools/lib
+
+sudo bsdtar -C / -xf /var/cache/pacman/pkg/ipxe-*.zst \
+  usr/share/ipxe
 
 # our patches made to grub-mkconfig inside bin/mkarchiso
 # don't apply to ubuntu's patched grub-mkconfig

@@ -1,0 +1,26 @@
+From 9f4f1700870a0c8470b4b8e3da13fd3c03edc3ef Mon Sep 17 00:00:00 2001
+From: demostanis <demostanis@protonmail.com>
+Date: Mon, 27 Jan 2025 14:48:34 +0100
+Subject: [PATCH] Really prevent crash when pressing up arrow in app
+launcher
+
+---
+ widget/app_launcher/init.lua | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/widget/app_launcher/init.lua b/widget/app_launcher/init.lua
+index 65983d1..fdce253 100755
+--- a/widget/app_launcher/init.lua
++++ b/widget/app_launcher/init.lua
+@@ -94,6 +94,8 @@ local function has_value(tab, val)
+ end
+ 
+ local function select_app(self, x, y)
++    x = math.max(1, x)
++    y = math.max(1, y)
+     local widgets = self._private.grid:get_widgets_at(x, y)
+     if widgets then
+         self._private.active_widget = widgets[1]
+-- 
+2.48.1
+

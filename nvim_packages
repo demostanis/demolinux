@@ -31,6 +31,8 @@ nvim-lua/plenary.nvim
 # find, filter, preview, pick
 nvim-telescope/telescope.nvim
 LukasPietzschmann/telescope-tabs
+# pick yank history
+gbprod/yanky.nvim
 # case sensitive substitute (:S),
 # coerce to different casing conventions (cr...)
 tpope/vim-abolish

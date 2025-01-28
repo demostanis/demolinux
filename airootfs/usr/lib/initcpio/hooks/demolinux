@@ -1,0 +1,240 @@
+#!/usr/bin/ash
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# args: lowerdir=, upperdir=, workdir=, mountpoint=
+_mnt_overlayfs() {
+    local lowerdir="${1##lowerdir=}"
+    local upperdir="${2##upperdir=}"
+    local workdir="${3##workdir=}"
+    local mountpoint="${4##mountpoint=}"
+    mount -t overlay -o \
+        "lowerdir=${lowerdir},upperdir=${upperdir},workdir=${workdir},index=off,metacopy=off" \
+        airootfs "${mountpoint}"
+}
+
+# args: /path/to/image_file, mountpoint
+_mnt_fs() {
+    local img="${1}"
+    local mnt="${2}"
+    local img_fullname="${img##*/}"
+    local img_loopdev
+
+    # shellcheck disable=SC2154
+    # defined via initcpio's parse_cmdline()
+    if [ "${copytoram}" = "y" ]; then
+        msg -n ":: Copying rootfs image to RAM..."
+
+        if [ "$rc" != 0 ]; then
+            echo "ERROR: while copy '${img}' to '/run/archiso/copytoram/${img_fullname}'"
+            launch_interactive_shell
+        fi
+
+        img="/run/archiso/copytoram/${img_fullname}"
+        msg "done."
+    fi
+    img_loopdev="$(losetup --find --show --read-only -- "${img}")"
+    _mnt_dev "${img_loopdev}" "${mnt}" "-r" "defaults"
+}
+
+# args: device, mountpoint, flags, opts
+_mnt_dev() {
+    local dev="${1}"
+    local mnt="${2}"
+    local flg="${3}"
+    local opts="${4}"
+    local resolved_dev
+
+    msg ":: Mounting '${dev}' to '${mnt}'"
+
+    while ! resolved_dev="$(rootdelay="${rootdelay:-30}" resolve_device "${dev}")"; do
+        echo "ERROR: '${dev}' device did not show up after ${rootdelay:-30} seconds..."
+        echo "   Falling back to interactive prompt"
+        echo "   You can try to fix the problem manually, log out when you are finished"
+        launch_interactive_shell
+    done
+
+    # If the tag is supported by mount, pass it as is. Otherwise, use the resolved device path.
+    case "${dev}" in
+        'UUID='* | 'LABEL='* | 'PARTUUID='* | 'PARTLABEL='*) : ;;
+        *) dev="${resolved_dev}" ;;
+    esac
+    if mount --mkdir -o "${opts}" "${flg}" "${dev}" "${mnt}"; then
+        msg ":: Device '${dev}' mounted successfully."
+    else
+        echo "ERROR; Failed to mount '${dev}'"
+        echo "   Falling back to interactive prompt"
+        echo "   You can try to fix the problem manually, log out when you are finished"
+        launch_interactive_shell
+    fi
+}
+
+_verify_checksum() {
+    local _status
+    cd "/run/archiso/bootmnt/${archisobasedir}/${arch}" || exit 1
+    sha512sum -c airootfs.sha512 >/tmp/checksum.log 2>&1
+    _status=$?
+    cd -- "${OLDPWD}" || exit 1
+    return "${_status}"
+}
+
+_verify_signature() {
+    local _status
+    local sigfile="${1}"
+    cd "/run/archiso/bootmnt/${archisobasedir}/${arch}" || exit 1
+    gpg --homedir /gpg --status-fd 1 --verify "${sigfile}" 2>/dev/null | grep -E '^\[GNUPG:\] GOODSIG'
+    _status=$?
+    cd -- "${OLDPWD}" || exit 1
+    return "${_status}"
+}
+
+_verify_cms_signature() {
+    # Note: There is an "issue" with openssl.
+    # Which requires emailProtection in extended key usage on the code signing certificate.
+    # See: https://github.com/openssl/openssl/issues/17134
+    local _status
+    local cms_sigfile="${1}"
+    local bootfile="${2}"
+    local certfile="/codesign.crt"
+    local cafile="/codesign_CA.crt"
+
+    # Use the signer certificate as the CA certificate to allow validating with self-signed certificates.
+    if [ ! -e "$cafile" ]; then
+        cafile="$certfile"
+    fi
+
+    cd "/run/archiso/bootmnt/${archisobasedir}/${arch}" || exit 1
+    # "-purpose any" can be removed once the issue mentioned above is fixed.
+    openssl cms \
+        -verify \
+        -binary \
+        -noattr \
+        -nointern \
+        -purpose any \
+        -in "${cms_sigfile}" \
+        -content "${bootfile}" \
+        -inform DER \
+        -out /dev/null \
+        -certfile "$certfile" \
+        -CAfile "$cafile"
+    _status=$?
+    cd -- "${OLDPWD}" || exit 1
+    return "${_status}"
+}
+
+run_hook() {
+    [ -z "${arch}" ] && arch="$(uname -m)"
+    [ -z "${copytoram}" ] && copytoram="auto"
+    [ -z "${copytoram_size}" ] && copytoram_size="75%"
+    [ -z "${archisobasedir}" ] && archisobasedir="arch"
+    [ -z "${archisodevice}" ] && archisodevice="/dev/disk/by-label/${archisolabel}"
+    [ -z "${cow_spacesize}" ] && cow_spacesize=$(free | awk '{if(NR==2)print int($2/2/10000)"G"}')
+
+    # set mount handler for archiso
+    export mount_handler="archiso_mount_handler"
+}
+
+# This function is called normally from init script, but it can be called
+# as chain from other mount handlers.
+# args: /path/to/newroot
+archiso_mount_handler() {
+    local newroot="${1}"
+    local fs_img fs_img_size iso_blockdev
+
+    btrfs_root=/run/archiso/btrfs
+    _mnt_dev /dev/disk/by-partlabel/system $btrfs_root "-w" "subvol=system,compress=zstd"
+
+    # yes, this syntax is required...
+    if [ $(( $(btrfs subvol list $btrfs_root | wc -l) < 6 )) = 1 ]; then
+        plymouth update --status="Extending filesystems..."
+
+        # first, resize the filesystem
+        umount -f $btrfs_root
+        # then, resize the partition to fit the whole disk...
+        # TODO: multiple system partitions
+        disk=/dev/"$(lsblk -no pkname /dev/disk/by-partlabel/system)"
+        growpart "$disk" 3
+        partprobe "$disk"
+
+        plymouth update --status="Creating Btrfs subvolumes..."
+
+        _mnt_dev /dev/disk/by-partlabel/system $btrfs_root "-w" "subvol=system,compress=zstd"
+        btrfs filesystem resize max $btrfs_root
+
+        # finally, create the necessary subvolumes
+        btrfs subvol create $btrfs_root/persistfs
+        btrfs subvol create $btrfs_root/snapshots
+        btrfs subvol create $btrfs_root/data
+        btrfs subvol create $btrfs_root/swap
+        btrfs filesystem mkswapfile --size 4G --uuid clear $btrfs_root/swap/swapfile 2>/dev/null
+    fi
+
+    if ! mountpoint -q "/run/archiso/bootmnt"; then
+        _mnt_dev /dev/disk/by-partlabel/boot "/run/archiso/bootmnt" "-w" "defaults"
+        offset_magic=99999199999
+        if grep $offset_magic /run/archiso/bootmnt/grub/grub.cfg; then
+             plymouth update --status="Updating boot params for hibernation..."
+             _mnt_dev /dev/disk/by-partlabel/boot "/run/archiso/bootmnt" "-w" "defaults"
+             offset=$(btrfs inspect-internal map-swapfile -r /run/archiso/btrfs/swap/swapfile)
+             sed -i 's/'$offset_magic'/'$offset/ /run/archiso/bootmnt/grub/grub.cfg
+             cmdline=$(sed 's/'$offset_magic'/'$offset/ /proc/cmdline)
+             kexec -l /run/archiso/bootmnt/vmlinuz-linux --initrd=/run/archiso/bootmnt/initramfs-linux.img --command-line="$cmdline"
+             kexec -e
+        else
+             _mnt_dev /dev/disk/by-partlabel/boot "/run/archiso/bootmnt" "-r" "defaults,remount"
+        fi
+    fi
+
+    plymouth update --status="Mouting filesystems..."
+    _mnt_dev /dev/disk/by-partlabel/system /run/archiso/persistfs "-w" "subvol=/system/persistfs,compress=zstd,noatime"
+    _mnt_dev /dev/disk/by-partlabel/system /run/archiso/snapshots "-w" "subvol=/system/snapshots,compress=zstd,noatime"
+    _mnt_dev /dev/disk/by-partlabel/system /run/archiso/data "-w" "subvol=/system/data,compress=zstd,noatime"
+    snapshot="${btrfs_snapshot##*/}"
+    snapshot="${snapshot:+snapshots/$snapshot}"
+    _mnt_dev /dev/disk/by-partlabel/system /run/archiso/airootfs "-r" "subvol=/system/${snapshot:-airootfs},compress=zstd,noatime"
+    _mnt_dev /dev/disk/by-partlabel/system /run/archiso/swap "-w" "subvol=/system/swap,compress=zstd,noatime"
+
+    for dir in /run/archiso/airootfs/etc/skel/*; do
+        if readlink "$dir" | grep -q '^/data'; then
+            mkdir -p /run/archiso/data/"$(basename "$(readlink "$dir")")"
+        fi
+    done
+    chown 1000:1000 /run/archiso/data /run/archiso/data/*
+
+    # Enable copytoram if the following conditions apply:
+    # * the root file system image is not on an optical disc drive,
+    # * the root file system image size is less than 4 GiB,
+    # * the estimated available memory is more than the root file system image size + 2 GiB.
+    if [ "${copytoram}" = "auto" ]; then
+        iso_blockdev="$(realpath "$(resolve_device /dev/disk/by-partlabel/system)")"
+        if [ "$iso_blockdev" = "${iso_blockdev##/dev/sr}" ]; then
+            fs_img_size="$(du -bsk "/run/archiso/airootfs" | cut -f 1)"
+            if [ "$(awk '$1 == "MemAvailable:" { print $2 }' /proc/meminfo)" -gt $((fs_img_size + 2097152)) ]; then
+                copytoram="y"
+            fi
+        fi
+    fi
+    if [ "${copytoram}" = "y" ]; then
+        msg ":: Mounting /run/archiso/copytoram (tmpfs) filesystem, size=${copytoram_size}"
+        mount --mkdir -t tmpfs -o "size=${copytoram_size}",mode=0755 copytoram /run/archiso/copytoram
+    fi
+
+    # why doesnt {cowspace,persistfs} work...
+    mkdir -p /run/archiso/cowspace/upperdir
+    mkdir -p /run/archiso/cowspace/workdir
+    mkdir -p /run/archiso/persistfs/upperdir
+    mkdir -p /run/archiso/persistfs/workdir
+    mkdir -p /run/archiso/cowspace/lowerdir
+
+    lowerdir=/run/archiso/airootfs
+    if [ "$copytoram" = y ]; then
+           plymouth update --status="Copying airootfs to RAM..."
+            cp -a /run/archiso/airootfs/* /run/archiso/copytoram
+            lowerdir=/run/archiso/copytoram
+    fi
+    _mnt_overlayfs lowerdir=$lowerdir upperdir=/run/archiso/persistfs/upperdir workdir=/run/archiso/persistfs/workdir mountpoint=/run/archiso/cowspace/lowerdir
+    _mnt_overlayfs lowerdir=/run/archiso/cowspace/lowerdir upperdir=/run/archiso/cowspace/upperdir workdir=/run/archiso/cowspace/workdir mountpoint="$newroot/"
+    umount $btrfs_root
+}
+
+# vim: set ft=sh:

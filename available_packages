@@ -71,8 +71,6 @@ noto-fonts-emoji
 # Boot
 linux-firmware
 linux
-local mkinitcpio-archiso
-mkinitcpio-nfs-utils
 local plymouth
 edk2-shell
 efibootmgr

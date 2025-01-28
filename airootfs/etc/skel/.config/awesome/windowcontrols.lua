@@ -79,6 +79,16 @@ function activate(c)
     c:activate{raise = raise}
 end
 
+function grabmouse(fn)
+    return function(c)
+        c:emit_signal("request::activate", "mouse_click", {raise = false})
+        mousegrabber.run(function()
+            fn()
+            return false
+        end, "mouse")
+    end
+end
+
 return gears.table.join(
     awful.button({ }, 1, activate),
     awful.button({ modkey }, 1, function (c)
@@ -122,13 +132,9 @@ return gears.table.join(
             return true
         end, cursors[corner])
     end),
-
-    awful.key({ modkey }, "h", layout.move_left_window),
-    awful.key({ modkey }, "l", layout.move_right_window),
-
-    awful.key({ modkey }, "-", layout.maximize_two_windows),
-
-    awful.key({ modkey }, "Tab", layout.cycle_window_focus)
+    -- scroll
+    awful.button({ modkey }, 5, grabmouse(layout.move_left)),
+    awful.button({ modkey }, 4, grabmouse(layout.move_right))
 )
 
 -- vim:set et sw=4 ts=4:

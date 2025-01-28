@@ -80,7 +80,7 @@ local globalkeys = gears.table.join(
 root.keys(globalkeys)
 
 root.buttons(gears.table.join(
-    -- scroll
+    -- scroll outside of windows
     awful.button({ modkey }, 5, layout.move_left),
     awful.button({ modkey }, 4, layout.move_right)
 ))

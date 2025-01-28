@@ -77,27 +77,13 @@ client.connect_signal("manage", function(c)
     end)
 end)
 
-function grabmouse(fn)
-    return function(c)
-        c:emit_signal("request::activate", "mouse_click", {raise = true})
-        mousegrabber.run(function()
-            fn()
-            return false
-        end, "mouse")
-    end
-end
-
 awful.rules.rules = {{
     rule = { },
     properties = {
         focus = awful.client.focus.filter,
         raise = true,
         keys = require"clientkeys",
-        buttons = gears.table.join(
-            require"windowcontrols",
-            awful.button({ modkey }, 5, grabmouse(layout.move_left)),
-            awful.button({ modkey }, 4, grabmouse(layout.move_right))
-        ),
+        buttons = require"windowcontrols",
         screen = awful.screen.preferred,
         placement = awful.placement.no_overlap+awful.placement.no_offscreen,
         size_hints_honor = false

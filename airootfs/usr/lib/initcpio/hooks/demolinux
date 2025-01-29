@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+rundir=/run/archiso
+
 # args: lowerdir=, upperdir=, workdir=, mountpoint=
 _mnt_overlayfs() {
     local lowerdir="${1##lowerdir=}"
@@ -26,11 +28,11 @@ _mnt_fs() {
         msg -n ":: Copying rootfs image to RAM..."
 
         if [ "$rc" != 0 ]; then
-            echo "ERROR: while copy '${img}' to '/run/archiso/copytoram/${img_fullname}'"
+            echo "ERROR: while copy '${img}' to '$rundir/copytoram/${img_fullname}'"
             launch_interactive_shell
         fi
 
-        img="/run/archiso/copytoram/${img_fullname}"
+        img="$rundir/copytoram/${img_fullname}"
         msg "done."
     fi
     img_loopdev="$(losetup --find --show --read-only -- "${img}")"
@@ -88,7 +90,7 @@ archiso_mount_handler() {
     local newroot="${1}"
     local fs_img fs_img_size iso_blockdev
 
-    btrfs_root=/run/archiso/btrfs
+    btrfs_root=$rundir/btrfs
     _mnt_dev /dev/disk/by-partlabel/system $btrfs_root "-w" "subvol=system,compress=zstd"
 
     # yes, this syntax is required...
@@ -116,55 +118,55 @@ archiso_mount_handler() {
         btrfs filesystem mkswapfile --size 4G --uuid clear $btrfs_root/swap/swapfile 2>/dev/null
     fi
 
-    if ! mountpoint -q "/run/archiso/bootmnt"; then
-        _mnt_dev /dev/disk/by-partlabel/boot "/run/archiso/bootmnt" "-w" "defaults"
+    if ! mountpoint -q "$rundir/bootmnt"; then
+        _mnt_dev /dev/disk/by-partlabel/boot "$rundir/bootmnt" "-w" "defaults"
         offset_magic=99999199999
-        if grep $offset_magic /run/archiso/bootmnt/grub/grub.cfg; then
+        if grep $offset_magic $rundir/bootmnt/grub/grub.cfg; then
              plymouth update --status="Updating boot params for hibernation..."
-             _mnt_dev /dev/disk/by-partlabel/boot "/run/archiso/bootmnt" "-w" "defaults"
-             offset=$(btrfs inspect-internal map-swapfile -r /run/archiso/btrfs/swap/swapfile)
-             sed -i 's/'$offset_magic'/'$offset/ /run/archiso/bootmnt/grub/grub.cfg
+             _mnt_dev /dev/disk/by-partlabel/boot "$rundir/bootmnt" "-w" "defaults"
+             offset=$(btrfs inspect-internal map-swapfile -r $rundir/btrfs/swap/swapfile)
+             sed -i 's/'$offset_magic'/'$offset/ $rundir/bootmnt/grub/grub.cfg
              cmdline=$(sed 's/'$offset_magic'/'$offset/ /proc/cmdline)
-             kexec -l /run/archiso/bootmnt/vmlinuz-linux --initrd=/run/archiso/bootmnt/initramfs-linux.img --command-line="$cmdline"
+             kexec -l $rundir/bootmnt/vmlinuz-linux --initrd=$rundir/bootmnt/initramfs-linux.img --command-line="$cmdline"
              kexec -e
         else
-             _mnt_dev /dev/disk/by-partlabel/boot "/run/archiso/bootmnt" "-r" "defaults,remount"
+             _mnt_dev /dev/disk/by-partlabel/boot "$rundir/bootmnt" "-r" "defaults,remount"
         fi
     fi
 
-    _mnt_dev /dev/disk/by-partlabel/system /run/archiso/data "-w" "subvol=/system/data,compress=zstd,noatime"
-    update_img=/run/archiso/data/sysupdate/demolinux.img
+    _mnt_dev /dev/disk/by-partlabel/system $rundir/data "-w" "subvol=/system/data,compress=zstd,noatime"
+    update_img=$rundir/data/sysupdate/demolinux.img
     if [ -e $update_img ]; then
         plymouth update --status="Updating demolinux..."
         img_loopdev="$(losetup -P --find --show -- "$update_img")"
-        _mnt_dev "$img_loopdev"p3 /run/archiso/sysupdate "-w" "defaults,subvol=/system/airootfs"
+        _mnt_dev "$img_loopdev"p3 $rundir/sysupdate "-w" "defaults,subvol=/system/airootfs"
         # it should be ro by default, but while developping this the current
         # image on github doesn't have its airootfs as read-only...
-        btrfs property set /run/archiso/sysupdate ro true
+        btrfs property set $rundir/sysupdate ro true
         btrfs subvolume snapshot $btrfs_root/airootfs $btrfs_root/snapshots/snapshot-$(date +%d-%m-%Y)
         btrfs subvol delete $btrfs_root/airootfs
-        btrfs send /run/archiso/sysupdate | pv | btrfs receive $btrfs_root
+        btrfs send $rundir/sysupdate | pv | btrfs receive $btrfs_root
 
-        umount /run/archiso/sysupdate
-        rm -rf /run/archiso/data/sysupdate
+        umount $rundir/sysupdate
+        rm -rf $rundir/data/sysupdate
         losetup -d "$img_loopdev"
     fi
 
     plymouth update --status="Mouting filesystems..."
-    _mnt_dev /dev/disk/by-partlabel/system /run/archiso/persistfs "-w" "subvol=/system/persistfs,compress=zstd,noatime"
-    _mnt_dev /dev/disk/by-partlabel/system /run/archiso/snapshots "-w" "subvol=/system/snapshots,compress=zstd,noatime"
-    _mnt_dev /dev/disk/by-partlabel/system /run/archiso/data "-w" "subvol=/system/data,compress=zstd,noatime"
+    _mnt_dev /dev/disk/by-partlabel/system $rundir/persistfs "-w" "subvol=/system/persistfs,compress=zstd,noatime"
+    _mnt_dev /dev/disk/by-partlabel/system $rundir/snapshots "-w" "subvol=/system/snapshots,compress=zstd,noatime"
+    _mnt_dev /dev/disk/by-partlabel/system $rundir/data "-w" "subvol=/system/data,compress=zstd,noatime"
     snapshot="${btrfs_snapshot##*/}"
     snapshot="${snapshot:+snapshots/$snapshot}"
-    _mnt_dev /dev/disk/by-partlabel/system /run/archiso/airootfs "-r" "subvol=/system/${snapshot:-airootfs},compress=zstd,noatime"
-    _mnt_dev /dev/disk/by-partlabel/system /run/archiso/swap "-w" "subvol=/system/swap,compress=zstd,noatime"
+    _mnt_dev /dev/disk/by-partlabel/system $rundir/airootfs "-r" "subvol=/system/${snapshot:-airootfs},compress=zstd,noatime"
+    _mnt_dev /dev/disk/by-partlabel/system $rundir/swap "-w" "subvol=/system/swap,compress=zstd,noatime"
 
-    for dir in /run/archiso/airootfs/etc/skel/*; do
+    for dir in $rundir/airootfs/etc/skel/*; do
         if readlink "$dir" | grep -q '^/data'; then
-            mkdir -p /run/archiso/data/"$(basename "$(readlink "$dir")")"
+            mkdir -p $rundir/data/"$(basename "$(readlink "$dir")")"
         fi
     done
-    chown 1000:1000 /run/archiso/data /run/archiso/data/*
+    chown 1000:1000 $rundir/data $rundir/data/*
 
     # Enable copytoram if the following conditions apply:
     # * the root file system image is not on an optical disc drive,
@@ -173,32 +175,32 @@ archiso_mount_handler() {
     if [ "${copytoram}" = "auto" ]; then
         iso_blockdev="$(realpath "$(resolve_device /dev/disk/by-partlabel/system)")"
         if [ "$iso_blockdev" = "${iso_blockdev##/dev/sr}" ]; then
-            fs_img_size="$(du -bsk "/run/archiso/airootfs" | cut -f 1)"
+            fs_img_size="$(du -bsk "$rundir/airootfs" | cut -f 1)"
             if [ "$(awk '$1 == "MemAvailable:" { print $2 }' /proc/meminfo)" -gt $((fs_img_size + 2097152)) ]; then
                 copytoram="y"
             fi
         fi
     fi
     if [ "${copytoram}" = "y" ]; then
-        msg ":: Mounting /run/archiso/copytoram (tmpfs) filesystem, size=${copytoram_size}"
-        mount --mkdir -t tmpfs -o "size=${copytoram_size}",mode=0755 copytoram /run/archiso/copytoram
+        msg ":: Mounting $rundir/copytoram (tmpfs) filesystem, size=${copytoram_size}"
+        mount --mkdir -t tmpfs -o "size=${copytoram_size}",mode=0755 copytoram $rundir/copytoram
     fi
 
     # why doesnt {cowspace,persistfs} work...
-    mkdir -p /run/archiso/cowspace/upperdir
-    mkdir -p /run/archiso/cowspace/workdir
-    mkdir -p /run/archiso/persistfs/upperdir
-    mkdir -p /run/archiso/persistfs/workdir
-    mkdir -p /run/archiso/cowspace/lowerdir
+    mkdir -p $rundir/cowspace/upperdir
+    mkdir -p $rundir/cowspace/workdir
+    mkdir -p $rundir/persistfs/upperdir
+    mkdir -p $rundir/persistfs/workdir
+    mkdir -p $rundir/cowspace/lowerdir
 
-    lowerdir=/run/archiso/airootfs
+    lowerdir=$rundir/airootfs
     if [ "$copytoram" = y ]; then
            plymouth update --status="Copying airootfs to RAM..."
-            cp -a /run/archiso/airootfs/* /run/archiso/copytoram
-            lowerdir=/run/archiso/copytoram
+            cp -a $rundir/airootfs/* $rundir/copytoram
+            lowerdir=$rundir/copytoram
     fi
-    _mnt_overlayfs lowerdir=$lowerdir upperdir=/run/archiso/persistfs/upperdir workdir=/run/archiso/persistfs/workdir mountpoint=/run/archiso/cowspace/lowerdir
-    _mnt_overlayfs lowerdir=/run/archiso/cowspace/lowerdir upperdir=/run/archiso/cowspace/upperdir workdir=/run/archiso/cowspace/workdir mountpoint="$newroot/"
+    _mnt_overlayfs lowerdir=$lowerdir upperdir=$rundir/persistfs/upperdir workdir=$rundir/persistfs/workdir mountpoint=$rundir/cowspace/lowerdir
+    _mnt_overlayfs lowerdir=$rundir/cowspace/lowerdir upperdir=$rundir/cowspace/upperdir workdir=$rundir/cowspace/workdir mountpoint="$newroot/"
     umount $btrfs_root
 }
 

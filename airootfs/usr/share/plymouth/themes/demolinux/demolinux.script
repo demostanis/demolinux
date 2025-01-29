@@ -196,7 +196,8 @@ fun update_status_callback (text) {
       text != "Creating Btrfs subvolumes..." &&
       text != "Mouting filesystems..." &&
       text != "Copying airootfs to RAM..." &&
-      text != "Updating boot params for hibernation...")
+      text != "Updating boot params for hibernation..." &&
+      text != "Updating demolinux...")
     {
       text = "Starting " + text + "...";
     }

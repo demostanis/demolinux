@@ -18,11 +18,12 @@ build() {
     add_binary btrfs
     add_binary plymouth
     add_binary lsblk
+    add_binary kexec
+    add_binary date # why not in busybox??
     add_binary growpart
     # growpart deps
     add_binary sgdisk
     add_binary flock
-    add_binary kexec
 
     if command -v pv >/dev/null 2>&1; then
         add_binary pv

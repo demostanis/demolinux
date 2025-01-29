@@ -1,55 +1,38 @@
 #!/bin/sh
 
-echo sysupdate is deprecated >&2
-exit 2
-
-if ! checkupdates >/dev/null; then
-	echo "No updates available" >&2
-	exit 1
-fi
+set -e
 
 if [ $(id -u) != 0 ]; then
 	echo "This program needs to run as root" >&2
 	exit 1
 fi
 
-if [ -z "$(ls /run/archiso/copytoram 2>/dev/null)" ]; then
-	echo "The system wasn't booted with copytoram=y," \
-	"which is required to update the system properly." \
-	"It is likely that you don't have enough RAM." >&2
-	exit 1
+cd /data
+if [ -e ./sysupdate ]; then
+	echo warning: /data/sysupdate already exists
+fi
+mkdir -p sysupdate
+cd sysupdate
+
+REPO=demostanis/demolinux
+RELEASE=latest
+if [ "$1" = --nightly ]; then
+	RELEASE=tags/nightly
 fi
 
-umount /run/archiso/airootfs 2>/dev/null
+# or latest
+files=$(curl -s https://api.github.com/repos/$REPO/releases/$RELEASE | \
+	jq -r '.assets[].browser_download_url')
 
-if ! mount /dev/disk/by-partlabel/system /run/archiso/airootfs -o "rw,subvol=/system/airootfs,compress=zstd,noatime"; then
-	echo "Failed to mount airootfs." >&2
-	exit 1
-fi
+echo downloading update...
+curl -C- -L --remote-name-all -Z $files
 
-if ! btrfs subvolume snapshot /run/archiso/airootfs /run/archiso/snapshots/snapshot-$(date +%d-%m-%Y); then
-	echo "Failed to create snapshot." >&2
-	exit 1
-fi
+echo creating demolinux.img...
+cat demolinux-a* > demolinux.img
 
-if [ ! -e /run/archiso/airootfs/etc/pacman.d/gnupg ]; then
-	cp -r /etc/pacman.d/gnupg /run/archiso/airootfs/etc/pacman.d/gnupg
-fi
-cp -r /etc/pacman.d/mirrorlist /run/archiso/airootfs/etc/pacman.d/mirrorlist
-if ! ( arch-chroot /run/archiso/airootfs pacman --noconfirm -Sy archlinux-keyring && \
-	arch-chroot /run/archiso/airootfs pacman --noconfirm -Syu ); then
-	echo "Failed to update." >&2
-	exit 1
-fi
+echo checking file integrity...
+sed -Ei 's/out\/demolinux-.*\.img/demolinux.img/' sha256sums.txt
+sha256sum -c sha256sums.txt
 
-if ! mount -o remount,rw /run/archiso/bootmnt; then
-	echo "Failed to remount /boot as read-write" >&2
-	exit 1
-fi
-trap "mount -o remount,ro /run/archiso/bootmnt" EXIT
-if ! mv /run/archiso/airootfs/boot/* /run/archiso/bootmnt; then
-	echo "Failed to copy the updated kernel" >&2
-	exit 1
-fi
-
-echo "Success. Updates will be applied on next reboot."
+kexec -l /run/archiso/bootmnt/vmlinuz-linux --initrd=/run/archiso/bootmnt/initramfs-linux.img --reuse-cmdline
+kexec -e

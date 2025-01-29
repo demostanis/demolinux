@@ -69,59 +69,6 @@ _mnt_dev() {
     fi
 }
 
-_verify_checksum() {
-    local _status
-    cd "/run/archiso/bootmnt/${archisobasedir}/${arch}" || exit 1
-    sha512sum -c airootfs.sha512 >/tmp/checksum.log 2>&1
-    _status=$?
-    cd -- "${OLDPWD}" || exit 1
-    return "${_status}"
-}
-
-_verify_signature() {
-    local _status
-    local sigfile="${1}"
-    cd "/run/archiso/bootmnt/${archisobasedir}/${arch}" || exit 1
-    gpg --homedir /gpg --status-fd 1 --verify "${sigfile}" 2>/dev/null | grep -E '^\[GNUPG:\] GOODSIG'
-    _status=$?
-    cd -- "${OLDPWD}" || exit 1
-    return "${_status}"
-}
-
-_verify_cms_signature() {
-    # Note: There is an "issue" with openssl.
-    # Which requires emailProtection in extended key usage on the code signing certificate.
-    # See: https://github.com/openssl/openssl/issues/17134
-    local _status
-    local cms_sigfile="${1}"
-    local bootfile="${2}"
-    local certfile="/codesign.crt"
-    local cafile="/codesign_CA.crt"
-
-    # Use the signer certificate as the CA certificate to allow validating with self-signed certificates.
-    if [ ! -e "$cafile" ]; then
-        cafile="$certfile"
-    fi
-
-    cd "/run/archiso/bootmnt/${archisobasedir}/${arch}" || exit 1
-    # "-purpose any" can be removed once the issue mentioned above is fixed.
-    openssl cms \
-        -verify \
-        -binary \
-        -noattr \
-        -nointern \
-        -purpose any \
-        -in "${cms_sigfile}" \
-        -content "${bootfile}" \
-        -inform DER \
-        -out /dev/null \
-        -certfile "$certfile" \
-        -CAfile "$cafile"
-    _status=$?
-    cd -- "${OLDPWD}" || exit 1
-    return "${_status}"
-}
-
 run_hook() {
     [ -z "${arch}" ] && arch="$(uname -m)"
     [ -z "${copytoram}" ] && copytoram="auto"
@@ -183,6 +130,24 @@ archiso_mount_handler() {
         else
              _mnt_dev /dev/disk/by-partlabel/boot "/run/archiso/bootmnt" "-r" "defaults,remount"
         fi
+    fi
+
+    _mnt_dev /dev/disk/by-partlabel/system /run/archiso/data "-w" "subvol=/system/data,compress=zstd,noatime"
+    update_img=/run/archiso/data/sysupdate/demolinux.img
+    if [ -e $update_img ]; then
+        plymouth update --status="Updating demolinux..."
+        img_loopdev="$(losetup -P --find --show -- "$update_img")"
+        _mnt_dev "$img_loopdev"p3 /run/archiso/sysupdate "-w" "defaults,subvol=/system/airootfs"
+        # it should be ro by default, but while developping this the current
+        # image on github doesn't have its airootfs as read-only...
+        btrfs property set /run/archiso/sysupdate ro true
+        btrfs subvolume snapshot $btrfs_root/airootfs $btrfs_root/snapshots/snapshot-$(date +%d-%m-%Y)
+        btrfs subvol delete $btrfs_root/airootfs
+        btrfs send /run/archiso/sysupdate | pv | btrfs receive $btrfs_root
+
+        umount /run/archiso/sysupdate
+        rm -rf /run/archiso/data/sysupdate
+        losetup -d "$img_loopdev"
     fi
 
     plymouth update --status="Mouting filesystems..."

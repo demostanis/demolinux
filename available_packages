@@ -169,6 +169,8 @@ earlyoom
 xdg-dbus-proxy
 pulseaudio
 pulseaudio-alsa
+cloud-guest-utils # mkinitcpio
+gptfdisk # mkinitcpio
 xdg-user-dirs
 bubblewrap
 local pambase

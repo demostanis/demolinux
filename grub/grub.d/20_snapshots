@@ -187,7 +187,8 @@ if [ "$has_snapshots" = 1 ]; then
 		for snapshot in ($btrfs_root)/system/snapshots/*; do
 			'
 			    linux_entry "${OS}" "hardened" simple \
-			    'btrfs_snapshot="$snapshot" '"${GRUB_CMDLINE_LINUX} ${GRUB_CMDLINE_LINUX_DEFAULT}"
+			    'btrfs_snapshot="$snapshot" '"${GRUB_CMDLINE_LINUX} ${GRUB_CMDLINE_LINUX_DEFAULT} copytoram=n resume=PARTLABEL=system resume_offset=99999199999"
+			    # TODO: ugly
 	echo '
 		done
 	}

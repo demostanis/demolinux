@@ -1132,6 +1132,7 @@ _make_bootmode_hybrid.grub.gpt() {
     _msg_info "Copying files to the disk image..."
     cp -a "${pacstrap_dir}"/* /mnt/demolinux/root/system/airootfs
     cp -r "${profile}/packages/db" /mnt/demolinux/root/system/airootfs/packages
+    btrfs property set /mnt/demolinux/root/system/airootfs ro true
 
     mkdir -p /mnt/demolinux/boot
     mount /dev/loop0p2 /mnt/demolinux/boot

@@ -290,7 +290,7 @@ for linux in ${reverse_sorted_list}; do
     "${GRUB_CMDLINE_LINUX} ${GRUB_CMDLINE_LINUX_DEFAULT} copytoram=y ${resume_opts}"
 
   linux_entry "${OS} (recovery shell)" "${version}" advanced \
-    "${GRUB_CMDLINE_LINUX} disablehooks=archiso"
+    "${GRUB_CMDLINE_LINUX} disablehooks=demolinux"
 
   if test -e "${dirname}/initramfs-${version}-fallback.img" ; then
     initrd="${initrd_early} initramfs-${version}-fallback.img"

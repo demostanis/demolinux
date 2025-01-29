@@ -516,7 +516,7 @@ _make_customize_airootfs() {
     fi
 
     # Arch Linux archive so we don't have to -y all the time
-    echo Server = https://archive.archlinux.org/repos/$(date -u +%Y/%m/%d)/'$repo'/os/'$arch' >> "${pacstrap_dir}/etc/pacman.d/mirrorlist"
+    echo Server = https://archive.archlinux.org/repos/$(date -d yesterday -u +%Y/%m/%d)/'$repo'/os/'$arch' >> "${pacstrap_dir}/etc/pacman.d/mirrorlist"
 
     # Generate locales
     eval -- env -u TMPDIR arch-chroot "${pacstrap_dir}" "/usr/bin/locale-gen"

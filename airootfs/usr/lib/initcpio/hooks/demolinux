@@ -137,7 +137,7 @@ archiso_mount_handler() {
     _mnt_dev /dev/disk/by-partlabel/system $rundir/data "-w" "subvol=/system/data,compress=zstd,noatime"
     update_img=$rundir/data/sysupdate/demolinux.img
     if [ -e $update_img ]; then
-        plymouth update --status="Updating demolinux..."
+        plymouth update --status="Updating demolinux (this might take awhile)..."
         img_loopdev="$(losetup -P --find --show -- "$update_img")"
         _mnt_dev "$img_loopdev"p3 $rundir/sysupdate "-w" "defaults,subvol=/system/airootfs"
         # it should be ro by default, but while developping this the current

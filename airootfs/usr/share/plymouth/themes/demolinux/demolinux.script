@@ -197,7 +197,7 @@ fun update_status_callback (text) {
       text != "Mouting filesystems..." &&
       text != "Copying airootfs to RAM..." &&
       text != "Updating boot params for hibernation..." &&
-      text != "Updating demolinux...")
+      text != "Updating demolinux (this might take awhile)...")
     {
       text = "Starting " + text + "...";
     }

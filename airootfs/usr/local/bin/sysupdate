@@ -34,5 +34,6 @@ echo checking file integrity...
 sed -Ei 's/out\/demolinux-.*\.img/demolinux.img/' sha256sums.txt
 sha256sum -c sha256sums.txt
 
+echo rebooting...
 kexec -l /run/archiso/bootmnt/vmlinuz-linux --initrd=/run/archiso/bootmnt/initramfs-linux.img --reuse-cmdline
 kexec -e

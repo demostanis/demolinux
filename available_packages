@@ -84,19 +84,6 @@ btrfs-progs
 e2fsprogs
 cryptsetup
 
-# System utilities
-alsa-utils
-arch-install-scripts
-aur brightnessctl-git
-inotify-tools
-local lsb-release
-playerctl
-luarocks
-pv
-reflector
-xdotool
-rsync
-
 # Utilities
 bat
 bind
@@ -177,6 +164,17 @@ local pambase
 clipnotify
 openssh
 kexec-tools
+alsa-utils
+arch-install-scripts
+aur brightnessctl-git
+inotify-tools
+local lsb-release
+playerctl
+luarocks
+pv
+reflector
+xdotool
+rsync
 yad
 iwd
 zsh

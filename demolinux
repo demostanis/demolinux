@@ -35,7 +35,7 @@ rebuild_schemes(){
 build(){
 	ensure_installed
 	elevate
-	./bin/mkarchiso -o out/ -w work/ -v .
+	./bin/mkarchiso -o out/ -w work/ .
 }
 
 run(){

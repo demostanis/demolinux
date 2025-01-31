@@ -1,0 +1,26 @@
+From 88ceccdddc3357698f36f9275e84e4cf9926a283 Mon Sep 17 00:00:00 2001
+From: demostanis <demostanis@protonmail.com>
+Date: Fri, 31 Jan 2025 19:41:09 +0100
+Subject: [PATCH] don't interpret %?
+
+---
+ widget/app_launcher/init.lua | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/widget/app_launcher/init.lua b/widget/app_launcher/init.lua
+index fdce253..8e48b0e 100755
+--- a/widget/app_launcher/init.lua
++++ b/widget/app_launcher/init.lua
+@@ -193,6 +193,9 @@ local function create_app_widget(self, entry)
+     }
+ 
+     function app.spawn()
++        -- we don't interpret them
++        entry.commandline = entry.commandline:gsub("%%.", "")
++
+         if entry.terminal == true then
+             if self.terminal ~= nil then
+                 local terminal_command = terminal_commands_lookup[self.terminal] or self.terminal
+-- 
+2.48.1
+

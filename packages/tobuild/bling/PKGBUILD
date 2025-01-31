@@ -1,7 +1,7 @@
 pkgname='bling'
 pkgdesc="Utilities for the AwesomeWM"
 pkgver=dev
-pkgrel=15
+pkgrel=16
 arch=(any)
 url='https://github.com/BlingCorp/bling'
 license=(MIT)
@@ -13,14 +13,16 @@ source=(git+https://github.com/BlingCorp/bling.git
 	0003-Remove-prompt-icon-and-cursor.patch
 	0004-Prevent-visual-glitch-in-app_launcher.patch
 	0005-Execute-entry.commandline-instead-of-entry.executabl.patch
-	0006-Really-prevent-crash-when-pressing-up-arrow-in-app-l.patch)
+	0006-Really-prevent-crash-when-pressing-up-arrow-in-app-l.patch
+	0007-Don-t-interpret.patch)
 sha256sums=('SKIP'
             'd74a9f8b86f4454073641223214938fd027065d4fd6a2db52acb03139112b0ae'
             '46520421b503c558c63773c21198094b24890bcb3dbbae017fd35d92fdacd201'
             '70a33c72e5d650111cf4f371fcba5b9d3c8031559660741623dc2356c90961f0'
             '1082f79b54ae582b93125a87244d438515d2a491c77f7d78dac11d8d24fd5883'
             '96354998a14eee7b02bcdb3225905d25b487f2ddf5d2cf3cd7e98adcc4bab725'
-            '72462ab0c274ca1af3e01999c93b40cd8a73b430eb673ed874558dd0e338480a')
+            '72462ab0c274ca1af3e01999c93b40cd8a73b430eb673ed874558dd0e338480a'
+            '513c775ddbc0891bfdf22c43bc61fad4c5219202e64c964693357c950a2cc994')
 _luaver=5.4
 
 prepare() {
@@ -31,6 +33,7 @@ prepare() {
 	git apply <../0004-Prevent-visual-glitch-in-app_launcher.patch
 	git apply <../0005-Execute-entry.commandline-instead-of-entry.executabl.patch
 	git apply <../0006-Really-prevent-crash-when-pressing-up-arrow-in-app-l.patch
+	git apply <../0007-Don-t-interpret.patch
 }
 
 package() {

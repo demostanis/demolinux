@@ -1,0 +1,96 @@
+From 4c3252df7be94dbd5f026c34439cd06e5423ed6b Mon Sep 17 00:00:00 2001
+From: demostanis <demostanis@protonmail.com>
+Date: Sat, 1 Feb 2025 21:39:13 +0100
+Subject: [PATCH] multiple remotes
+
+---
+ riseup_vpn_configurator/__init__.py | 36 +++++++++++++----------------
+ 1 file changed, 16 insertions(+), 20 deletions(-)
+
+diff --git a/riseup_vpn_configurator/__init__.py b/riseup_vpn_configurator/__init__.py
+index 3764f9d..d596870 100644
+--- a/riseup_vpn_configurator/__init__.py
++++ b/riseup_vpn_configurator/__init__.py
+@@ -224,18 +224,11 @@ def check_config_file() -> None:
+         logging.error(f"Could not parse config file {config_file}")
+         print_default_config(1)
+ 
+-    for c in ("server", "protocol", "port"):
++    for c in ("location",):
+         if c not in y.keys():
+             logging.error(f"Error checking configuration file ({config_file}): '{c}' not specified")
+             sys.exit(1)
+ 
+-    if y["protocol"] not in ("tcp", "udp"):
+-        logging.error(f"Error checking configuration file ({config_file}): 'protocol' must be one of the values tcp|udp (specified was '{y['protocol']}')")
+-        sys.exit(1)
+-    if not str(y["port"]).isnumeric():
+-        logging.error(f"Error checking configuration file ({config_file}): 'port' must be numeric (specified was '{y['port']}')")
+-        sys.exit(1)
+-
+     for host in y.get('excluded_routes', []):
+         try:
+             _ = ip_network(host, strict=False)
+@@ -248,23 +241,24 @@ def check_config_file() -> None:
+     logging.info("Configuration file: OK")
+ 
+ 
+-def get_server_info() -> Optional[dict]:
++def get_servers_info() -> Optional[dict]:
+     with open(config_file) as f:
+         config = yaml.safe_load(f)
+     with open(gateway_json) as f:
+         j = json.load(f)
++    results = []
+     gateways = j['gateways']
+     for gw in gateways:
+-        if gw['host'] == config['server']:
+-            return {
++        if gw['location'] == config['location']:
++            results.append({
+                 'hostname': gw['host'],
+                 'ip_address': gw['ip_address'],
+-                'proto': config['protocol'],
+-                'port': config['port'],
+                 'location': gw['location'],
+-            }
+-    logging.error(f"Gateway '{config['server']}' not found in gateway list. Please check with --list")
+-    sys.exit(1)
++            })
++    if len(results) == 0:
++        logging.error(f"Gateway '{config['server']}' not found in gateway list. Please check with --list")
++        sys.exit(1)
++    return results
+ 
+ 
+ def generate_configuration() -> None:
+@@ -281,9 +275,11 @@ def generate_configuration() -> None:
+ client
+ dev tun
+ 
++
++{%- for server_info in servers_info %}
+ remote {{ server_info['ip_address'] }} {{ server_info['port'] }} # {{ server_info['hostname'] }} in {{ server_info['location'] }}
+-proto {{ server_info['proto'] }}
+-verify-x509-name {{ server_info['hostname'].split(".")[0] }} name
++{% endfor %}
++proto udp
+ 
+ cipher AES-256-GCM
+ tls-version-min 1.3
+@@ -309,10 +305,10 @@ ca {{ ca_cert_file }}
+ cert {{ cert_file }}
+ key {{ key_file }}"""
+ 
+-    server_info = get_server_info()
++    servers_info = get_servers_info()
+     excluded_routes = get_excluded_routes()
+     t = Template(ovpn_template)
+-    config = t.render(server_info=server_info,
++    config = t.render(servers_info=servers_info,
+                       excluded_routes=excluded_routes,
+                       ca_cert_file=ca_cert_file,
+                       cert_file=cert_file,
+-- 
+2.48.1
+

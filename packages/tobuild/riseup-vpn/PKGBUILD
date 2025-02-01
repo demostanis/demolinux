@@ -3,7 +3,7 @@
 pkgname=riseup-vpn
 _pkgname=riseup-vpn-configurator
 pkgver=1.2.0
-pkgrel=1
+pkgrel=2
 pkgdesc="a simple command line tool to get RiseupVPN up and running"
 arch=('any')
 url="https://github.com/kmille/riseup-vpn-configurator"
@@ -13,14 +13,17 @@ makedepends=(python-poetry-core python-build python-installer python-wheel)
 depends=(openvpn python python-jinja python-requests python-yaml python-pyasn1 python-pyasn1-modules python-psutil python-ping3)
 source=(https://github.com/kmille/riseup-vpn-configurator/archive/refs/tags/v$pkgver.tar.gz
 	riseup-vpn.yaml
-        0001-Allow-running-without-root.patch)
+        0001-Allow-running-without-root.patch
+        0002-Add-multiple-remotes-in-openvpn-config.patch)
 sha256sums=('69f12dd60ca8247553e4b0bbdb28b6f14a56aa8494cfe9eb89dd665c2ab3ae77'
-            '48a75389552766c5573d34354db5970e402d2012c2581cdfbdd0a813b57142f7'
-            '2bdf9fdb5af3a27107f4e1d7322f6d6521baca5775b49f7e8deaa384fb1b9530')
+            '712ee8fec0b8dbd9ce693c6950220186ad42019557982c1647443dfca1921842'
+            '2bdf9fdb5af3a27107f4e1d7322f6d6521baca5775b49f7e8deaa384fb1b9530'
+            '0f04702f900982d980785a8954d535e9a053b5860403fa102a97d0fc5c42f08b')
 
 prepare() {
   cd "$srcdir/$_pkgname-$pkgver"
   patch -p1 < ../0001-Allow-running-without-root.patch
+  patch -p1 < ../0002-Add-multiple-remotes-in-openvpn-config.patch
 }
 
 build() {

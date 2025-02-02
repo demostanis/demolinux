@@ -395,7 +395,7 @@ _make_customize_airootfs() {
     fi
 
     for dir in ${data_directories[@]}; do
-        ln -sf "/data/$dir" "${pacstrap_dir}/etc/skel/$dir"
+        ln -snf "/data/$dir" "${pacstrap_dir}/etc/skel/$dir"
     done
 
     if [[ -e "${profile}/airootfs/etc/passwd" ]]; then

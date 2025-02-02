@@ -1,9 +1,6 @@
 #!/bin/zsh
 #
 # Script to run Stremio inside namespaced-openvpn.
-# We prevent it from accessing the session bus and force
-# DNS resolution through Google DNS. This is to ensure no
-# DNS leaks (https://github.com/slingamn/namespaced-openvpn#dns-hardening).
 # sudo is necessary because Linux namespaces require higher privileges...
 
 namespace=stremio-$$
@@ -24,7 +21,6 @@ done
 
 bwrap \
 	--dev-bind / / `# no real sandboxing here` \
-	--bind /dev/null /run/user/1000/bus \
 	--bind /run/systemd/resolve/stub-resolv.conf \
 		   =(echo nameserver 8.8.8.8) \
 	ip netns exec $namespace \

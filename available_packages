@@ -139,6 +139,8 @@ podman
 fuse-overlayfs # for podman
 docker-compose
 podman-docker
+python-virtualenv
+gdb
 
 # System
 base

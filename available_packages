@@ -127,6 +127,7 @@ openbsd-netcat
 tinyxxd
 aria2
 tmux
+xcolor
 
 # Development
 lua-language-server

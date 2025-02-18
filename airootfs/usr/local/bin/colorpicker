@@ -1,0 +1,3 @@
+#!/bin/sh
+
+yad --color --picker --init-color=$(xcolor) --title="Color picker"

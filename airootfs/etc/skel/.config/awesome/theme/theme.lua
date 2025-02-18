@@ -74,7 +74,7 @@ theme.dock_height = 100
 theme.dock_indicator_color = theme.color7
 theme.border_radius = 5
 
-theme.standalone_floating_windows = {name = {"GIMP Startup"}, class = {"iwgtk", "deferedinstall"}}
+theme.standalone_floating_windows = {name = {"GIMP Startup"}, class = {"iwgtk", "deferedinstall", "Yad"}}
 
 return theme
 

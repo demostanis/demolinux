@@ -2,6 +2,11 @@ local step = 500
 local margin_before_window_on_focus = 56
 
 local global_x = 0
+
+local runtime = os.getenv("XDG_RUNTIME_DIR")
+if not runtime then runtime = "/run/user/1000" end
+local global_x_filename = runtime.."/.awesome.x"
+
 local scroll = {name = "scroll"}
 function scroll.arrange(p)
 	local t = p.tag
@@ -13,7 +18,6 @@ function scroll.arrange(p)
 		local g = {}
 		local c = cls[i]
 
-		-- TODO: do not hardcode
 		g.x = x + 5
 		g.y = beautiful.wibar_height+10
 		g.width = c.width
@@ -80,6 +84,21 @@ local function first_window()
 	return nearest
 end
 
+-- go back to global_x before restarting
+local global_x_file = io.open(global_x_filename, "r")
+if global_x_file then
+	local new_global_x = tonumber(global_x_file:read())
+	global_x_file:close()
+	delayed(function()
+		global_x = new_global_x
+		awful.layout.arrange(mouse.screen)
+		delayed(function()
+			client.focus = leftmost_window()
+			client.focus:raise()
+		end, 0.1)
+	end, 1)
+end
+
 local timed = nil
 local last_new = nil
 local function set_global_x(new)
@@ -112,6 +131,11 @@ local function set_global_x(new)
 		end
 	}
 	timed.target = new
+
+	global_x_file = assert(io.open(global_x_filename, "w"))
+	global_x_file:write(tostring(new))
+	global_x_file:flush()
+	global_x_file:close()
 end
 
 local function move_right()

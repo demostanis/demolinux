@@ -47,33 +47,44 @@ local function spawn_vpn()
 end
 
 local function mkpanew(icon, text, command, opts)
+    local size = 25
+    if opts and opts.size then
+        size = opts.size
+    end
+
+    local hide_status = opts and opts.hide_status
+
+    local contentw = {{
+        {
+            widget = wibox.widget.textbox,
+            font = beautiful.base_icon_font.." 25",
+            halign = "center",
+            text = icon,
+        },
+        widget = wibox.container.margin,
+        bottom = 5, right = 5, left = 5,
+        top = hide_status and 10 or 5
+    },
+    {
+        widget = wibox.widget.textbox,
+        font = beautiful.base_font..", ExtraBold "..size,
+        halign = "center",
+        text = text,
+    },
+    layout = wibox.layout.fixed.vertical}
+
+    if not hide_status then
+        table.insert(contentw, {
+            widget = wibox.widget.textbox,
+            halign = "center",
+            id = ("status-"..text):lower(),
+            text = "...",
+        })
+    end
+
     return {
         {
-            {
-                {
-                    {
-                        widget = wibox.widget.textbox,
-                        font = beautiful.base_icon_font.." 25",
-                        halign = "center",
-                        text = icon,
-                    },
-                    widget = wibox.container.margin,
-                    margins = 5
-                },
-                {
-                    widget = wibox.widget.textbox,
-                    font = beautiful.base_font..", ExtraBold 25",
-                    halign = "center",
-                    text = text,
-                },
-                {
-                    widget = wibox.widget.textbox,
-                    halign = "center",
-                    id = ("status-"..text):lower(),
-                    text = "...",
-                },
-                layout = wibox.layout.fixed.vertical,
-            },
+            contentw,
             widget = wibox.container.margin,
             margins = 50,
         },
@@ -312,13 +323,27 @@ return function(s)
         {
             {
                 {
-                    mkpanew("\u{f1eb}", "WiFi", function()
-                        spawn_wifi()
-                    end, {hide_panel_on_click = true}),
-                    mkpanew("\u{e4e2}", "VPN", function()
-                        spawn_vpn()
-                    end),
-                    layout = wibox.layout.fixed.horizontal,
+                    {
+                        mkpanew("\u{f1eb}", "WiFi", function()
+                            spawn_wifi()
+                        end, {hide_panel_on_click = true}),
+                        mkpanew("\u{e4e2}", "VPN", function()
+                            spawn_vpn()
+                        end),
+                        layout = wibox.layout.fixed.horizontal,
+                        spacing = 5
+                    },
+                    {
+                        mkpanew("\u{f03d}", "Record screen", function()
+                            -- TODO: record screen
+                        end, {hide_panel_on_click = true, size = 11}),
+                        mkpanew("\u{f53f}", "Color picker", function()
+                            awful.spawn("colorpicker")
+                        end, {hide_panel_on_click = true, size = 13, hide_status = true}),
+                        layout = wibox.layout.fixed.horizontal,
+                        spacing = 5
+                    },
+                    layout = wibox.layout.fixed.vertical,
                     spacing = 5
                 },
                 {

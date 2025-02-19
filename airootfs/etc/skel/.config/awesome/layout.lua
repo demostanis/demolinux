@@ -369,4 +369,10 @@ return {
 	maximize_two_windows = maximize_two_windows,
 	maximize_three_windows = maximize_three_windows,
 	swap_left = swap_left, swap_right = swap_right,
+
+	-- needed by windowcontrols.lua, maybe its logic should be
+	-- deported in this file?
+	lefthand_window = lefthand_window,
+	on_window_appearance_change = on_window_appearance_change,
+	leftmost_window = leftmost_window
 }

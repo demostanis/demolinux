@@ -9,7 +9,7 @@ local cursors = {
     ["bottom_right"] = "bottom_right_corner"
 }
 
-local corner_handler_table = {
+local floating_corner_handler_table = {
     left = function(c)
         return {
             x = initial.x - dx,
@@ -67,6 +67,17 @@ local corner_handler_table = {
     end
 }
 
+local scrolling_corner_handler_table = {
+    left = function(c, lefthand)
+        if lefthand and initial.lefthand then
+            lefthand.width = initial.lefthand.width - dx
+        end
+    end,
+    right = function(c)
+        c.width = initial.width - dx
+    end,
+}
+
 -- TODO: move to theme.lua
 local margin_before_window_on_focus = 56
 local margin_window_move_on_click = 200
@@ -97,6 +108,8 @@ return gears.table.join(
         end
     end),
     awful.button({ modkey }, 3, function (c)
+        local floating = c.floating
+
         local coords = mouse.coords()
         initial = {
             width = c.width,
@@ -104,12 +117,38 @@ return gears.table.join(
             x = c.x, y = c.y,
             mouse = coords
         }
+
         local _, corner = awful.placement.closest_corner(
             {coords = function() return coords end},
-            {parent = c, include_sides = true})
+            {parent = c, include_sides = floating})
+        if not floating then
+            if corner == "top_left" or corner == "bottom_left" then
+                corner = "left"
+            end
+            if corner == "top_right" or corner == "bottom_right" then
+                corner = "right"
+            end
+        end
+
+        local lefthand
+        local resizing_off_view = false
+        if not floating then
+            lefthand = layout.lefthand_window(c)
+            if lefthand and lefthand ~= c then
+                initial.lefthand = {}
+                initial.lefthand.width = lefthand.width
+                resizing_off_view = c == layout.leftmost_window() and corner == "left"
+            end
+        end
 
         mousegrabber.run(function(coords)
             if not coords.buttons[3] then
+                if not floating and resizing_off_view then
+                    client.focus = lefthand
+                    lefthand:raise()
+                    layout.on_window_appearance_change(lefthand)
+                end
+
                 return false
             end
 
@@ -117,18 +156,23 @@ return gears.table.join(
             dx = initial.mouse.x - mx
             dy = initial.mouse.y - my
 
-            local geo = corner_handler_table[corner](c)
-            if (geo.width and geo.width < 1)
-                or (geo.height and geo.height < 1) then
-                return true
+            local handlers = scrolling_corner_handler_table
+            if floating then
+                handlers = floating_corner_handler_table
             end
 
-            -- with scroll layout
-            c.width = geo.width
-            -- with floating layout
-            c:emit_signal(
-                "request::geometry", "mouse.resize",
-                geo)
+            local geo = handlers[corner](c, lefthand)
+            -- scrolling directly modifies the clients
+            if floating then
+                if (geo.width and geo.width < 1)
+                    or (geo.height and geo.height < 1) then
+                    return true
+                end
+
+                c:emit_signal(
+                    "request::geometry", "mouse.resize",
+                    geo)
+            end
             return true
         end, cursors[corner])
     end),

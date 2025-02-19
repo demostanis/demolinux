@@ -1,0 +1,46 @@
+#!/bin/bash
+
+: ${XDG_RUNTIME_DIR:=/run/user/$(id -u)}
+fifo=$XDG_RUNTIME_DIR/screenrecord.fifo
+
+recording_active() {
+	(( "$(pgrep screenrecord | wc -l)" > 2 ))
+}
+
+action=${1:-start}
+case "$action" in
+	start)
+		if recording_active; then
+			echo already recording screen >&2
+			exit 1
+		fi
+
+		framerate=25
+		filename=~/movies/$(date +screenrecording-%Y.%m.%d-%H.%M.%S.mp4)
+
+		rm -f "$fifo"
+		mkfifo "$fifo" || :
+		# fun fact: using < "$fifo" makes the recording stop after 1 second???????????
+		cat "$fifo" | ffmpeg \
+			-framerate $framerate \
+			-video_size $(xrandr | awk -F'[+ ]' '/ connected/{print$3}') \
+			-f x11grab \
+			-i $DISPLAY "$filename"
+		rm -f "$fifo"
+		;;
+	status)
+		if recording_active; then
+			if [ -e "$fifo" ]; then
+				echo Recording...
+			else
+				echo Saving...
+			fi
+		else
+			echo Not recording
+		fi
+		;;
+	stop)
+		echo q > "$fifo"
+		rm -f "$fifo"
+		;;
+esac

@@ -2,6 +2,7 @@ local stopped = false
 local mykeygrabber = nil
 local old_client_focus = nil
 local state = nil
+local screenrecorder_status = "Not recording"
 local mypanel = nil
 local panes = {}
 
@@ -313,6 +314,24 @@ return function(s)
         end)
     end
 
+    -- TODO: this really needs splitting
+    gears.timer{
+        timeout = 1,
+        call_now = true,
+        callback = function()
+            awful.spawn.easy_async("screenrecord status", function(message)
+                screenrecorder_status = message:gsub("\n", "")
+                local statusw = mypanel:get_children_by_id("status-record screen")[1]
+                if statusw.markup and statusw.markup:match"span foreground" then -- is hovered
+                    statusw.oldtext = screenrecorder_status
+                    statusw.markup = string.format([[<span foreground="%s">%s</span>]], beautiful.wibar_widget_hover_color, screenrecorder_status)
+                else
+                    statusw.text = screenrecorder_status
+                end
+            end)
+        end
+    }:start()
+
     gears.timer{
         timeout = 1,
         call_now = true,
@@ -335,8 +354,12 @@ return function(s)
                     },
                     {
                         mkpanew("\u{f03d}", "Record screen", function()
-                            -- TODO: record screen
-                        end, {hide_panel_on_click = true, size = 11}),
+                            if screenrecorder_status == "Not recording" then
+                                awful.spawn("screenrecord start", false)
+                            elseif screenrecorder_status == "Recording..." then
+                                awful.spawn("screenrecord stop")
+                            end
+                        end, {size = 11}),
                         mkpanew("\u{f53f}", "Color picker", function()
                             awful.spawn("colorpicker")
                         end, {hide_panel_on_click = true, size = 13, hide_status = true}),

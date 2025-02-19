@@ -11,6 +11,9 @@ sudo persistfs list | while read -r path; do
   size=$(du -s "$path" 2>/dev/null | awk '{print $1}')
   if [ -z "$size" ]; then continue; fi
   if (( "$size" > 10000 )); then continue; fi
+  if [ "$path" = /home/demostanis/.ssh ]; then continue; fi
+  if [ "$path" = /home/demostanis/.config/pulse ]; then continue; fi
+  if [ "$path" = /home/demostanis/.gitconfig ]; then continue; fi
 
   dest="$gitdir/airootfs"
   if [[ "$path" = /home/demostanis/* ]]; then

@@ -436,53 +436,61 @@ return function(s)
             {
                 {
                     {
-                        widget = wibox.widget.textbox,
-                        font = beautiful.base_icon_font .. " 25",
-                        forced_width = 32,
-                        text = "\u{f011}"
+                        {
+                            {
+                                {
+                                    widget = wibox.widget.textbox,
+                                    font = beautiful.base_icon_font .. " 25",
+                                    forced_width = 32,
+                                    text = "\u{f011}"
+                                },
+                                widget = wibox.container.background,
+                                id = "system",
+                                command = function()
+                                    awful.spawn("systemctl poweroff")
+                                end
+                            },
+                            {
+                                {
+                                    widget = wibox.widget.textbox,
+                                    font = beautiful.base_icon_font .. " 23",
+                                    text = "\u{f2f9}"
+                                },
+                                widget = wibox.container.background,
+                                id = "system",
+                                command = function()
+                                    awful.spawn("systemctl reboot")
+                                end
+                            },
+                            {
+                                {
+                                    widget = wibox.widget.textbox,
+                                    font = beautiful.base_icon_font .. " 25",
+                                    text = "\u{f880}"
+                                },
+                                widget = wibox.container.background,
+                                id = "system",
+                                command = function()
+                                    awful.spawn("systemctl hibernate")
+                                end
+                            },
+                            layout = wibox.layout.fixed.horizontal,
+                            spacing = 8
+                        },
+                        widget = wibox.container.margin,
+                        top = 3, bottom = 3,
+                        left = 8, right = 8,
                     },
                     widget = wibox.container.background,
-                    id = "system",
-                    command = function()
-                        awful.spawn("systemctl poweroff")
-                    end
+                    shape = rrect(),
+                    bg = beautiful.bg_normal,
                 },
                 widget = wibox.container.margin,
-                left = 270, right = 5, bottom = 11, top = 15,
+                top = 1, right = 5,
             },
-            {
-                {
-                    {
-                        widget = wibox.widget.textbox,
-                        font = beautiful.base_icon_font .. " 23",
-                        text = "\u{f2f9}"
-                    },
-                    widget = wibox.container.background,
-                    id = "system",
-                    command = function()
-                        awful.spawn("systemctl reboot")
-                    end
-                },
-                widget = wibox.container.margin,
-                left = 15, right = 7, bottom = 11, top = 15,
-            },
-            {
-                {
-                    {
-                        widget = wibox.widget.textbox,
-                        font = beautiful.base_icon_font .. " 25",
-                        text = "\u{f880}"
-                    },
-                    widget = wibox.container.background,
-                    id = "system",
-                    command = function()
-                        awful.spawn("systemctl hibernate")
-                    end
-                },
-                widget = wibox.container.margin,
-                left = 15, right = 5, bottom = 11, top = 15,
-            },
-            layout = wibox.layout.fixed.horizontal
+            widget = wibox.container.place,
+            fill_vertical = true,
+            halign = "right",
         },
         --footerw,
         layout = wibox.layout.align.vertical

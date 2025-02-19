@@ -312,6 +312,25 @@ local function maximize_two_windows()
 	end
 end
 
+local function maximize_three_windows()
+	local leftmost = leftmost_window()
+	local righthand = righthand_window()
+	local rightrighthand = righthand_window(righthand)
+
+	if leftmost and righthand and rightrighthand
+		-- maybe *hand_window() shouldnt return themselves? -_-
+		and leftmost ~= righthand and rightrighthand ~= righthand and
+		leftmost ~= rightrighthand then
+		local third = margin_before_window_on_focus/3
+		if leftmost ~= first_window() then
+			third = third * 3
+		end
+		leftmost.width = leftmost.screen.geometry.width/3-third+1
+		righthand.width = righthand.screen.geometry.width/3-third+1
+		rightrighthand.width = righthand.screen.geometry.width/3-third+1
+	end
+end
+
 local function swap_left()
 	local c = client.focus
 	if c then
@@ -348,5 +367,6 @@ return {
 	cycle_window_focus = cycle_window_focus,
 	scroll = scroll, maximize = maximize,
 	maximize_two_windows = maximize_two_windows,
+	maximize_three_windows = maximize_three_windows,
 	swap_left = swap_left, swap_right = swap_right,
 }

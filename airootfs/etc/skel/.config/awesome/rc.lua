@@ -96,7 +96,7 @@ awful.rules.rules = {{
     }
 },
 {
-    rule = {class = "mpv"},
+    rule_any = {class = {"mpv"}, name = {"Picture-in-Picture"}},
     properties = {
         keys = gears.table.join(
             require"clientkeys",

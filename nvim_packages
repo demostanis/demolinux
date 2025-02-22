@@ -8,6 +8,8 @@ dcampos/nvim-snippy
 dcampos/cmp-snippy
 # completion engine
 hrsh7th/nvim-cmp
+# symbols list
+stevearc/aerial.nvim
 
 # git integration
 tpope/vim-fugitive

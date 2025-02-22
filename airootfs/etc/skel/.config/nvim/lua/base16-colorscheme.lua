@@ -217,6 +217,8 @@ function M.setup(colors, config)
     hi.Todo                               = { guifg = M.colors.base0A, guibg = M.colors.base01, gui = nil, guisp = nil }
     hi.Type                               = { guifg = M.colors.base0A, guibg = nil, gui = 'none', guisp = nil }
     hi.Typedef                            = { guifg = M.colors.base0A, guibg = nil, gui = nil, guisp = nil }
+    hi.AerialLine                         = "Visual"
+    hi.WinSeparator                       = "NonText"
 
     -- Diff highlighting
     hi.DiffAdd                            = { guifg = M.colors.base0B, guibg = M.colors.base00, gui = nil, guisp = nil }

@@ -58,12 +58,18 @@ vim.api.nvim_create_autocmd("LspAttach", {
     group = vim.api.nvim_create_augroup("LspConfig", {}),
     callback = function(event)
         local opts = { buffer = event.buf }
-        vim.keymap.set("n", "gd", function(args)
+
+        local function definition(args)
             vim.g.is_going_to_definition = 1
             vim.lsp.buf.definition(args)
             vim.g.is_going_to_definition = 0
+        end
+        vim.keymap.set("n", "gd", definition, opts)
+        vim.keymap.set("n", "gD", function(args)
+            vim.cmd"tab split"
+            definition(args)
         end, opts)
-        vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
+
         vim.keymap.set("n", "gr", function(args)
             vim.lsp.buf.references(args, {
                 on_list = function(options)
@@ -72,6 +78,16 @@ vim.api.nvim_create_autocmd("LspAttach", {
                 end
             })
         end, opts)
+
+        vim.keymap.set("n", "K", function()
+            if vim.o.ft ~= "c" then
+                vim.lsp.buf.hover()
+            else
+                -- C should open man pages
+                vim.cmd"norm! K"
+            end
+        end, opts)
+
         vim.keymap.set("n", "L", function() end)
         vim.keymap.set("n", "Lr", vim.lsp.buf.rename, opts)
         vim.keymap.set("n", "La", vim.lsp.buf.code_action, opts)

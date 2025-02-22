@@ -262,7 +262,12 @@ _make_chroot() {
             additional_opts=()
             if compgen -G "${profile}"/packages/db/*pkg.tar* >/dev/null; then
                 for file in "${profile}"/packages/db/*pkg.tar*; do
-                    additional_opts+=( -I "$file" )
+                    file=${file##*}         
+                    file=${file%%-[0-9]*}
+
+                    if [[ "${additional_opts[@]}" != "$file" ]]; then
+                        additional_opts+=( -I "$file" )
+                    fi
                 done
             fi
             "$correct_makechrootpkg" -U $SUDO_USER -r "${chroot_dir}" ${additional_opts[@]}

@@ -23,7 +23,7 @@ junegunn/vim-slash
 # automatic buffer options such as tabstop
 tpope/vim-sleuth
 # completion for neovim lua development
-folke/neodev.nvim
+folke/lazydev.nvim
 # status line
 nvim-lualine/lualine.nvim
 # telescope dep.

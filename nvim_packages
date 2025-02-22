@@ -10,6 +10,8 @@ dcampos/cmp-snippy
 hrsh7th/nvim-cmp
 # symbols list
 stevearc/aerial.nvim
+# breadcrumb
+SmiteshP/nvim-navic
 
 # git integration
 tpope/vim-fugitive

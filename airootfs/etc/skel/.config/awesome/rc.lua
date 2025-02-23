@@ -16,6 +16,7 @@ utils = require"utils"
 cairo = require"lgi".cairo
 glib = require"lgi".GLib
 layout = require"layout"
+tabs = require"tabs"
 
 terminal = "urxvt"
 modkey = "Mod4"
@@ -75,6 +76,15 @@ client.connect_signal("manage", function(c)
         c.screen.mywibar.visible = true
         c.screen.mydock.visible = true
     end)
+
+    if tabs.wants_tabs(c) then
+        c.keys = gears.table.join(
+            require"clientkeys",
+            awful.key({ "Control" }, "Tab", function()
+                tabs.switch_to_next_tab(c)
+            end)
+        )
+    end
 end)
 
 awful.rules.rules = {{
@@ -118,7 +128,7 @@ awful.rules.rules = {{
 
 client.connect_signal("request::titlebars", function(c)
     require"titlebar"(c)
-    require"tabs"(c)
+    tabs.show_tabs_on_client(c)
 end)
 
 -- vim:set et sw=4 ts=4:

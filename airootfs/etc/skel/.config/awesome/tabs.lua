@@ -60,6 +60,29 @@ local function mktabw(text, active)
     return tabw
 end
 
+local function switch_to_tab(master, tab)
+    if tab.active then return end
+
+    local previous_active_slave = master.active_slave
+    deactivate(master.tabs)
+    tab.active = true
+
+    delayed(function()
+        tab.client.x = previous_active_slave.x
+        tab.client.y = previous_active_slave.y
+        tab.client.width = previous_active_slave.width
+        tab.client.height = previous_active_slave.height
+        tab.client.minimized = false
+        tab.client.is_minimized_tab = false
+
+        tab.client:raise()
+        client.focus = tab.client
+        previous_active_slave.minimized = true
+        previous_active_slave.is_minimized_tab = true
+        master.active_slave = tab.client
+    end)
+end
+
 local function update_tabs(master)
     local tabs = master.tabs
     local tabsl = master.tabsl
@@ -98,27 +121,7 @@ local function update_tabs(master)
         tabsl:insert(tab_index, tabw)
         tabw:buttons(gears.table.join(
             awful.button({ }, 1, function()
-                if tab.active then return end
-
-                local previous_active_slave = master.active_slave
-                deactivate(tabs)
-                tab.active = true
-
-                delayed(function()
-                    tab.client.x = previous_active_slave.x
-                    tab.client.y = previous_active_slave.y
-                    tab.client.width = previous_active_slave.width
-                    tab.client.height = previous_active_slave.height
-                    tab.client.minimized = false
-                    tab.client.is_minimized_tab = false
-
-                    tab.client:raise()
-                    client.focus = tab.client
-                    previous_active_slave.minimized = true
-                    previous_active_slave.is_minimized_tab = true
-                    master.active_slave = tab.client
-                end)
-
+                switch_to_tab(master, tab)
                 update_tabs(master)
             end)
         ))
@@ -196,6 +199,7 @@ local function spawn_new_tab_in(master)
         tab.client = new_client
         new_client.is_tab = true
         master.active_slave = new_client
+        new_client.master = master
 
         delayed(function()
             c.minimized = true
@@ -222,7 +226,33 @@ local function spawn_new_tab_in(master)
     end)
 end
 
-return function(c)
+local function new_tab(c)
+    c = c or client.focus
+    if c.master then
+        spawn_new_tab_in(c.master)
+    end
+end
+
+local function switch_to_next_tab(c)
+    c = c or client.focus
+
+    local master = c.master
+    if not master then return end
+    local tabs = master.tabs
+    for i, tab in ipairs(tabs) do
+        if tab.active then
+            local new_tab = tabs[i+1]
+            if not new_tab then
+                new_tab = tabs[1]
+            end
+            switch_to_tab(master, new_tab)
+            update_tabs(master)
+            break
+        end
+    end
+end
+
+local function show_tabs_on_client(c)
     if wants_tabs(c) then
         local tabsl
 
@@ -280,5 +310,12 @@ return function(c)
         end
     end
 end
+
+return {
+    new_tab = new_tab,
+    show_tabs_on_client = show_tabs_on_client,
+    switch_to_next_tab = switch_to_next_tab,
+    wants_tabs = wants_tabs
+}
 
 -- vim:set et sw=4 ts=4:

@@ -75,7 +75,9 @@ local globalkeys = gears.table.join(
     awful.key({ modkey }, "-", layout.maximize_two_windows),
     awful.key({ modkey }, "=", layout.maximize_three_windows),
 
-    awful.key({ modkey }, "Tab", layout.cycle_window_focus)
+    awful.key({ modkey }, "Tab", layout.cycle_window_focus),
+
+    awful.key({ modkey }, "t", tabs.new_tab)
 )
 
 root.keys(globalkeys)

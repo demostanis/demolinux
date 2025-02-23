@@ -11,7 +11,7 @@
 sudo apt-get update
 sudo apt-get install pacman-package-manager \
                       archlinux-keyring libarchive-tools \
-                      systemd-container
+                      systemd-container qemu-system zsh
 
 sudo mkdir -p /etc/pacman.d
 cat <<-EOF | sudo tee -a /etc/pacman.conf >/dev/null

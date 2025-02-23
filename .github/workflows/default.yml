@@ -19,6 +19,9 @@ jobs:
       - name: Build an image
         run: ./demolinux build
 
+      - name: Run tests
+        run: ./demolinux tests
+
       - name: Split image into chunks
         run: |
           split -b 2GB out/demolinux*.img demolinux-
@@ -56,6 +59,9 @@ jobs:
 
       - name: Build an image
         run: ./demolinux build
+
+      - name: Run tests
+        run: ./demolinux tests
 
       - name: Split image into chunks
         run: |

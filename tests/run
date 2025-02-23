@@ -15,7 +15,7 @@ die() {
 cd "$(dirname "$(realpath "$0")")"/..
 
 run() {
-	./demolinux run || kill -USR1 $$
+	./demolinux __headless || kill -USR1 $$
 }
 
 trap 'die failed to run demolinux. did you run ./demolinux build first\?' USR1

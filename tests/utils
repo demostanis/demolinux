@@ -2,7 +2,9 @@ modkeypress() {
 	./dctrl shell<<EOC
 export DISPLAY=:0
 xdotool keydown Super_L
+sleep 0.2
 xdotool key $1
+sleep 0.1
 xdotool keyup Super_L
 EOC
 }

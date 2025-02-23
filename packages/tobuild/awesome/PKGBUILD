@@ -10,8 +10,8 @@
 
 _pkgname=awesome
 pkgname=${_pkgname}
-pkgver=4.3.1681.g0f950cbb6
-pkgrel=30
+pkgver=4.3.1683.g691e36425
+pkgrel=1
 pkgdesc='Highly configurable framework window manager'
 arch=('i686' 'x86_64')
 url='http://awesome.naquadah.org/'
@@ -29,7 +29,7 @@ optdepends=('rlwrap: readline support for awesome-client'
 provides=('notification-daemon' 'awesome')
 conflicts=('awesome')
 backup=('etc/xdg/awesome/rc.lua')
-source=("$pkgname::git+https://github.com/awesomeWM/awesome.git"
+source=("$pkgname::git+https://github.com/awesomeWM/awesome.git#commit=691e36425a645e54402cb04efc4c2b00d73051bd"
 	0001-Allow-specifying-a-y-offset-for-notifications.patch
 	0002-Expose-surface.patch
 	0003-Make-notification-icons-use-the-right-icon-theme.patch

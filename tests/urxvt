@@ -1,0 +1,4 @@
+modkeypress Enter
+expectwin URxvt
+
+# vim:set ft=bash:

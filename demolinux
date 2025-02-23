@@ -1,6 +1,6 @@
 #!/bin/sh
 # demolinux build&run script
-#  Usage: ./demolinux [run|clean|build|all|flash|schemes]
+#  Usage: ./demolinux [run|clean|build|tests|all|flash|schemes]
 
 A=( $@ )
 elevate(){
@@ -42,6 +42,10 @@ run(){
 	without_root ./bin/run_archiso -i out/$(ls -t out/ | head -1)
 }
 
+tests() {
+	without_root ./tests/run
+}
+
 flash(){
 	elevate
 	device=${1:?Missing device}
@@ -77,6 +81,7 @@ case $1 in
 	run) run ;;
 	clean) clean ;;
 	build) clean; build ;;
+	tests) tests ;;
 	schemes) rebuild_schemes $2 ;;
 	flash) flash $2 ;;
 	all) clean; rebuild_schemes && build && run ;;

@@ -50,6 +50,7 @@ awful.screen.connect_for_each_screen(function(s)
     if c == screen.count() then
         -- Hide the boot splash when last screen is ready
         awful.spawn("/usr/lib/boot/finishboot", false)
+        print("awesomeWM started!")
     end
 end)
 

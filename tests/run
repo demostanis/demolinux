@@ -1,0 +1,70 @@
+#!/bin/zsh
+
+stop_vm() {
+	echo stopping demolinux...
+	pkill archiso_0 2>/dev/null
+}
+
+die() {
+	echo "$*" >&2
+	stop_vm
+	echo tests failed
+	exit 1
+}
+
+cd "$(dirname "$(realpath "$0")")"/..
+
+run() {
+	./demolinux run || kill -USR1 $$
+}
+
+trap 'die failed to run demolinux. did you run ./demolinux build first\?' USR1
+run &
+
+# can't use timeout 60 zsh -c ... since signal
+# handlers won't be called...
+start=$(date +%s)
+while :; do
+	now=$(date +%s)
+	if (( now - start >= 60 )); then
+		die VM did not start after 1 minute.
+	fi
+
+	echo waiting for guest...
+	timeout 2 ./dctrl shell "exit 42"
+	[ $? = 42 ] && break
+	sleep 1
+done
+
+echo running demolinux tests...
+if ! timeout 30 ./dctrl shell <<EOC; then
+while :; do
+	if grep 'awesomeWM started' ~/.awesome.log 2>/dev/null; then
+		exit
+	fi
+	sleep 1
+done
+EOC
+	die AwesomeWM did not start after 30 seconds.
+fi
+
+echo changing display resolution...
+./dctrl shell 'DISPLAY=:0 /usr/lib/xrandr.sh >/dev/null 2>&1'
+
+# for the screen to refresh
+sleep 1
+
+. tests/utils
+
+set -e
+
+for test in tests/*; do
+	if [ "$test" != tests/run -a "$test" != tests/utils ]; then
+		if ! ( . "$test" ); then
+			die $test failed
+		fi
+	fi
+done
+
+echo all tests succeeded
+stop_vm

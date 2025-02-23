@@ -5,7 +5,11 @@
 common_opts=( 60022 -o StrictHostKeyChecking=no -o LogLevel=quiet )
 
 shell(){
-	ssh -p ${common_opts[@]} demostanis@localhost
+	if [ -n "$1" ]; then
+		ssh -p ${common_opts[@]} demostanis@localhost "$*"
+	else
+		ssh -p ${common_opts[@]} demostanis@localhost
+	fi
 }
 
 pull(){
@@ -17,7 +21,7 @@ push(){
 }
 
 case $1 in
-	shell) shell ;;
+	shell) shell "${@:2}" ;;
 	pull) pull "${@:2}" ;;
 	push) push "${@:2}" ;;
 

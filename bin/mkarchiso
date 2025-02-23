@@ -255,17 +255,22 @@ _make_chroot() {
         if ! tar tf "${profile}/packages/db/packages.db.tar.gz" 2>/dev/null | grep "$pkg-$mypkgver-$mypkgrel" >/dev/null 2>&1; then
             chown -R $SUDO_USER:$SUDO_USER "${pkgdir}"
 
-            if compgen -G "${profile}"/packages/db/*"$pkg"-[0-9]*pkg.tar*; then
-                rm "${profile}"/packages/db/*"$pkg"-[0-9]*pkg.tar*
+            realpkgname() {
+                tar -xOf "$1" .PKGINFO | \
+                    awk -F"[= ]" '/pkgname/{print$4}'
+            }
+
+            if compgen -G "${profile}"/packages/db/*"$pkg"-*pkg.tar*; then
+                file="${profile}"/packages/db/*"$pkg"-*pkg.tar*
+                if [ "$(realpkgname "$file")" = "$pkg" ]; then
+                    rm "$file"
+                fi
             fi
 
             additional_opts=()
             if compgen -G "${profile}"/packages/db/*pkg.tar* >/dev/null; then
                 for file in "${profile}"/packages/db/*pkg.tar*; do
-                    file=${file##*}         
-                    file=${file%%-[0-9]*}
-
-                    if [[ "${additional_opts[@]}" != "$file" ]]; then
+                    if [[ "${additional_opts[@]}" != *"$(realpkgname "$file")"* ]]; then
                         additional_opts+=( -I "$file" )
                     fi
                 done

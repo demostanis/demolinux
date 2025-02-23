@@ -272,6 +272,7 @@ end
 
 local function maximize(c)
 	if c.kinda_maximized then
+		c.kinda_maximizing = true
 		c.width = c.oldwidth
 	else
 		c.oldwidth = c.width
@@ -284,10 +285,19 @@ local function maximize(c)
 		if righthand and righthand ~= c then
 			width = width - margin_before_window_on_focus
 		end
+		c.kinda_maximizing = true -- im so messy......
 		c.width = width
 	end
 	c.kinda_maximized = not c.kinda_maximized
 end
+
+client.connect_signal("property::width", function(c)
+	if c.kinda_maximizing then
+		c.kinda_maximizing = false
+	else
+		c.kinda_maximized = false
+	end
+end)
 
 -- replace default client move handler
 client.disconnect_signal("request::geometry", awful.layout.move_handler)

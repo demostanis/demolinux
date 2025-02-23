@@ -179,6 +179,10 @@ _make_pacman_conf() {
         _cache_dirs="${_system_cache_dirs}"
     fi
 
+    # Arch Linux archive so we don't have to -y all the time
+    mirror=https://archive.archlinux.org/repos/$(date -d yesterday -u +%Y/%m/%d)/'$repo'/os/'$arch'
+    echo Server = $mirror >> "${work_dir}/mirrorlist"
+
     _msg_info "Copying custom pacman.conf to work directory..."
     _msg_info "Using pacman CacheDir: ${_cache_dirs}"
     # take the profile pacman.conf and strip all settings that would break in chroot when using pacman -r
@@ -189,6 +193,7 @@ _make_pacman_conf() {
     pacman-conf --config "${pacman_conf}" | \
         sed "/CacheDir/d;/DBPath/d;/HookDir/d;/LogFile/d;/RootDir/d;/\[options\]/a CacheDir = ${_cache_dirs}
         s,<packagesdb>,${packagesdb},
+        s,<mirrorlist>,$mirror,
         /\[options\]/a HookDir = ${pacstrap_dir}/etc/pacman.d/hooks/" > "${work_dir}/${buildmode}.pacman.conf"
 }
 
@@ -239,6 +244,7 @@ _make_chroot() {
         _msg_info "Creating build chroot..."
         mkarchroot "${chroot_dir}/root" base-devel
         sed -i 's/ debug / !debug /g' "${chroot_dir}/root/etc/makepkg.conf"
+        cp "${work_dir}/mirrorlist" "${chroot_dir}/root/etc/pacman.d/mirrorlist"
     else
         _msg_info "Updating build chroot..."
         arch-nspawn "${chroot_dir}/root" pacman --noconfirm -Syu
@@ -365,9 +371,6 @@ _make_customize_airootfs() {
     local passwd=()
     local fprofile_dir
 
-    # Arch Linux archive so we don't have to -y all the time
-    echo Server = https://archive.archlinux.org/repos/$(date -d yesterday -u +%Y/%m/%d)/'$repo'/os/'$arch' >> "${pacstrap_dir}/etc/pacman.d/mirrorlist"
-
     # Generate locales
     eval -- env -u TMPDIR arch-chroot "${pacstrap_dir}" "/usr/bin/locale-gen"
 
@@ -391,6 +394,8 @@ _make_customize_airootfs() {
         # do not allow connections to port 22
         sed -i /22/d "${pacstrap_dir}"/etc/ufw/*.rules
     fi
+
+    cp -- "${work_dir}/mirrorlist" "${pacstrap_dir}"/etc/pacman.d/mirrorlist
 
     _msg_info "Copying source to /usr/src/demolinux..."
     git clone "${profile}" "${pacstrap_dir}"/usr/src/demolinux >/dev/null

@@ -69,3 +69,9 @@ sudo bsdtar -C /usr/sbin --strip-components 2 \
 sudo bsdtar -C / \
   -xf /var/cache/pacman/pkg/grub-*.zst \
   usr/bin/grub-probe
+
+# Enable KVM group perms
+# https://github.blog/changelog/2023-02-23-hardware-accelerated-android-virtualization-on-actions-windows-and-linux-larger-hosted-runners/
+echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+sudo udevadm control --reload-rules
+sudo udevadm trigger --name-match=kvm

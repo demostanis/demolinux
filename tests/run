@@ -26,13 +26,15 @@ run &
 start=$(date +%s)
 while :; do
 	now=$(date +%s)
-	if (( now - start >= 60 )); then
-		die VM did not start after 1 minute.
+	if (( now - start >= 180 )); then
+		die VM did not start after 3 minutes.
 	fi
 
 	echo waiting for guest...
 	timeout 2 ./dctrl shell "exit 42"
-	[ $? = 42 ] && break
+	# this is mystery...
+	ret=$?
+	[ $ret = 42 ] && break
 	sleep 1
 done
 

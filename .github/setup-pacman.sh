@@ -70,8 +70,11 @@ sudo bsdtar -C / \
   -xf /var/cache/pacman/pkg/grub-*.zst \
   usr/bin/grub-probe
 
-# Enable KVM group perms
+# enable KVM group perms
 # https://github.blog/changelog/2023-02-23-hardware-accelerated-android-virtualization-on-actions-windows-and-linux-larger-hosted-runners/
 echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
 sudo udevadm control --reload-rules
 sudo udevadm trigger --name-match=kvm
+
+# add a ssh keypair so we can connect to the VM for tests
+ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519

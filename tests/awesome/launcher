@@ -1,0 +1,20 @@
+#!/bin/bash
+
+modkeypress space
+./dctrl shell <<eoc
+export DISPLAY=:0
+# it used to break that easily...
+for i in {0..20}; do
+	xdotool key Right
+done
+for i in {0..20}; do
+	xdotool key Left
+done
+xdotool type nemo
+# being to fast breaks it...
+sleep 0.5
+xdotool key Enter
+eoc
+
+# nemo
+expectwin Home

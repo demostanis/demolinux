@@ -219,7 +219,9 @@ local function on_window_appearance_change(c)
 				set_global_x(global_x_to_client(c))
 			end
 		else
-			set_global_x(global_x_to_client(client.focus))
+			if client.focus then
+				set_global_x(global_x_to_client(client.focus))
+			end
 		end
 	end, 0.1)
 end

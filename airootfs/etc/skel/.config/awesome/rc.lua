@@ -26,6 +26,15 @@ require"startup"
 require"globalkeys"
 require"notifications"
 
+local function hide_splash()
+    awful.spawn.with_shell([[
+        if [ -e ~/.feh.pid ]; then
+            kill $(<~/.feh.pid)
+            rm ~/.feh.pid
+        fi
+    ]])
+end
+
 local c = 0
 awful.screen.connect_for_each_screen(function(s)
     c = c + 1
@@ -49,7 +58,7 @@ awful.screen.connect_for_each_screen(function(s)
 
     if c == screen.count() then
         -- Hide the boot splash when last screen is ready
-        awful.spawn("/usr/lib/boot/finishboot", false)
+        hide_splash()
         print("awesomeWM started!")
     end
 end)

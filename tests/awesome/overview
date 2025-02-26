@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# TODO: test ordering
+
+yad --title="window 1" &
+sleep 1
+yad --title="window 2" &
+sleep 1
+
+trap 'quitwin;quitwin' EXIT
+
+modkeypress o
+xdotool key f
+expectfocus "window 1"
+
+modkeypress o
+xdotool key j
+expectfocus "window 2"
+
+quitwin
+quitwin

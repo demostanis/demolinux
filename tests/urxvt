@@ -1,4 +1,5 @@
 modkeypress Enter
 expectwin URxvt
+quitwin
 
 # vim:set ft=bash:

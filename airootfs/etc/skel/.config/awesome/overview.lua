@@ -332,6 +332,7 @@ return function()
         end
     end
     if #clients <= 1 then return end
+    table.sort(clients, function(a, b) return a.x < b.x end)
     s.mypanel:hide()
     draw_clients(clients)
 

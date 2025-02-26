@@ -1,25 +1,39 @@
 modkeypress() {
-	./dctrl shell<<EOC
-export DISPLAY=:0
-xdotool keydown Super_L
-sleep 0.2
-xdotool key $1
-sleep 0.1
-xdotool keyup Super_L
-EOC
+	xdotool keydown Super_L
+	sleep 0.2
+	xdotool key $1
+	sleep 0.1
+	xdotool keyup Super_L
 }
 
 expectwin() {
+	for i in {1..10}; do
+		xwininfo -root -tree | grep -q "$1" && return
+		sleep 1
+	done
+	echo did not find window $1 after 10 seconds >&2
+	exit 1
+}
+
+expectfocus() {
+	for i in {1..10}; do
+		name=$(awesome-client 'return client.focus.name' | cut -d\" -f2)
+		echo focus=$name wanted=$1
+		[ "$name" = "$1" ] && return
+		sleep 1
+	done
+	echo did not focus window $1 after 10 seconds >&2
+	exit 1
+}
+
+quitwin() {
+	modkeypress q
+}
+
+expectfocus() {
 	./dctrl shell<<EOC
-export DISPLAY=:0
-for i in {1..10}; do
-	if xwininfo -root -tree | grep '"$1"' >/dev/null 2>&1; then
-		exit
-	fi
-	sleep 1
-done
-echo did not find window $1 after 10 seconds >&2
-exit 1
+name=\$(awesome-client 'return client.focus.name' | cut -d\" -f2)
+[ "\$name" = "$1" ]
 EOC
 }
 

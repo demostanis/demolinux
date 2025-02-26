@@ -6,7 +6,7 @@ stop_vm() {
 }
 
 die() {
-	echo "$*" >&2
+	[ $# != 0 ] && echo "$*" >&2
 	echo awesome log:
 	timeout 2 ./dctrl shell "cat ~/.awesome.log"
 	stop_vm
@@ -58,17 +58,27 @@ echo changing display resolution...
 # for the screen to refresh
 sleep 1
 
-. tests/utils
+./dctrl push tests /tmp/tests >/dev/null
+
+./dctrl shell <<'EOC' || die
+
+export DISPLAY=:0
+cd /tmp/tests
+. ./utils
 
 set -e
 
 while read -r test; do
-	if [ "$test" != tests/run -a "$test" != tests/utils ]; then
+	if [ "$test" != ./run -a "$test" != ./utils ]; then
+		echo running $test...
 		if ! ( . "$test" ); then
-			die $test failed
+			echo $test failed 2>&1
+			exit 1
 		fi
 	fi
-done < <(find tests -type f -executable)
+done < <(find . -type f -executable)
+
+EOC
 
 echo all tests succeeded
 stop_vm

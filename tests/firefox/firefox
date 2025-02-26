@@ -1,10 +1,5 @@
 #!/bin/bash
 
-./dctrl push tests/firefox/browsereval.py /tmp/browsereval.py
-
-./dctrl shell <<'eoc'
-export DISPLAY=:0
-
 echo starting firefox...
 
 exec 2> >( sed '/Exiting due to channel error/d' )
@@ -19,7 +14,7 @@ done
 # wait for the browser to initialize a bit..
 sleep 2
 
-python /tmp/browsereval.py
+python firefox/browsereval.py
 ret=$?
 
 if ! kill $!; then
@@ -28,4 +23,3 @@ if ! kill $!; then
 fi
 
 exit $ret
-eoc

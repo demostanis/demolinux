@@ -1,4 +1,35 @@
 [aliases]
-        mv-changes = git-mv-changes
+	mv-changes = git-mv-changes
+	absorb = git-absorb
+
 [init]
         defaultBranch = master
+
+# many prefs from https://blog.gitbutler.com/how-git-core-devs-configure-git/
+[branch]
+        sort = -committerdate
+
+[tag]
+        sort = version:refname
+
+[diff]
+        algorithm = histogram
+        srcPrefix = "prev "
+        dstPrefix = "new "
+
+[rerere]
+        enabled = true
+        autoupdate = true
+
+[push]
+        autoSetupRemote = true
+        followTags = true
+
+[pull]
+        rebase = true
+
+[core]
+	pager = perl /usr/share/git/diff-highlight/diff-highlight | less
+
+[interactive]
+	difffilter = perl /usr/share/git/diff-highlight/diff-highlight

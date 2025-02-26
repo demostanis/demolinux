@@ -14,6 +14,8 @@ alias gsa="git stash apply"
 alias gcl="git clone"
 alias gpl="git pull"
 alias gab="git-absorb --and-rebase"
+alias gsh="git show"
+alias gbl="git blame"
 
 alias imv=imv-hardened
 alias mpv=mpv-hardened
@@ -31,7 +33,7 @@ alias restart='awesome-client awesome.restart\(\)'
 alias panel='awesome-client show_panel\(\)'
 
 alias tmp='cd "$(mktemp -d)"'
-gclt(){ tmp; gcl "$@" }
+gclt(){ tmp; gcl "$@" --depth=1 }
 
 alias vim=nvim
 alias vi=nvim

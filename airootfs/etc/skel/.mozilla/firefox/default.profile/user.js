@@ -6,6 +6,7 @@ user_pref("browser.bookmarks.addedImportButton",                true);
 // To use the parent-process Browser console
 user_pref("devtools.chrome.enabled",				true);
 user_pref("devtools.debugger.remote-enabled",			true);
+user_pref("devtools.debugger.prompt-connection",        false);
 
 // userChrome.css
 user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);

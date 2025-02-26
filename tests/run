@@ -62,13 +62,13 @@ sleep 1
 
 set -e
 
-for test in tests/*; do
+while read -r test; do
 	if [ "$test" != tests/run -a "$test" != tests/utils ]; then
 		if ! ( . "$test" ); then
 			die $test failed
 		fi
 	fi
-done
+done < <(find tests -type f -executable)
 
 echo all tests succeeded
 stop_vm

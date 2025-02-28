@@ -53,7 +53,7 @@ linux_entry ()
   else
       echo 'insmod regexp'
       echo 'regexp --set name "[^/]*/snapshot-(.+)" "$snapshot"'
-      echo "menuentry '$(echo "Boot $os" | grub_quote)'\ \"(\$name)\" ${CLASS} \$menuentry_id_option 'gnulinux-simple-$boot_device_id' {" | sed "s/^/$submenu_indentation/"
+      echo "menuentry '$(echo "Boot $os" | grub_quote)'\ \"(\$name)\" ${CLASS} \$menuentry_id_option 'gnulinux-simple-$boot_device_id' \"\$snapshot\" {" | sed "s/^/$submenu_indentation/"
   fi      
   if [ x$type != xrecovery ] ; then
       save_default_entry | grub_add_tab
@@ -187,7 +187,7 @@ if [ "$has_snapshots" = 1 ]; then
 		for snapshot in ($btrfs_root)/system/snapshots/*; do
 			'
 			    linux_entry "${OS}" "hardened" simple \
-			    'btrfs_snapshot="$snapshot" '"${GRUB_CMDLINE_LINUX} ${GRUB_CMDLINE_LINUX_DEFAULT} copytoram=n resume=PARTLABEL=system resume_offset=99999199999"
+			    'btrfs_snapshot="$2" '"${GRUB_CMDLINE_LINUX} ${GRUB_CMDLINE_LINUX_DEFAULT} copytoram=n resume=PARTLABEL=system resume_offset=99999199999"
 			    # TODO: ugly
 	echo '
 		done

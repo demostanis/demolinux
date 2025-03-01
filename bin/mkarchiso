@@ -295,7 +295,7 @@ _make_chroot() {
         cachepkgpath="${profile}/packages/aurcache/$pkg"
         if [ -e "$cachepkgpath" ]; then
             cd "$cachepkgpath"
-            git pull --quiet
+            git pull >/dev/null 2>&1 || :
         else
             git clone https://aur.archlinux.org/$pkg.git "$cachepkgpath"
         fi

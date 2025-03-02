@@ -118,6 +118,7 @@ qemu-desktop
 kdeconnect
 ripgrep
 ripgrep-all
+strace
 websocat
 xclip
 yt-dlp
@@ -175,6 +176,7 @@ inotify-tools
 local lsb-release
 playerctl
 luarocks
+rlwrap
 pv
 reflector
 xdotool

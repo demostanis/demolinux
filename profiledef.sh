@@ -13,7 +13,6 @@ file_permissions=(
   ["/etc/sudoers"]="0:0:400"
   ["/etc/sudoers.d"]="0:0:400"
 
-  ["/usr/lib/boot/finishboot"]="0:0:+s+x"
   ["/etc/openvpn/up"]="0:0:+x"
   ["/etc/openvpn/down"]="0:0:+x"
 

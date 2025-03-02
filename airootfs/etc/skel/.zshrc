@@ -9,6 +9,7 @@ unalias run-help
 
 source ~/.zaliases
 source ~/.zfunctions
+source ~/.zbookmarks
 source ~/.zpath
 
 export HISTFILE=~/.histfile

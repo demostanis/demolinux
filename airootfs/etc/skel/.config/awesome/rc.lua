@@ -27,12 +27,14 @@ require"globalkeys"
 require"notifications"
 
 local function hide_splash()
-    awful.spawn.with_shell([[
-        if [ -e ~/.feh.pid ]; then
-            kill $(<~/.feh.pid)
-            rm ~/.feh.pid
-        fi
-    ]])
+    delayed(function()
+        awful.spawn.with_shell([[
+            if [ -e ~/.feh.pid ]; then
+                kill $(<~/.feh.pid)
+                rm ~/.feh.pid
+            fi
+        ]])
+    end, 1)
 end
 
 local c = 0

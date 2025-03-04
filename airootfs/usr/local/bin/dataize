@@ -2,17 +2,29 @@
 
 set -e
 
-dir=${1:-missing file}
+file=${1:-missing file}
 
-if [ ! -d "$dir" ]; then
-	echo only directories are supported >&2
+if ! [ -d "$file" -o -f "$file" ]; then
+	echo only directories and files are supported >&2
+	exit 1
+fi
+if [ -L "$file" ]; then
+	echo only directories and files are supported >&2
 	exit 1
 fi
 
-dest=/data/$(realpath "$dir" | tr / _)
-mkdir -vp "$dest"
-chmod --reference="$dir" -- "$dest"
-cp -va -- "$dir"/* "$dest"
-rm -vrf -- "$dir"
-ln -vs -- "$dest" "$dir"
-sudo persistfs add "$dir"
+dest=/data/$(realpath "$file" | tr / _)
+if [ -d "$file" ]; then
+	mkdir -vp "$dest"
+else
+	touch "$dest"
+fi
+chmod --reference="$file" -- "$dest"
+if [ -d "$file" ]; then
+	cp -va -- "$file"/* "$dest" || :
+else
+	cp -va -- "$file" "$dest"
+fi
+rm -vrf -- "$file"
+ln -vs -- "$dest" "$file"
+sudo persistfs add "$file"

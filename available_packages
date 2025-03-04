@@ -121,7 +121,7 @@ ripgrep
 ripgrep-all
 strace
 websocat
-xclip
+xsel
 yt-dlp
 aur paru
 openbsd-netcat

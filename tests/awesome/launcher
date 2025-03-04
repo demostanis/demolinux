@@ -16,3 +16,5 @@ xdotool key Enter
 
 # nemo
 expectwin Home
+
+quitwin

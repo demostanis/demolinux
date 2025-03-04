@@ -39,6 +39,7 @@ return function()
     local all_popups = {}
     local has_quitted_overview = false
     local previously_visible_clients = {}
+    local previous_client_focus = client.focus
     local filter_popup = nil
     local grabber = nil
 
@@ -66,6 +67,8 @@ return function()
         for _, c in ipairs(previously_visible_clients) do
             c.minimized = false
         end
+        client.focus = previous_client_focus
+        client.focus:raise()
         for _, c in ipairs(clients) do
             c.keybinds = nil
         end

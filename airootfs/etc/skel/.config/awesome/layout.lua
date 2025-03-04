@@ -227,10 +227,19 @@ local function on_window_appearance_change(c)
 end
 
 for _, event in ipairs({
-	"raised", "manage", "unmanage", "property::minimized"
+	"raised", "manage", "unmanage"
 }) do
 	client.connect_signal(event, on_window_appearance_change)
 end
+client.connect_signal("property::minimized", function(c)
+	if not overview_shown then
+		if c.minimized then
+			on_window_appearance_change(client.focus)
+		else
+			on_window_appearance_change(c)
+		end
+	end
+end)
 -- sometimes "raised" event is not called, but request::activate is...
 client.connect_signal("request::activate", function(c, _, o)
 	if o.raise then

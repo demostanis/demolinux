@@ -38,6 +38,7 @@ local globalkeys = gears.table.join(
 
     app_shortcut(terminal, "Return"),
     app_shortcut("firefox-hardened", "f"),
+    app_shortcut("copyq show", ","),
 
     awful.key({ modkey }, "r", awesome.restart),
 

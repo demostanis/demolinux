@@ -1,4 +1,5 @@
-autospawn("clipster -d")
+autospawn("copyq")
+
 -- Flameshot needs its daemon to be
 -- spawned in order to be able to copy
 -- screenshots to the clipboard.

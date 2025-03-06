@@ -172,7 +172,7 @@ return function(s)
 
     local mydock = wibox {
         y = s.geometry.height-beautiful.dock_width-4,
-        ontop = true, visible = true,
+        ontop = false, visible = false,
         height = beautiful.dock_width,
         screen = s,
     }
@@ -183,6 +183,7 @@ return function(s)
         widget = wibox.container.background,
         shape = rrect(),
     }
+    mydock:set_xproperty("WM_NAME", "picom_fade_in")
 
     return mydock
 end

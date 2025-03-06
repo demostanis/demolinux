@@ -61,6 +61,12 @@ awful.screen.connect_for_each_screen(function(s)
     if c == screen.count() then
         -- Hide the boot splash when last screen is ready
         hide_splash()
+        delayed(function()
+            s.mywibar.visible = true
+            s.mydock.visible = true
+            s.mywibar.ontop = true
+            s.mydock.ontop = true
+        end, 2)
         print("awesomeWM started!")
     end
 end)
@@ -136,7 +142,14 @@ awful.rules.rules = {{
         placement = awful.placement.centered,
         floating = true
      }
-}}
+},
+{
+    rule_any = {class = "splash"}},
+    properties = {
+        ontop = true,
+        fullscreen = true
+    }
+}
 
 client.connect_signal("request::titlebars", function(c)
     require"titlebar"(c)

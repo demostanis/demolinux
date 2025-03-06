@@ -2,8 +2,8 @@ return function(s)
     local mywibar = wibox {
         screen = s,
         y = 4, x = 4,
-        ontop = true,
-        visible = true,
+        ontop = false,
+        visible = false,
         bg = beautiful.bg_focus,
         width = s.geometry.width-8,
         height = beautiful.wibar_height,
@@ -13,6 +13,7 @@ return function(s)
         bottom = beautiful.dock_width+10,
         left = 5
     }
+    mywibar:set_xproperty("WM_NAME", "picom_fade_in")
 
     local mycpuwidget = optional"wibarwidgets/cpuwidget"
     local mymemwidget = optional"wibarwidgets/memwidget"

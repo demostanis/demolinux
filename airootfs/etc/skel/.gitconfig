@@ -33,3 +33,6 @@
 
 [interactive]
 	difffilter = perl /usr/share/git/diff-highlight/diff-highlight
+
+[commit]
+        verbose = true

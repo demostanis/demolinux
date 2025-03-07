@@ -200,6 +200,7 @@ local function spawn_new_tab_in(master)
         new_client.is_tab = true
         master.active_slave = new_client
         new_client.master = master
+        tab.pwd = pwd
 
         delayed(function()
             c.minimized = true

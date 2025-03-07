@@ -11,7 +11,7 @@
 _pkgname=awesome
 pkgname=${_pkgname}
 pkgver=4.3.1683.g691e36425
-pkgrel=1
+pkgrel=3
 pkgdesc='Highly configurable framework window manager'
 arch=('i686' 'x86_64')
 url='http://awesome.naquadah.org/'
@@ -35,14 +35,16 @@ source=("$pkgname::git+https://github.com/awesomeWM/awesome.git#commit=691e36425
 	0003-Make-notification-icons-use-the-right-icon-theme.patch
 	0004-Ensure-the-boot-splash-is-hidden.patch
 	0005-Add-margins-to-wicon.patch
-        0006-push-new-windows-in-the-stack-after-the-focused-wind.patch)
+        0006-push-new-windows-in-the-stack-after-the-focused-wind.patch
+        0007-add-client-insert_before.patch)
 md5sums=('SKIP'
          'bdf30656a639bd0d2e9ce740882dec59'
          'c987300e07e58d6dbae37e40734a8f56'
          '5ac3c933b78a7a77fa5d3d5b5c9e7268'
          '953574a6594fea8ddb78f2d36fba5011'
          'a06a41d70750b3fdcdf5a111ac469f10'
-         'e7bbb703b74f17625f37dfad66201cea')
+         'e7bbb703b74f17625f37dfad66201cea'
+         '90340481f9ae0e41241c7d02ad611b66')
 _LUA_VER=5.4
 
 pkgver() {
@@ -58,6 +60,7 @@ prepare() {
   git apply < ../0004-Ensure-the-boot-splash-is-hidden.patch
   git apply < ../0005-Add-margins-to-wicon.patch
   git apply < ../0006-push-new-windows-in-the-stack-after-the-focused-wind.patch
+  git apply <../0007-add-client-insert_before.patch
 }
 
 build() {

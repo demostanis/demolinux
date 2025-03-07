@@ -1,0 +1,65 @@
+From b34b7165e8d0f6c5e956c5d4e7682e06c505eaa9 Mon Sep 17 00:00:00 2001
+From: demostanis <demostanis@protonmail.com>
+Date: Sun, 9 Mar 2025 17:25:08 +0100
+Subject: [PATCH] add client:insert_before()
+
+---
+ objects/client.c | 35 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 35 insertions(+)
+
+diff --git a/objects/client.c b/objects/client.c
+index 15d5c15fc..2a0b049fc 100644
+--- a/objects/client.c
++++ b/objects/client.c
+@@ -3320,6 +3320,40 @@ luaA_client_swap(lua_State *L)
+     return 0;
+ }
+ 
++static int
++luaA_client_insert_before(lua_State *L)
++{
++    client_t *to_insert = luaA_checkudata(L, 1, &client_class);
++    client_t *rightside_client = luaA_checkudata(L, 2, &client_class);
++
++    if(to_insert != rightside_client)
++    {
++        client_t **ref_to_insert = NULL;
++        client_t **ref_rightside_client = NULL;
++
++        foreach(client, globalconf.clients)
++            if (*client == to_insert) {
++                ref_to_insert = client;
++                break;
++            }
++        client_array_remove(&globalconf.clients,
++                ref_to_insert);
++
++        foreach(client, globalconf.clients)
++            if (*client == rightside_client) {
++                ref_rightside_client = client;
++                break;
++            }
++        client_array_splice(&globalconf.clients,
++            client_array_indexof(&globalconf.clients, ref_rightside_client)+1 /* +1 will look like it's before rightside_client, because windows are displayed in inverse order.. */,
++            0, &to_insert, 1);
++
++        luaA_class_emit_signal(L, &client_class, "list", 0);
++    }
++
++    return 0;
++}
++
+ /** Access or set the client tags.
+  *
+  * Use the `first_tag` field to access the first tag of a client directly.
+@@ -4522,6 +4556,7 @@ client_class_setup(lua_State *L)
+         { "tags", luaA_client_tags },
+         { "kill", luaA_client_kill },
+         { "swap", luaA_client_swap },
++        { "insert_before", luaA_client_insert_before },
+         { "raise", luaA_client_raise },
+         { "lower", luaA_client_lower },
+         { "unmanage", luaA_client_unmanage },
+-- 
+2.48.1
+

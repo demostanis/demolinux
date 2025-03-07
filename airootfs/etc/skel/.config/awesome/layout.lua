@@ -28,6 +28,24 @@ function scroll.arrange(p)
 	end
 end
 
+local function swap_correctly(c1, c2)
+	c1:swap(c2)
+
+	local master = c1.master
+	if master then
+		for _, tab in ipairs(master.tabs) do
+			tab.client:insert_before(c1)
+		end
+	end
+
+	local master = c2.master
+	if master then
+		for _, tab in ipairs(master.tabs) do
+			tab.client:insert_before(c2)
+		end
+	end
+end
+
 local function leftmost_window()
 	local leftmost = nil
 	for _, c in ipairs(mouse.screen.clients) do
@@ -275,7 +293,7 @@ function scroll.move_handler(c, context, hints)
 				return
 			end
 
-            c:swap(c_u_m)
+            swap_correctly(c, c_u_m)
 			on_window_appearance_change()
         end
     end
@@ -357,7 +375,7 @@ local function swap_left()
 	if c then
 		local lefthand = lefthand_window(c)
 		if lefthand and lefthand ~= c then
-			c:swap(lefthand)
+			swap_correctly(c, lefthand)
 			delayed(function()
 				client.focus:raise()
 				on_window_appearance_change()
@@ -371,7 +389,7 @@ local function swap_right()
 	if c then
 		local righthand = righthand_window(c)
 		if righthand and righthand ~= c then
-			c:swap(righthand)
+			swap_correctly(c, righthand)
 			delayed(function()
 				client.focus:raise()
 				on_window_appearance_change()

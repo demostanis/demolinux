@@ -16,6 +16,7 @@ alias gpl="git pull"
 alias gab="git-absorb --and-rebase"
 alias gsh="git show"
 alias gbl="git blame"
+alias gfp="git format-patch --default-prefix"
 
 alias imv=imv-hardened
 alias mpv=mpv-hardened

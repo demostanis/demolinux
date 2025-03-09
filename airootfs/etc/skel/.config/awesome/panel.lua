@@ -46,6 +46,13 @@ local function spawn_vpn()
     end
     awful.spawn("systemctl "..verb.." openvpn-client@riseup", false)
 end
+local function spawn_recorder()
+    if screenrecorder_status == "Not recording" then
+        awful.spawn("screenrecord start", false)
+    elseif screenrecorder_status == "Recording..." then
+        awful.spawn("screenrecord stop")
+    end
+end
 
 local function mkpanew(icon, text, command, opts)
     local size = 25
@@ -184,6 +191,22 @@ function show_panel()
                 end},
                 {{ }, "v", function()
                     spawn_vpn()
+                end},
+                {{ }, "r", function()
+                    spawn_recorder()
+                end},
+                {{ }, "c", function()
+                    awful.spawn("colorpicker")
+                    mypanel:hide()
+                end},
+                {{ "Shift", }, "R", function()
+                    awful.spawn("systemctl reboot")
+                end},
+                {{ "Shift", }, "S", function()
+                    awful.spawn("systemctl poweroff")
+                end},
+                {{ "Shift", }, "H", function()
+                    awful.spawn("systemctl hibernate")
                 end}
             }
         }
@@ -354,11 +377,7 @@ return function(s)
                     },
                     {
                         mkpanew("\u{f03d}", "Record screen", function()
-                            if screenrecorder_status == "Not recording" then
-                                awful.spawn("screenrecord start", false)
-                            elseif screenrecorder_status == "Recording..." then
-                                awful.spawn("screenrecord stop")
-                            end
+                            spawn_recorder()
                         end, {size = 11}),
                         mkpanew("\u{f53f}", "Color picker", function()
                             awful.spawn("colorpicker")

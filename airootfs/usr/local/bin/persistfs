@@ -28,10 +28,9 @@ add_files() {
 			continue
 		fi
 
-		if [ -e $pfs_dir/upperdir/index ]; then
-			perl -0777 -i -pe 's/\Q$ENV{file}\E\x00?//' $pfs_dir/upperdir/index
+		if ! grep -q "$file" $pfs_dir/upperdir/index 2>/dev/null; then
+			printf "%s\n" "$file" >> $pfs_dir/upperdir/index
 		fi
-		printf "%s\0" "$file" >> $pfs_dir/upperdir/index
 
 		if [ "$is_adding_pkg" = 1 ]; then
 			echo -e "\033[2A"
@@ -91,7 +90,8 @@ case $1 in
 			fi
 
 			rm -rf $pfs_dir/upperdir/"$file"
-			perl -0777 -i -pe 's/\Q$ENV{file}\E\x00?//' $pfs_dir/upperdir/index
+			grep -Fv "$file" $pfs_dir/upperdir/index > $pfs_dir/upperdir/index.tmp
+			mv $pfs_dir/upperdir/index.tmp $pfs_dir/upperdir/index
 		done
 
 		exit $statuscode
@@ -151,14 +151,10 @@ case $1 in
 		;;
 	list)
 		if [ "$2" = --all ]; then
-			cat $pfs_dir/upperdir/index | tr '\0' '\n'
+			cat $pfs_dir/upperdir/index
 		else
-			cat $pfs_dir/upperdir/index | xargs -0 pacman -Qo 2>&1 | grep -v $pacmandb_dir | grep 'error: No package owns' | sed 's/.*No package owns \(.*\)/\1/' | sort -u
+			cat $pfs_dir/upperdir/index | xargs pacman -Qo 2>&1 | grep -v $pacmandb_dir | grep 'error: No package owns' | sed 's/.*No package owns \(.*\)/\1/' | sort -u
 		fi
-		;;
-	rmfromindex)
-		export file="${2?missing file}"
-		perl -0777 -i -pe 's/\Q$ENV{file}\E\x00?//' $pfs_dir/upperdir/index
 		;;
 	*)
 		echo usage: "$0 [add|remove|pkg|ipkg|list] [--all]" >&2

@@ -115,7 +115,23 @@ archiso_mount_handler() {
         btrfs subvol create $btrfs_root/snapshots
         btrfs subvol create $btrfs_root/data
         btrfs subvol create $btrfs_root/swap
-        btrfs filesystem mkswapfile --size 4G --uuid clear $btrfs_root/swap/swapfile 2>/dev/null
+
+        avail=$( free | awk '/Mem/{print$2}' )
+        for i in 1 2 3 4 5 6 7 8; do
+            size_attempt=$(( avail / 1000000 ))G
+
+            if [ "$size_attempt" = 0G ]; then
+                break
+            fi
+            rm -f $btrfs_root/swap/swapfile
+            # seriously btrfs, exit code 0 on error?
+            status=$(btrfs filesystem mkswapfile --size "$size_attempt" --uuid clear $btrfs_root/swap/swapfile 2>&1 | cut -c-5)
+            if [ "$status" != ERROR ]; then
+                break
+            fi
+
+            avail=$(( avail / 2 ))
+        done
     fi
 
     if ! mountpoint -q "$rundir/bootmnt"; then

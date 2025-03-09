@@ -98,10 +98,7 @@ return function(s)
             end)
             return clients
         end,
-        filter = function(c, s)
-            if c.is_tab then return false end
-            return awful.widget.tasklist.filter.currenttags(c, s)
-        end,
+        filter = awful.widget.tasklist.filter.currenttags,
         widget_template = {
             {
                 {

@@ -112,7 +112,9 @@ if global_x_file then
 		awful.layout.arrange(mouse.screen)
 		delayed(function()
 			client.focus = leftmost_window()
-			client.focus:raise()
+			if client.focus then
+				client.focus:raise()
+			end
 		end, 0.1)
 	end, 1)
 end

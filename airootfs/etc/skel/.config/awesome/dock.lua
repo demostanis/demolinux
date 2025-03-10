@@ -89,6 +89,15 @@ local mylaunchers = wibox.widget {
 return function(s)
     local mytasklist = awful.widget.tasklist {
         screen = s,
+        source = function()
+            -- TODO: this should be split to an utility
+            -- function returning an iterator
+            local clients = s.clients
+            table.sort(clients, function(a, b)
+                return a.x < b.x
+            end)
+            return clients
+        end,
         filter = function(c, s)
             if c.is_tab then return false end
             return awful.widget.tasklist.filter.currenttags(c, s)

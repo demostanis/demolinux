@@ -14,20 +14,23 @@ function draw(c, cache_content)
         content_cache[c] = su
     end
 
-    local titlebar = c._private.titlebars.top.drawable
-    if c.active_in_overview then
-        titlebar:set_bg(beautiful.bg_focus)
-        titlebar:set_fg(beautiful.fg_focus)
-    else
-        titlebar:set_bg(beautiful.bg_normal)
-        titlebar:set_fg(beautiful.fg_normal)
-    end
-    titlebar:_do_redraw()
-    local titlebarsu = gears.surface(titlebar.drawable.surface)
-    local titlebarheight = titlebar.drawable:geometry().height
+    local titlebarheight = 0
+    if c._private.titlebars then
+        local titlebar = c._private.titlebars.top.drawable
+        if c.active_in_overview then
+            titlebar:set_bg(beautiful.bg_focus)
+            titlebar:set_fg(beautiful.fg_focus)
+        else
+            titlebar:set_bg(beautiful.bg_normal)
+            titlebar:set_fg(beautiful.fg_normal)
+        end
+        titlebar:_do_redraw()
+        local titlebarsu = gears.surface(titlebar.drawable.surface)
+        titlebarheight = titlebar.drawable:geometry().height
 
-    cr:set_source_surface(titlebarsu, 0, 0)
-    cr:paint()
+        cr:set_source_surface(titlebarsu, 0, 0)
+        cr:paint()
+    end
     cr:set_source_surface(su, 0, titlebarheight)
     cr:paint()
 
@@ -68,7 +71,9 @@ return function()
             c.minimized = false
         end
         client.focus = previous_client_focus
-        client.focus:raise()
+        if client.focus then -- possible if all windows are minimized
+            client.focus:raise()
+        end
         for _, c in ipairs(clients) do
             c.keybinds = nil
         end

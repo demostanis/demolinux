@@ -20,7 +20,13 @@ jobs:
         run: ./demolinux build
 
       - name: Run tests
-        run: ./demolinux tests
+        run: |
+          # we make a copy so the released image isn't one that has
+          # been tampered with
+          sudo cp -a out/demolinux*.img out/test-demolinux.img
+          sudo truncate -s 10G out/test-demolinux.img
+          ./demolinux tests
+          sudo rm out/test-demolinux.img
 
       - name: Split image into chunks
         run: |
@@ -61,7 +67,13 @@ jobs:
         run: ./demolinux build
 
       - name: Run tests
-        run: ./demolinux tests
+        run: |
+          # we make a copy so the released image isn't one that has
+          # been tampered with
+          sudo cp out/demolinux*.img out/test-demolinux.img
+          sudo truncate -s 10G out/test-demolinux.img
+          ./demolinux tests
+          sudo rm out/test-demolinux.img
 
       - name: Split image into chunks
         run: |

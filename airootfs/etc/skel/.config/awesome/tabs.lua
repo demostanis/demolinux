@@ -48,6 +48,7 @@ local function mktabw(text, active)
     }
     local textw = tabw:get_children_by_id("text")[1]
     tabw:connect_signal("mouse::enter", function()
+        controlling_tabs = true
         textw.old_markup = textw.markup
         textw.markup = string.format(
             [[<span foreground="%s">%s</span>]],
@@ -55,12 +56,15 @@ local function mktabw(text, active)
         )
     end)
     tabw:connect_signal("mouse::leave", function()
+        controlling_tabs = false
         textw.markup = textw.old_markup
     end)
     return tabw
 end
 
 local function switch_to_tab(master, tab)
+    controlling_tabs = true
+
     if tab.active then return end
 
     local previous_active_slave = master.active_slave
@@ -80,6 +84,8 @@ local function switch_to_tab(master, tab)
         previous_active_slave.minimized = true
         previous_active_slave.is_minimized_tab = true
         master.active_slave = tab.client
+
+        controlling_tabs = false
     end)
 end
 
@@ -142,6 +148,8 @@ local function delete_tab_in(master, tab_to_delete)
         end
     end
     if #tabs > 1 then
+        controlling_tabs = true
+
         local previous_tab = tabs[tab_index-1] or tabs[tab_index+1]
         master.active_slave = previous_tab.client
         previous_tab.active = true
@@ -155,6 +163,8 @@ local function delete_tab_in(master, tab_to_delete)
             previous_tab.client.is_minimized_tab = false
             client.focus = previous_tab.client
             previous_tab.client:raise()
+
+            controlling_tabs = false
         end)
     else
         master.active_slave = nil
@@ -166,6 +176,8 @@ end
 local function spawn_new_tab_in(master)
     if is_launching_tab then return end
     is_launching_tab = true
+
+    controlling_tabs = true
 
     local tabs = master.tabs
     local c = master.active_slave
@@ -206,6 +218,7 @@ local function spawn_new_tab_in(master)
             c.minimized = true
             c.is_minimized_tab = true
             new_client:raise()
+            controlling_tabs = false
         end)
 
         local last = master.last

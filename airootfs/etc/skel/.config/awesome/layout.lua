@@ -232,6 +232,8 @@ local function cycle_window_focus()
 end
 
 local function on_window_appearance_change(c)
+	if controlling_tabs then return end
+
 	delayed(function()
 		local is_valid = pcall(function() return c.valid end) and c.valid
 		if is_valid then

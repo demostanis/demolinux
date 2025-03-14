@@ -56,7 +56,7 @@ echo changing display resolution...
 ./dctrl shell 'DISPLAY=:0 /usr/lib/xrandr.sh >/dev/null 2>&1'
 
 # for the screen to refresh
-sleep 1
+sleep 5
 
 ./dctrl push tests /tmp/tests >/dev/null
 

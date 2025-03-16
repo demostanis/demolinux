@@ -1,0 +1,9 @@
+#!/bin/bash
+
+failed=$(systemctl --failed -q)
+
+if [ -n "$failed" ]; then
+	echo systemd services failed >&2
+	echo $failed >&2
+	exit 1
+fi

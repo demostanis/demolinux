@@ -4,6 +4,7 @@ modkeypress() {
 	xdotool key $1
 	sleep 0.1
 	xdotool keyup Super_L
+	sleep 1
 }
 
 expectwin() {
@@ -16,25 +17,19 @@ expectwin() {
 }
 
 expectfocus() {
+	name=
 	for i in {1..10}; do
-		name=$(awesome-client 'return client.focus.name' | cut -d\" -f2)
-		echo focus=$name wanted=$1
+		name=$(awesome-client 'if client.focus then return client.focus.name else return "none" end' | cut -d\" -f2)
 		[ "$name" = "$1" ] && return
 		sleep 1
 	done
 	echo did not focus window $1 after 10 seconds >&2
+	echo actual focused window: $name
 	exit 1
 }
 
 quitwin() {
 	modkeypress q
-}
-
-expectfocus() {
-	./dctrl shell<<EOC
-name=\$(awesome-client 'return client.focus.name' | cut -d\" -f2)
-[ "\$name" = "$1" ]
-EOC
 }
 
 # vim:set ft=bash:

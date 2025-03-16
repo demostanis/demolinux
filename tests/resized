@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# ensure the filesystem has been properly resized
+# TODO: we should truncate the image before running tests
+
+size=$(df -h | awk '/airootfs$/{gsub("G","",$2);print$2}')
+
+if (( "$size" < 8 )); then
+	echo the disk wasn"'"t resized >&2
+	exit 1
+fi

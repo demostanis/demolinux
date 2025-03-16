@@ -18,6 +18,8 @@ def rfpacket(s):
         plen += int(n)
 
     data = s.recv(plen)
+    if b"frameUpdate" in data:
+        return rfpacket(s)
     return loads(data)
 
 def process_packet():

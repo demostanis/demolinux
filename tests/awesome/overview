@@ -7,8 +7,6 @@ sleep 1
 yad --title="window 2" &
 sleep 1
 
-trap 'quitwin;quitwin' EXIT
-
 modkeypress o
 xdotool key f
 expectfocus "window 1"

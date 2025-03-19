@@ -67,15 +67,15 @@ export DISPLAY=:0
 cd /tmp/tests
 . ./utils
 
-set -e
-
 while read -r test; do
 	if [ "$test" != ./run -a "$test" != ./utils ]; then
 		echo running $test...
-		if ! (
+		(
+			set -e
 			trap 'kill ${${(v)jobstates##*:*:}%=*} 2>/dev/null || :' EXIT
 			. "$test"
-		); then
+		)
+		if [ $? != 0 ]; then
 			echo $test failed 2>&1
 			exit 1
 		fi

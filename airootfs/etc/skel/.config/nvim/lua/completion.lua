@@ -1,5 +1,6 @@
 local snippy = require"snippy"
 local cmp = require"cmp"
+local fmt = require("lsp-format")
 
 cmp.setup{
     -- workaround for gopls: https://github.com/hrsh7th/nvim-cmp/issues/1809
@@ -45,7 +46,10 @@ local function enable_ls(name, settings)
     local capabilities = require"cmp_nvim_lsp".default_capabilities()
     require"lspconfig"[name].setup{
         capabilities = capabilities,
-        settings = settings
+        settings = settings,
+        on_attach = function(client, bufnr)
+            fmt.on_attach(client, bufnr)
+        end
     }
 end
 enable_ls("clangd")
@@ -53,6 +57,7 @@ enable_ls("lua_ls", {Lua = {
     completion = {callSnippet = "Replace"},
     workspace = {checkThirdParty = false}}})
 enable_ls("gopls")
+enable_ls("denols")
 
 vim.api.nvim_create_autocmd("LspAttach", {
     group = vim.api.nvim_create_augroup("LspConfig", {}),
@@ -97,5 +102,7 @@ vim.api.nvim_create_autocmd("LspAttach", {
         c.server_capabilities.semanticTokensProvider = nil
     end
 })
+
+fmt.setup{}
 
 -- vim:set et sw=4 ts=4:

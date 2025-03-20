@@ -140,6 +140,7 @@ fuse-overlayfs # for podman
 docker-compose
 podman-docker
 python-virtualenv
+deno
 meson
 npm
 gdb

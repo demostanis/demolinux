@@ -2,7 +2,8 @@
 
 echo starting firefox...
 
-exec 2> >( sed '/Exiting due to channel error/d' )
+# why does exec stop the process with set -e??
+exec 2> >( sed '/Exiting due to channel error/d' ) || :
 
 firefox --start-debugger-server &
 p=$!

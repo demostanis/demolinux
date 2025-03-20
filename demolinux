@@ -43,7 +43,7 @@ run(){
 }
 
 headless(){
-	without_root ./bin/run_archiso -H -i out/$(ls -t out/ | head -1)
+	without_root ./bin/run_archiso -T 10G -H -i out/$(ls -t out/ | head -1)
 }
 
 tests() {

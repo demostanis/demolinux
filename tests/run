@@ -32,7 +32,7 @@ while :; do
 		die VM did not start after 3 minutes.
 	fi
 
-	reset
+	[ -t ] && reset
 	echo waiting for guest...
 	timeout 2 ./dctrl shell "exit 42"
 	# this is mystery...

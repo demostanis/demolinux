@@ -18,7 +18,7 @@ URxvt.secondaryWheel: True
 URxvt.perl-ext-common: default,-confirm-paste,-selection,matcher,resize-font
 URxvt.url-launcher: /usr/bin/xdg-open
 URxvt.matcher.rend.0: Uline
-URxvt.matcher.button: 1
+URxvt.matcher.button: C-1
 URxvt.iso14755: false
 
 ! hewwo pwease wepwace this

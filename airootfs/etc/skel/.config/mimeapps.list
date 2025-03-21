@@ -16,3 +16,5 @@ image/x-portable-graymap=imv-dir.desktop
 image/x-portable-pixmap=imv-dir.desktop
 image/x-tga=imv-dir.desktop
 image/x-xbitmap=imv-dir.desktop
+x-scheme-handler/http=firefox.desktop
+x-scheme-handler/https=firefox.desktop

@@ -28,6 +28,16 @@ function scroll.arrange(p)
 	end
 end
 
+local function any_floatyfloaty(s)
+	s = s or mouse.screen
+	for _, client in ipairs(s.clients) do
+		if client.floating then
+			return true
+		end
+	end
+	return false
+end
+
 local function swap_correctly(c1, c2)
 	c1:swap(c2)
 
@@ -159,6 +169,8 @@ local function set_global_x(new)
 end
 
 local function move_right()
+	if any_floatyfloaty() then return end
+
 	if client.focus then
 		local farthest = farthest_window()
 		if farthest.x < 0 then
@@ -170,6 +182,8 @@ local function move_right()
 end
 
 local function move_left()
+	if any_floatyfloaty() then return end
+
 	if client.focus then
 		local new_global_x = global_x + step
 		if new_global_x > 0 then
@@ -190,6 +204,8 @@ local function global_x_to_client(c)
 end
 
 local function move_left_window()
+	if any_floatyfloaty() then return end
+
 	local lefthand = lefthand_window()
 	if not lefthand then return end
 	set_global_x(global_x_to_client(lefthand))
@@ -197,6 +213,8 @@ local function move_left_window()
 end
 
 local function move_right_window()
+	if any_floatyfloaty() then return end
+
 	local righthand = righthand_window()
 	if not righthand then return end
 	set_global_x(global_x_to_client(righthand))
@@ -204,6 +222,8 @@ local function move_right_window()
 end
 
 local function cycle_window_focus()
+	if any_floatyfloaty() then return end
+
 	local windows_in_viewport = {}
 	for _, c in ipairs(mouse.screen.clients) do
 		if c.x+c.width > margin_before_window_on_focus and
@@ -232,7 +252,7 @@ local function cycle_window_focus()
 end
 
 local function on_window_appearance_change(c)
-	if controlling_tabs then return end
+	if any_floatyfloaty() or controlling_tabs then return end
 
 	delayed(function()
 		local is_valid = pcall(function() return c.valid end) and c.valid
@@ -270,6 +290,8 @@ client.connect_signal("request::activate", function(c, _, o)
 end)
 
 function scroll.move_handler(c, context, hints)
+	if any_floatyfloaty() then return end
+
 	-- default move handler, but we don't swap
 	-- clients too early to prevent flickering.
     if context ~= "mouse.move" then return end
@@ -304,6 +326,8 @@ function scroll.move_handler(c, context, hints)
 end
 
 local function maximize(c)
+	if any_floatyfloaty() then return end
+
 	if c.kinda_maximized then
 		c.kinda_maximizing = true
 		c.width = c.oldwidth
@@ -342,6 +366,8 @@ client.connect_signal("property::maximized", function(c)
 end)
 
 local function maximize_two_windows()
+	if any_floatyfloaty() then return end
+
 	local leftmost = leftmost_window()
 	local righthand = righthand_window()
 
@@ -356,6 +382,8 @@ local function maximize_two_windows()
 end
 
 local function maximize_three_windows()
+	if any_floatyfloaty() then return end
+
 	local leftmost = leftmost_window()
 	local righthand = righthand_window()
 	local rightrighthand = righthand_window(righthand)
@@ -375,6 +403,8 @@ local function maximize_three_windows()
 end
 
 local function swap_left()
+	if any_floatyfloaty() then return end
+
 	local c = client.focus
 	if c then
 		local lefthand = lefthand_window(c)
@@ -389,6 +419,8 @@ local function swap_left()
 end
 
 local function swap_right()
+	if any_floatyfloaty() then return end
+
 	local c = client.focus
 	if c then
 		local righthand = righthand_window(c)

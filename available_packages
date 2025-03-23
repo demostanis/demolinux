@@ -9,6 +9,7 @@ local bling
 local vicious
 local flameshot
 local slop
+aur boomer-git
 qt5ct
 qt6ct
 xorg

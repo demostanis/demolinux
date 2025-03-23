@@ -83,7 +83,7 @@ case $1 in
 			fi
 
 			export file=$(absolute_path "$file")
-			if [ ! -e $pfs_dir/upperdir/"$file" ]; then
+			if [ ! -L $pfs_dir/upperdir/"$file" -a ! -e $pfs_dir/upperdir/"$file" ]; then
 				echo File does not exist: $file >&2
 				statuscode=1
 				continue

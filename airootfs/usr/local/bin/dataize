@@ -2,6 +2,10 @@
 
 set -e
 
+if [ "$(id -u)" != 0 ]; then
+	echo You need root
+fi
+
 file=${1:-missing file}
 
 if ! [ -d "$file" -o -f "$file" ]; then
@@ -27,4 +31,5 @@ else
 fi
 rm -vrf -- "$file"
 ln -vs -- "$dest" "$file"
-sudo persistfs add "$file"
+chmod --reference="$dest" -- "$file"
+persistfs add "$file"

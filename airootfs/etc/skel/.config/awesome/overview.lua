@@ -59,7 +59,7 @@ return function()
         end
     end
 
-    local function quit_overview(clients)
+    local function quit_overview(clients, did_focus_client)
         if filter_popup then
             filter_popup.visible = false
         end
@@ -70,9 +70,11 @@ return function()
         for _, c in ipairs(previously_visible_clients) do
             c.minimized = false
         end
-        client.focus = previous_client_focus
-        if client.focus then -- possible if all windows are minimized
-            client.focus:raise()
+        if not did_focus_client then
+            client.focus = previous_client_focus
+            if client.focus then -- possible if all windows are minimized
+                client.focus:raise()
+            end
         end
         for _, c in ipairs(clients) do
             c.keybinds = nil
@@ -97,6 +99,13 @@ return function()
                 string.char(keys:byte(j))
                 )
         end
+    end
+
+    local function focus_client(clients, c)
+        quit_overview(clients, true)
+        c.minimized = false
+        client.focus = c
+        c:raise()
     end
 
     function draw_clients(clients, filter)
@@ -280,10 +289,7 @@ return function()
 
                     popup:buttons(gears.table.join(
                         awful.button({ }, 1, function()
-                            quit_overview(clients)
-                            c.minimized = false
-                            client.focus = c
-                            c:raise()
+                            focus_client(clients, c)
                         end)
                     ))
                 end
@@ -386,10 +392,7 @@ return function()
         free_popups()
         if #filtered_clients == 1 then
             local c = filtered_clients[1]
-            quit_overview(clients)
-            c.minimized = false
-            client.focus = c
-            c:raise()
+            focus_client(clients, c)
         else
             draw_clients(filtered_clients, filter)
             hide_free_popups()

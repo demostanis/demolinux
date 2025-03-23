@@ -193,8 +193,9 @@ local function move_left()
 	end
 end
 
-local function global_x_to_client(c)
-	local new_global_x = c.x-first_window().x
+local function global_x_of_client(c)
+	local first = first_window()
+	local new_global_x = c.x-first.x
 	if new_global_x <= 0 then
 		new_global_x = 0
 	else
@@ -208,7 +209,7 @@ local function move_left_window()
 
 	local lefthand = lefthand_window()
 	if not lefthand then return end
-	set_global_x(global_x_to_client(lefthand))
+	set_global_x(global_x_of_client(lefthand))
 	client.focus = lefthand
 end
 
@@ -217,7 +218,7 @@ local function move_right_window()
 
 	local righthand = righthand_window()
 	if not righthand then return end
-	set_global_x(global_x_to_client(righthand))
+	set_global_x(global_x_of_client(righthand))
 	client.focus = righthand
 end
 
@@ -257,12 +258,12 @@ local function on_window_appearance_change(c)
 	delayed(function()
 		local is_valid = pcall(function() return c.valid end) and c.valid
 		if is_valid then
-			if not c.floating then
-				set_global_x(global_x_to_client(c))
+			if not c.floating and #mouse.screen.clients > 0 then -- why??
+				set_global_x(global_x_of_client(c))
 			end
 		else
 			if client.focus then
-				set_global_x(global_x_to_client(client.focus))
+				set_global_x(global_x_of_client(client.focus))
 			end
 		end
 	end, 0.1)

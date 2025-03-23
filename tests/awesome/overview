@@ -1,19 +1,68 @@
 #!/bin/bash
 
-# TODO: test ordering
+expectnofocus() {
+	focus=$(awesome-client 'return client.focus')
+	if [ -n "$focus" ]; then
+		echo expected no client to be focused but found $focus >&2
+		exit 1
+	fi
+}
 
-yad --title="window 1" &
-sleep 1
-yad --title="window 2" &
-sleep 1
+# overview used to have an issue where the focused window
+# would be out of view
+expectfocusandleftmost() {
+	expectfocus "$1"
+	sleep 1
+	name=$(awesome-client 'return layout.leftmost_window().name' | cut -d\" -f2)
+	if [ "$name" != "$1" ]; then
+		echo window focused but not leftmost "(got $name wanted $1)" >&2
+		exit 1
+	fi
+}
+
+spawndummywin() {
+	yad --class="nonfloating" --title="${1:-dummy}" & sleep 1
+}
+
+modkeypress o
+expectnofocus
+
+modkeypress o
+spawndummywin "single window"
+expectfocusandleftmost "single window"
+quitwin
+
+spawndummywin "window 1"
+spawndummywin "window 2"
 
 modkeypress o
 xdotool key f
-expectfocus "window 1"
+expectfocusandleftmost "window 1"
 
 modkeypress o
 xdotool key j
-expectfocus "window 2"
+expectfocusandleftmost "window 2"
+
+# no results
+modkeypress o
+xdotool key space
+expectnofocus
+xdotool key BackSpace
+xdotool key j
+expectfocusandleftmost "window 2"
 
 quitwin
 quitwin
+
+# more windows than fjdksla, so we get fffjfd..
+for i in {1..8}; do
+	spawndummywin
+done
+modkeypress o
+xdotool key f
+expectnofocus
+xdotool key f
+expectfocusandleftmost dummy
+for i in {1..8}; do
+	quitwin
+done

@@ -31,10 +31,8 @@ theme.border_width = dpi(0)
 theme.titlebar_close_button_normal = cwd.."theme/window-close.png"
 theme.titlebar_close_button_focus  = cwd.."theme/window-close.png"
 
-theme.titlebar_ontop_button_normal_inactive = cwd.."theme/window-ontop.png"
-theme.titlebar_ontop_button_focus_inactive = theme.titlebar_ontop_button_normal_inactive
-theme.titlebar_ontop_button_normal_active = cwd.."theme/window-ontopped.png"
-theme.titlebar_ontop_button_focus_active = theme.titlebar_ontop_button_normal_active
+theme.titlebar_minimize_button_normal_inactive = cwd.."theme/window-minimize.png"
+theme.titlebar_minimize_button_focus_inactive = theme.titlebar_minimize_button_normal_inactive
 
 theme.titlebar_maximized_button_normal_inactive = cwd.."theme/window-maximize.png"
 theme.titlebar_maximized_button_focus_inactive = theme.titlebar_maximized_button_normal_inactive

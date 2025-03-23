@@ -68,33 +68,20 @@ return function(c)
             layout  = wibox.layout.flex.horizontal
         },
         {
-            {
-                -- a bunch of random margins because these images' size suck...
-                titlebar_button_with_hover_effect(wibox.widget{
-                    awful.titlebar.widget.ontopbutton(c),
-                    widget = wibox.container.margin,
-                    left = 2,
-                    right = 2
-                }),
-                titlebar_button_with_hover_effect(wibox.widget{
-                    maximizedbutton(c),
-                    widget = wibox.container.margin,
-                    left = 2,
-                    right = 2
-                }),
-                titlebar_button_with_hover_effect(wibox.widget{
-                    awful.titlebar.widget.closebutton(c),
-                    widget = wibox.container.margin,
-                    left = 2,
-                    right = 2
-                }),
-                layout = wibox.layout.flex.horizontal,
-                widget = wibox.container.place
-            },
-            widget = wibox.container.margin,
-            top = 8,
-            bottom = 8,
-            right = 5
+            titlebar_button_with_hover_effect(wibox.widget{
+                awful.titlebar.widget.minimizebutton(c),
+                widget = wibox.container.margin,
+            }),
+            titlebar_button_with_hover_effect(wibox.widget{
+                maximizedbutton(c),
+                widget = wibox.container.margin,
+            }),
+            titlebar_button_with_hover_effect(wibox.widget{
+                awful.titlebar.widget.closebutton(c),
+                widget = wibox.container.margin,
+            }),
+            layout = wibox.layout.flex.horizontal,
+            widget = wibox.container.place
         },
         layout = wibox.layout.align.horizontal
     }

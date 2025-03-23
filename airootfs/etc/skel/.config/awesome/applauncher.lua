@@ -3,7 +3,8 @@ local app_whitelist = {
     "urxvt", "Nemo", "Neovim",
     "scrcpy", "GNU Image Manipulation Program",
     "Stremio", "Transmission", "Tor Browser",
-    "Ghidra", "FreeTube", "Bottles", "Stremio (no VPN)"
+    "Ghidra", "FreeTube", "Bottles", "Stremio (no VPN)",
+    "Chromium"
 }
 
 return function()

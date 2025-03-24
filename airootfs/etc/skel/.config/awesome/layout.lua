@@ -113,20 +113,22 @@ local function first_window()
 end
 
 -- go back to global_x before restarting
+local global_x_restored = false
 local global_x_file = io.open(global_x_filename, "r")
 if global_x_file then
 	local new_global_x = tonumber(global_x_file:read())
 	global_x_file:close()
+	global_x = new_global_x
+	awful.layout.arrange(mouse.screen)
 	delayed(function()
-		global_x = new_global_x
-		awful.layout.arrange(mouse.screen)
-		delayed(function()
-			client.focus = leftmost_window()
-			if client.focus then
-				client.focus:raise()
-			end
-		end, 0.1)
-	end, 1)
+		client.focus = leftmost_window()
+		if client.focus then
+			client.focus:raise()
+		end
+		global_x_restored = true
+	end, 0.1)
+else
+	global_x_restored = true
 end
 
 local timed = nil
@@ -253,7 +255,9 @@ local function cycle_window_focus()
 end
 
 local function on_window_appearance_change(c)
-	if any_floatyfloaty() or controlling_tabs then return end
+	if not global_x_restored
+		or any_floatyfloaty()
+		or controlling_tabs then return end
 
 	delayed(function()
 		local is_valid = pcall(function() return c.valid end) and c.valid

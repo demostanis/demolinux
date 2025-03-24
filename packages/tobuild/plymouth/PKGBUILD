@@ -5,7 +5,7 @@
 
 pkgname=plymouth
 _pkgname=plymouth
-pkgver=24.004.60.r88.ga0e8b6cf
+pkgver=24.004.60.r91.gd42a2830
 pkgrel=1
 pkgdesc='Graphical boot splash screen (git version)'
 arch=('i686' 'x86_64')
@@ -19,7 +19,7 @@ provides=('plymouth')
 conflicts=('plymouth')
 backup=('etc/plymouth/plymouthd.conf')
 install='plymouth.install'
-source=("git+https://gitlab.freedesktop.org/$_pkgname/$_pkgname.git"
+source=("git+https://gitlab.freedesktop.org/$_pkgname/$_pkgname.git#commit=d42a2830bd7c1cdc1012d35e05c65dc2ca1a3603"
        'plymouth.initcpio_hook'
        'plymouth.initcpio_install'
        'plymouthd.conf.patch'

@@ -35,37 +35,22 @@ vimfx.addKeyOverrides(
 		['<space>', 'r']]
 )
 
-// copied from https://superuser.com/a/1747680
-try {
-  let { classes: Cc, interfaces: Ci, manager: Cm  } = Components;
-  const Services = globalThis.Services;
-  const {SessionStore} = Components.utils.import('resource:///modules/sessionstore/SessionStore.jsm');
-  function ConfigJS() { Services.obs.addObserver(this, 'chrome-document-global-created', false); }
-  ConfigJS.prototype = {
-    observe: function (aSubject) { aSubject.addEventListener('DOMContentLoaded', this, {once: true}); },
-    handleEvent: function (aEvent) {
-      let document = aEvent.originalTarget; let window = document.defaultView; let location = window.location;
-      if (/^(chrome:(?!\/\/(global\/content\/commonDialog|browser\/content\/webext-panels)\.x?html)|about:(?!blank))/i.test(location.href)) {
-        if (window.Tabbrowser) {
+const disableCtrlW = data => {
+	const window = data.vim?.window || data.event.originalTarget.ownerGlobal;
 
-		// this is not really VimFx related
-		// but i didn't know where to put it...
-		// 
-		// this disables Ctrl-W to close a tab and replaces
-		// it with readline-like behavior, deleting the word
-		// behind the cursor.
-		window.hijackCtrlW = () => {
-			// in recent firefox versions, overriding oncommand
-			// still calls closeTabOrWindow()...
+	// this disables Ctrl-W to close a tab and replaces
+	// it with readline-like behavior, deleting the word
+	// behind the cursor.
+	window.hijackCtrlW = () => {
+		// in recent firefox versions, overriding oncommand
+		// still calls closeTabOrWindow()...
 
-			window.BrowserCommands.closeTabOrWindow = function() {}
-			window.goDoCommand('cmd_deleteWordBackward')
-		}
-		document.querySelector('#cmd_close').setAttribute('oncommand', 'hijackCtrlW()')
 		window.BrowserCommands.closeTabOrWindow = function() {}
-        }
-      }
-    }
-  };
-  if (!Services.appinfo.inSafeMode) { new ConfigJS(); }
-} catch(ex) {};
+		window.goDoCommand('cmd_deleteWordBackward')
+	}
+	window.document.querySelector('#cmd_close').setAttribute('oncommand', 'hijackCtrlW()')
+	window.BrowserCommands.closeTabOrWindow = function() {}
+};
+
+vimfx.on("TabSelect", disableCtrlW);
+vimfx.on("modeChange", disableCtrlW);

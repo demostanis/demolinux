@@ -5,7 +5,8 @@ echo starting firefox...
 # why does exec stop the process with set -e??
 exec 2> >( sed '/Exiting due to channel error/d' ) || :
 
-firefox --start-debugger-server &
+# we must redirect all streams to /dev/null so ssh doesn't stay on..
+firefox-hardened --start-debugger-server >/dev/null 2>&1 &
 p=$!
 
 while ! nc -z localhost 6000 2>/dev/null; do
@@ -18,9 +19,16 @@ sleep 2
 python firefox/browsereval.py
 ret=$?
 
-if ! kill $!; then
-	sleep 1
-	pkill firefox
-fi
+xdotool key Escape
+sleep 1
+xdotool key o
+sleep 1
+xdotool type https://github.com/demostanis/
+xdotool key Enter
+expectfocus 'demostanis · GitHub — Mozilla Firefox' 180
+xdotool key ctrl+w # remapped to deleteWordBackward in .vimfx/config.js
+sleep 1
+expectfocus 'demostanis · GitHub — Mozilla Firefox'
 
-exit $ret
+quitwin
+pkill firefox

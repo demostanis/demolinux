@@ -8,22 +8,24 @@ modkeypress() {
 }
 
 expectwin() {
-	for i in {1..10}; do
+	tries=${2:-10}
+	for i in {1..$tries}; do
 		xwininfo -root -tree | grep -q "$1" && return
 		sleep 1
 	done
-	echo did not find window $1 after 10 seconds >&2
+	echo did not find window $1 after $tries seconds >&2
 	exit 1
 }
 
 expectfocus() {
 	name=
-	for i in {1..10}; do
+	tries=${2:-10}
+	for i in {1..$tries}; do
 		name=$(awesome-client 'if client.focus then return client.focus.name else return "none" end' | cut -d\" -f2)
 		[ "$name" = "$1" ] && return
 		sleep 1
 	done
-	echo did not focus window $1 after 10 seconds >&2
+	echo did not focus window $1 after $tries seconds >&2
 	echo actual focused window: $name
 	exit 1
 }

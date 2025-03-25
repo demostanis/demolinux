@@ -89,7 +89,8 @@ vim.api.nvim_create_autocmd("LspAttach", {
                 vim.lsp.buf.hover()
             else
                 -- C should open man pages
-                vim.cmd"norm! K"
+                local _, err = pcall(function() vim.cmd "norm! K" end)
+                if err then vim.lsp.buf.hover() end
             end
         end, opts)
 

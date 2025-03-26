@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# tests for Xorg security extension patches (to allow clipboard in untrusted clients)
+
+cookie=/tmp/cookiieieieiie$RANDOM
+
+touch "$cookie"
+xauth -f "$cookie" generate $DISPLAY . untrusted
+
+exec_as_untrusted() {
+	# some apps don't respect $XAUTHORITY
+	bwrap --dev-bind / / --bind "$cookie" ~/.Xauthority -- "$@" 2>/dev/null
+}
+
+import -window root /dev/null
+# command should fail
+if exec_as_untrusted import -window root /dev/null; then
+	echo was able to take a screenshot of the screen as an untrusted Xorg client 2>&1
+	exit 1
+fi
+
+set +e
+exec_as_untrusted timeout 1 xev -root
+ret=$?
+set -e
+if [ $ret = 130 ]; then
+	echo xev was able to capture Xorg events 2>&1
+	exit 1
+fi
+
+echo hello | xsel -i
+if [ "$(exec_as_untrusted xsel -o)" != hello ]; then
+	echo xsel wasn"'"t able to access the selection 2>&1
+	exit 1
+fi
+
+echo world | xsel -ib
+if [ "$(exec_as_untrusted xsel -ob)" != world ]; then
+	echo xsel wasn"'"t able to access the clipboard 2>&1
+	exit 1
+fi

@@ -1,4 +1,6 @@
 import socket
+import time
+from subprocess import check_output
 from json import dumps, loads
 
 fhost = "localhost"
@@ -100,3 +102,29 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     assert "mellow-purple@demostanis" in enabled_addons
     assert "VimFx-unlisted@akhodakivskiy.github.com" in enabled_addons
     assert "CanvasBlocker@kkapsner.de" in enabled_addons
+
+    # taken from https://searchfox.org/mozilla-central/source/toolkit/content/aboutSupport.js#1670
+    eval("""
+        await (async () => {
+          let supportsStringClass = Cc["@mozilla.org/supports-string;1"];
+          let ssText = supportsStringClass.createInstance(Ci.nsISupportsString);
+
+          let transferable = Cc["@mozilla.org/widget/transferable;1"].createInstance(
+            Ci.nsITransferable
+          );
+          transferable.init(getLoadContext());
+
+          transferable.addDataFlavor("text/plain");
+          ssText.data = "copied from firefox";
+          transferable.setTransferData("text/plain", ssText);
+
+          Services.clipboard.setData(
+            transferable,
+            null,
+            Services.clipboard.kGlobalClipboard
+          );
+        })()
+    """)
+    time.sleep(1)
+    clipboard = check_output(["xsel", "-ob"])
+    assert clipboard == b"copied from firefox"

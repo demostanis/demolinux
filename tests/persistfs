@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# pfs is very noisy
+exec > >(cat >/dev/null) || :
+
+# TODO: check index?
+
+# pfs uses tput lol
+export TERM=xterm-256color
+
+alias pfs='sudo persistfs'
+pfsdir=/run/archiso/persistfs/upperdir
+index=/run/archiso/persistfs/index
+
+rm -rf $pfsdir/home/demostanis/tests
+rm -rf ~/tests
+mkdir ~/tests
+cd ~/tests
+
+# adding a file
+touch a
+pfs add a
+[ -e $pfsdir/home/demostanis/tests/a ]
+# twice shouldn't error out
+pfs add a
+[ -e $pfsdir/home/demostanis/tests/a ]
+
+# removing a file
+pfs remove a
+[ ! -e $pfsdir/home/demostanis/tests/a ]
+[ -e a ]
+rm a
+[ ! -e a ]
+
+# adding a directory
+mkdir -p a/b/c
+pfs add a
+[ -d $pfsdir/home/demostanis/tests/a ]
+[ -d $pfsdir/home/demostanis/tests/a/b/c ]
+
+# removing an item from a directory
+pfs remove a/b/c
+[ ! -e $pfsdir/home/demostanis/tests/a/b/c ]
+# TODO: we should delete all empty parent directories
+[ -e $pfsdir/home/demostanis/tests/a/b ]
+
+# adding a symlink should add the symlink itself, no deferencing
+ln -s a symlink
+pfs add symlink
+[ -L $pfsdir/home/demostanis/tests/symlink ]
+pfs remove symlink
+[ ! -e $pfsdir/home/demostanis/tests/symlink ]
+
+# pfs checks all files beforehand
+pfs add nonexistent symlink 2>/dev/null && exit 1
+[ ! -e $pfsdir/home/demostanis/tests/symlink ]
+[ ! -e $pfsdir/home/demostanis/tests/nonexistent ]
+
+# wait for it
+sudo systemctl start pacman-init
+
+# installing a package
+yes | pfs ipkg wildcard 2>/dev/null
+# permissions should be kept
+[ -x $pfsdir/usr/bin/wildcard ]
+[ ! -w $pfsdir/usr/bin/wildcard ]

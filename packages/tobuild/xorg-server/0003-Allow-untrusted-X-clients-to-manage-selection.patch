@@ -1,0 +1,44 @@
+diff -u b/Xext/security.c b/Xext/security.c
+--- b/Xext/security.c
++++ b/Xext/security.c
+@@ -754,10 +754,12 @@
+ 
+     subj = dixLookupPrivate(&rec->client->devPrivates, stateKey);
+ 
+-    /* disable background None for untrusted windows */
+-    if ((requested & DixCreateAccess) && (rec->rtype == RT_WINDOW))
+-        if (subj->haveState && subj->trustLevel != XSecurityClientTrusted)
+-            ((WindowPtr) rec->res)->forcedBG = TRUE;
++    /* additional permissions for selection stufff */
++    if (rec->rtype == RT_WINDOW)
++      allowed |= DixSendAccess;
++    if (rec->rtype == RT_WINDOW &&
++        strcmp(SecurityLookupRequestName(rec->client), "X11:ChangeProperty") == 0)
++      allowed |= DixSetPropAccess;
+ 
+     /* additional permissions for specific resource types */
+     if (rec->rtype == RT_WINDOW)
+@@ -864,6 +866,11 @@
+     subj = dixLookupPrivate(&rec->client->devPrivates, stateKey);
+     obj = dixLookupPrivate(&wClient(rec->pWin)->devPrivates, stateKey);
+ 
++    const char *atom_name = NameForAtom(name);
++    if (atom_name && (strstr(atom_name, "SELECTION") != 0 ||
++                      strcmp(atom_name, "XSEL_DATA") == 0))
++      return;
++
+     if (SecurityDoCheck(subj, obj, requested, allowed) != Success) {
+         SecurityAudit("Security: denied client %d access to property %s "
+                       "(atom 0x%x) window 0x%lx of client %d on request %s\n",
+@@ -892,8 +899,9 @@
+         for (i = 0; i < rec->count; i++)
+             if (rec->events[i].u.u.type != UnmapNotify &&
+                 rec->events[i].u.u.type != ConfigureRequest &&
+-                rec->events[i].u.u.type != ClientMessage) {
+-
++                rec->events[i].u.u.type != ClientMessage &&
++                (rec->events[i].u.u.type & 127) != SelectionNotify &&
++                (rec->events[i].u.u.type & 127) != SelectionRequest) {
+                 SecurityAudit("Security: denied client %d from sending event "
+                               "of type %s to window 0x%lx of client %d\n",
+                               rec->client->index,

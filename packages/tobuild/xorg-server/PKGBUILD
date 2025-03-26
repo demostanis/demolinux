@@ -5,7 +5,7 @@ pkgbase=xorg-server
 pkgname=('xorg-server' 'xorg-server-xephyr' 'xorg-server-xvfb' 'xorg-server-xnest'
          'xorg-server-common' 'xorg-server-devel')
 pkgver=21.1.8
-pkgrel=21
+pkgrel=22
 arch=('x86_64')
 license=('custom')
 groups=('xorg')
@@ -22,8 +22,8 @@ source=(https://xorg.freedesktop.org/releases/individual/xserver/${pkgbase}-${pk
         xvfb-run.1
         xephyr_Dont_check_for_SeatId_anymore.patch
         0001-present-Send-a-PresentConfigureNotify-event-for-dest.patch
-	0001-Allow-untrusted-X-clients-to-manage-selection.patch
 	0001-Allow-apps-to-use-GPU-acceleration.patch
+        0003-Allow-untrusted-X-clients-to-manage-selection.patch
 )
 
 prepare() {
@@ -33,8 +33,8 @@ prepare() {
   patch -Np1 -i ../xephyr_Dont_check_for_SeatId_anymore.patch
   # upstream fix (merged)
   patch -Np1 -i ../0001-present-Send-a-PresentConfigureNotify-event-for-dest.patch
-  patch -Np1 -i ../0001-Allow-untrusted-X-clients-to-manage-selection.patch
   patch -Np1 -i ../0001-Allow-apps-to-use-GPU-acceleration.patch
+  patch -Np1 -i ../0003-Allow-untrusted-X-clients-to-manage-selection.patch
 }
 
 build() {
@@ -180,5 +180,5 @@ sha256sums=('38aadb735650c8024ee25211c190bf8aad844c5f59632761ab1ef4c4d5aeb152'
             '2460adccd3362fefd4cdc5f1c70f332d7b578091fb9167bf88b5f91265bbd776'
             '057004ab36d4733e6c275f76bbc3851f6cdb9063305a3ae874f2fd83f14a6dc0'
             '856e598e12d0391e957907259edd5ad5f6aabf590d8292693b8bd98536d255e4'
-            '29d855c80fa8b2164b7eb9185d4f67f49828645c1d7ac0208d5b6fe085d5def6'
-            'fb2a9181e0b468f3c0dbd0e6ae65af0829b0bfa1dc9f4ef57c923f4b9459ef93')
+            'fb2a9181e0b468f3c0dbd0e6ae65af0829b0bfa1dc9f4ef57c923f4b9459ef93'
+            'ba26744d5ee8b46f29abeb03cf1f8a3747bb6f52295359d22604a056da71ea47')

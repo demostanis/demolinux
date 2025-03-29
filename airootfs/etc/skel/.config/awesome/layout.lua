@@ -256,13 +256,16 @@ end
 
 local function on_window_appearance_change(c)
 	if not global_x_restored
-		or any_floatyfloaty()
+		or (c and not c.floating and any_floatyfloaty())
 		or controlling_tabs then return end
 
 	delayed(function()
 		local is_valid = pcall(function() return c.valid end) and c.valid
 		if is_valid then
-			if not c.floating and #mouse.screen.clients > 0 then -- why??
+			if c.transient_for then
+				c = c.transient_for
+			end
+			if #mouse.screen.clients > 0 then -- why to we reach here?
 				set_global_x(global_x_of_client(c))
 			end
 		else

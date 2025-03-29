@@ -71,7 +71,8 @@ build() {
     -DSYSCONFDIR=/etc \
     -DLUA_INCLUDE_DIR=/usr/include/lua${_LUA_VER} \
     -DLUA_LIBRARY=/usr/lib/liblua.so.${_LUA_VER} \
-    -DLUA_EXECUTABLE=/usr/bin/lua${_LUA_VER}
+    -DLUA_EXECUTABLE=/usr/bin/lua${_LUA_VER} \
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5
   make
 }
 

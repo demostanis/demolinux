@@ -172,7 +172,7 @@ function M.setup(colors, config)
     hi.CursorLineNr                       = { guifg = M.colors.base04, guibg = M.colors.base01, gui = nil, guisp = nil }
     hi.QuickFixLine                       = { guifg = nil, guibg = M.colors.base01, gui = 'none', guisp = nil }
     hi.PMenu                              = { guifg = M.colors.base05, guibg = M.colors.base01, gui = 'none', guisp = nil }
-    hi.PMenuSel                           = { guifg = M.colors.base01, guibg = M.colors.base05, gui = nil, guisp = nil }
+    hi.PMenuSel                           = { guifg = M.colors.base05, guibg = M.colors.base01, gui = 'reverse', guisp = nil }
     hi.TabLine                            = { guifg = M.colors.base05, guibg = M.colors.base02, gui = 'none', guisp = nil }
     hi.TabLineFill                        = { guifg = M.colors.base03, guibg = M.colors.base01, gui = 'none', guisp = nil }
     hi.TabLineSel                         = { guifg = M.colors.base05, guibg = M.colors.base0A, gui = 'none', guisp = nil }

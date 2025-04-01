@@ -40,7 +40,7 @@ cmp.setup{
     }
 }
 
-vim.diagnostic.disable()
+vim.diagnostic.enable(false)
 
 local function enable_ls(name, settings)
     local capabilities = require"cmp_nvim_lsp".default_capabilities()

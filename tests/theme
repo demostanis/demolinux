@@ -1,0 +1,50 @@
+#!/bin/bash
+
+expect_middle_color() {
+	mc=$(import -window root png:- | magick png:- -format "%[pixel:p{%[fx:int(w/2)],%[fx:int(h/2)]}]" info:)
+
+	if [ "$mc" != "$1" ]; then
+		echo expected color at the middle of the screen to be $1 but got $mc
+		sleep infinity
+		exit 1
+	fi
+}
+
+yad &
+sleep 1
+expect_middle_color "srgb(26,9,45)"
+quitwin
+
+sudo systemctl start pacman-init
+deferedinstall gimp >/dev/null 2>&1 &
+sleep 60
+xdotool key Escape
+sleep 1
+modkeypress w
+expectfocus "GNU Image Manipulation Program"
+expect_middle_color "srgb(26,9,45)"
+quitwin
+
+modkeypress Enter
+modkeypress Enter
+modkeypress h
+modkeypress minus
+
+# resizes window to the right (bigger)
+xdotool mousemove $(xdotool getdisplaygeometry | awk '{printf("%d %d", $1/2, $2/2)}') sleep 1 \
+	keydown Super_L mousedown 3 sleep 1 \
+	mousemove_relative 200 0 sleep 1 \
+	mouseup 3 keyup Super_L
+# focused terminal
+expect_middle_color "srgb(30,5,40)"
+
+# resizes window to the left (smaller)
+xdotool mousemove $(xdotool getdisplaygeometry | awk '{printf("%d %d", $1/2-100, $2/2)}') sleep 1 \
+	keydown Super_L mousedown 3 sleep 1 \
+	mousemove_relative -- -500 0 sleep 1 \
+	mouseup 3 keyup Super_L
+# unfocused terminal
+expect_middle_color "srgb(21,4,28)"
+
+quitwin
+quitwin

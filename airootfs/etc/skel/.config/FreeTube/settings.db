@@ -5,3 +5,5 @@
 {"_id":"mainColor","value":"DeepPurple"}
 {"_id":"secColor","value":"CatppuccinMochaPink"}
 {"_id":"secColor","value":"CatppuccinMochaMauve"}
+{"_id":"checkForBlogPosts","value":false}
+{"_id":"checkForUpdates","value":false}

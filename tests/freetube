@@ -1,0 +1,44 @@
+#!/bin/bash
+
+# TODO: do this in tests/run
+sudo systemctl start pacman-init
+
+sudo pacman -S --noconfirm tesseract-data-eng >/dev/null 2>&1
+
+expectmusic() {
+	awesome-client 'show_panel()'
+
+	music=
+	tries=${2:-60}
+	for i in {1..$tries}; do
+		music=$(import -window root -crop 409x147+8+442 png:- | tesseract - - 2>/dev/null)
+
+		if [[ "$music" = *"$1"* ]]; then
+			xdotool key Escape
+			return
+		fi
+
+		sleep 1
+	done
+
+	echo expected music to be $1 but got $music
+	exit 1
+}
+
+expectmusic "Not playing"
+
+freetube >/dev/null 2>&1 &
+expectwin 'Subscriptions - FreeTube'
+for i in {1..7}; do xdotool key Tab; sleep 0.1; done
+
+xdotool type 'Animal Crossing Music + Rain Sounds'
+xdotool key Enter
+
+for i in {1..13}; do xdotool key Tab; sleep 0.1; done
+xdotool key Enter
+sleep 60
+xdotool mousemove 480 420 click 1
+sleep 10
+
+expectmusic "Animal Crossing"
+quitwin

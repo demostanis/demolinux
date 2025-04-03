@@ -10,5 +10,18 @@ require"lualine".setup{
             },
             { "filename" }
         }
+    },
+    inactive_winbar = {
+        lualine_c = {
+            { "filename" }
+        }
+    },
+    options = {
+        disabled_filetypes = {
+            winbar = {
+                "fugitiveblame"
+            }
+        },
+        always_show_tabline = true
     }
 }

@@ -11,6 +11,7 @@ RemainAfterExit=yes
 ExecStart=/usr/bin/pacman -Syy
 ExecStart=/usr/bin/pacman-key --init
 ExecStart=/usr/bin/pacman-key --populate
+ExecStart=/usr/bin/pacman -Fy
 
 [Install]
 WantedBy=multi-user.target

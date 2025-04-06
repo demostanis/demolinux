@@ -9,6 +9,7 @@ die() {
 	[ $# != 0 ] && echo "$*" >&2
 	echo awesome log:
 	timeout 2 ./dctrl shell "cat ~/.awesome.log"
+	timeout 3 ./dctrl shell "DISPLAY=:0 import -window root png:-" > screenshot.png
 	stop_vm
 	echo tests failed
 	exit 1

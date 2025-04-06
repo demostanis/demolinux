@@ -28,6 +28,13 @@ jobs:
           ./demolinux tests
           sudo rm out/test-demolinux.img
 
+      - uses: actions/upload-artifact@v4
+        name: Upload screenshot
+        if: failure()
+        with:
+          name: screenshot
+          path: screenshot.png
+
       - name: Split image into chunks
         run: |
           split -b 2GB out/demolinux*.img demolinux-

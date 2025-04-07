@@ -68,6 +68,9 @@ export DISPLAY=:0
 cd /tmp/tests
 . ./utils
 
+# picom xrender backend doesn't refresh the whole screen correctly in QEMU
+while true; do xrefresh; sleep 1; done >/dev/null 2>&1 &
+
 while read -r test; do
 	if [ "$test" != ./run -a "$test" != ./utils ]; then
 		echo running $test...

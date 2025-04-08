@@ -442,6 +442,20 @@ local function swap_right()
 	end
 end
 
+client.connect_signal("manage", function(c)
+	delayed(function()
+		local lefthand = lefthand_window(c)
+		if lefthand then
+			local master = lefthand.master
+			if master then
+				for _, tab in ipairs(master.tabs) do
+					tab.client:insert_before(lefthand)
+				end
+			end
+		end
+	end, 0.1)
+end)
+
 return {
 	move_left = move_left,
 	move_right = move_right,

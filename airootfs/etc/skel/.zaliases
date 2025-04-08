@@ -1,6 +1,6 @@
 alias gap="git add --patch"
-alias gc="git commit"
-alias gca="git commit --amend"
+alias gc="git diff --check && git commit"
+alias gca="git diff --check && git commit --amend"
 alias gd="git diff"
 alias gdc="git diff --cached"
 alias gs="git status"

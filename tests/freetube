@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# TODO: do this in tests/run
-sudo systemctl start pacman-init
-
 sudo pacman -S --noconfirm tesseract-data-eng >/dev/null 2>&1
 
 expectmusic() {

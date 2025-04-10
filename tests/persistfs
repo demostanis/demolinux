@@ -56,9 +56,6 @@ pfs add nonexistent symlink 2>/dev/null && exit 1
 [ ! -e $pfsdir/home/demostanis/tests/symlink ]
 [ ! -e $pfsdir/home/demostanis/tests/nonexistent ]
 
-# wait for it
-sudo systemctl start pacman-init
-
 # installing a package
 yes | pfs ipkg wildcard 2>/dev/null
 # permissions should be kept

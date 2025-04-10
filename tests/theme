@@ -15,7 +15,6 @@ sleep 1
 expect_middle_color "srgb(26,9,45)"
 quitwin
 
-sudo systemctl start pacman-init
 deferedinstall gimp >/dev/null 2>&1 &
 sleep 60
 xdotool key Escape

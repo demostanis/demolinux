@@ -68,6 +68,9 @@ export DISPLAY=:0
 cd /tmp/tests
 . ./utils
 
+# wait for pacman to work
+sudo systemctl start pacman-init
+
 # picom xrender backend doesn't refresh the whole screen correctly in QEMU
 while true; do xrefresh; sleep 1; done >/dev/null 2>&1 &
 

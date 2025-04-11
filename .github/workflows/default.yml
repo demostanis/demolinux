@@ -27,6 +27,7 @@ jobs:
           sudo truncate -s 10G out/test-demolinux.img
           ./demolinux tests
           sudo rm out/test-demolinux.img
+          sudo rm -rf work packages
 
       - uses: actions/upload-artifact@v4
         name: Upload screenshot

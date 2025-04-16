@@ -63,9 +63,9 @@ local function mktabw(text, active)
 end
 
 local function switch_to_tab(master, tab)
-    controlling_tabs = true
-
     if tab.active then return end
+
+    controlling_tabs = true
 
     local previous_active_slave = master.active_slave
     deactivate(master.tabs)

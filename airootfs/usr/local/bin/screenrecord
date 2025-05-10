@@ -23,7 +23,7 @@ case "$action" in
 		# fun fact: using < "$fifo" makes the recording stop after 1 second???????????
 		cat "$fifo" | ffmpeg \
 			-framerate $framerate \
-			-video_size $(xrandr | awk -F'[+ ]' '/ connected/{print$3}') \
+			-video_size $(xdpyinfo | awk '/dimensions/{print$2}') \
 			-f x11grab \
 			-i $DISPLAY "$filename"
 		rm -f "$fifo"

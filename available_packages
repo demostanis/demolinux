@@ -110,7 +110,7 @@ jq
 lynx
 nmap
 sudo
-neofetch
+fastfetch
 pacman-contrib
 python-pipx
 python-pip

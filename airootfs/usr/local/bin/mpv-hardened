@@ -16,7 +16,7 @@ exec bwrap \
 	`# Configs` \
 	--ro-bind /usr/share /usr/share \
 	--ro-bind /etc /etc --ro-bind ~/.config/mpv ~/.config/mpv \
-	--dev /dev --proc /proc --dev-bind /sys /sys \
+	--dev-bind /dev /dev --proc /proc --dev-bind /sys /sys \
 	`# X11` \
 	--ro-bind ~/.Xauthority ~/.Xauthority \
 	--bind /tmp/.X11-unix/X${DISPLAY##:} /tmp/.X11-unix/X${DISPLAY##:} \

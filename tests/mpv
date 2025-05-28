@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# generate a 1 second blank video
+ffmpeg -f lavfi \
+	-i color=c=black:s=640x480:d=1 \
+	-c:v libx264 \
+	-tune stillimage \
+	-pix_fmt yuv420p \
+	/tmp/output.mp4 >/dev/null 2>&1
+
+# CI is very slow
+if ! timeout 10 mpv-hardened /tmp/output.mp4 >/dev/null 2>&1; then
+	echo mpv failed to run properly "($?)" >&2
+	exit 1
+fi

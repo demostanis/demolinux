@@ -4,7 +4,7 @@
 pkgbase=xorg-server
 pkgname=('xorg-server' 'xorg-server-xephyr' 'xorg-server-xvfb' 'xorg-server-xnest'
          'xorg-server-common' 'xorg-server-devel')
-pkgver=21.1.8
+pkgver=21.1.16
 pkgrel=22
 arch=('x86_64')
 license=('custom')
@@ -20,8 +20,6 @@ makedepends=('xorgproto' 'pixman' 'libx11' 'mesa' 'mesa-libgl' 'xtrans'
 source=(https://xorg.freedesktop.org/releases/individual/xserver/${pkgbase}-${pkgver}.tar.xz
         xvfb-run # with updates from FC master
         xvfb-run.1
-        xephyr_Dont_check_for_SeatId_anymore.patch
-        0001-present-Send-a-PresentConfigureNotify-event-for-dest.patch
 	0001-Allow-apps-to-use-GPU-acceleration.patch
         0003-Allow-untrusted-X-clients-to-manage-selection.patch
 )
@@ -29,10 +27,6 @@ source=(https://xorg.freedesktop.org/releases/individual/xserver/${pkgbase}-${pk
 prepare() {
   cd ${pkgbase}-$pkgver
 
-  # FS#73274
-  patch -Np1 -i ../xephyr_Dont_check_for_SeatId_anymore.patch
-  # upstream fix (merged)
-  patch -Np1 -i ../0001-present-Send-a-PresentConfigureNotify-event-for-dest.patch
   patch -Np1 -i ../0001-Allow-apps-to-use-GPU-acceleration.patch
   patch -Np1 -i ../0003-Allow-untrusted-X-clients-to-manage-selection.patch
 }
@@ -175,10 +169,8 @@ package_xorg-server-devel() {
   # make sure there are no files left to install
   find fakeinstall -depth -print0 | xargs -0 rmdir
 }
-sha256sums=('38aadb735650c8024ee25211c190bf8aad844c5f59632761ab1ef4c4d5aeb152'
+sha256sums=('b14a116d2d805debc5b5b2aac505a279e69b217dae2fae2dfcb62400471a9970'
             '27ce50f4432e5549e662db857118761fa9cd74c6900aac52c4db768c956838db'
             '2460adccd3362fefd4cdc5f1c70f332d7b578091fb9167bf88b5f91265bbd776'
-            '057004ab36d4733e6c275f76bbc3851f6cdb9063305a3ae874f2fd83f14a6dc0'
-            '856e598e12d0391e957907259edd5ad5f6aabf590d8292693b8bd98536d255e4'
             'fb2a9181e0b468f3c0dbd0e6ae65af0829b0bfa1dc9f4ef57c923f4b9459ef93'
             'ba26744d5ee8b46f29abeb03cf1f8a3747bb6f52295359d22604a056da71ea47')

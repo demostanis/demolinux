@@ -1,6 +1,10 @@
 #!/bin/bash
 
 expect_middle_color() {
+	# TODO: uh, gimp has to be screenshotted twice to properly
+	# be redrawn correctly in fullscreen....
+	# that's probably not the correct solution...
+	mc=$(import -window root png:- | magick png:- -format "%[pixel:p{%[fx:int(w/2)],%[fx:int(h/2)]}]" info:)
 	mc=$(import -window root png:- | magick png:- -format "%[pixel:p{%[fx:int(w/2)],%[fx:int(h/2)]}]" info:)
 
 	if [ "$mc" != "$1" ]; then

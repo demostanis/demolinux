@@ -444,6 +444,8 @@ end
 
 client.connect_signal("manage", function(c)
 	delayed(function()
+		local is_valid = pcall(function() return c.valid end) and c.valid
+		if not is_valid then return end
 		local lefthand = lefthand_window(c)
 		if lefthand then
 			local master = lefthand.master

@@ -12,8 +12,6 @@ hrsh7th/nvim-cmp
 stevearc/aerial.nvim
 # breadcrumb
 SmiteshP/nvim-navic
-# auto format
-lukas-reineke/lsp-format.nvim
 
 # git integration
 tpope/vim-fugitive

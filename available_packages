@@ -123,6 +123,7 @@ qemu-desktop
 kdeconnect
 ripgrep
 ripgrep-all
+syncthing
 strace
 websocat
 xsel

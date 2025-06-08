@@ -4,7 +4,8 @@ local app_whitelist = {
     "scrcpy", "GNU Image Manipulation Program",
     "Stremio", "Transmission", "Tor Browser",
     "Ghidra", "FreeTube", "Bottles", "Stremio (no VPN)",
-    "Chromium"
+    "Chromium", "KeePassXC", "Dolphin Emulator",
+    "Nitrokey App 2", "KDE Connect"
 }
 
 return function()

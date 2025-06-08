@@ -4,9 +4,11 @@ set -e
 
 if [ "$(id -u)" != 0 ]; then
 	echo You need root
+	exit 1
 fi
 
 file=${1:-missing file}
+file=$(echo "$file" | sed 's%/*$%%')
 
 if ! [ -d "$file" -o -f "$file" ]; then
 	echo only directories and files are supported >&2
@@ -24,12 +26,14 @@ else
 	touch "$dest"
 fi
 chmod --reference="$file" -- "$dest"
+chown --reference="$file" -- "$dest"
 if [ -d "$file" ]; then
 	cp -va -- "$file"/* "$dest" || :
+	cp -va -- "$file"/.* "$dest" || :
 else
 	cp -va -- "$file" "$dest"
 fi
 rm -vrf -- "$file"
 ln -vs -- "$dest" "$file"
-chmod --reference="$dest" -- "$file"
+chown -h --reference="$dest" -- "$file"
 persistfs add "$file"

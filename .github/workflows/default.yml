@@ -21,13 +21,13 @@ jobs:
 
       - name: Run tests
         run: |
+          sudo rm -rf work packages
           # we make a copy so the released image isn't one that has
           # been tampered with
           sudo cp -a out/demolinux*.img out/test-demolinux.img
           sudo truncate -s 10G out/test-demolinux.img
           ./demolinux tests
           sudo rm out/test-demolinux.img
-          sudo rm -rf work packages
 
       - uses: actions/upload-artifact@v4
         name: Upload screenshot

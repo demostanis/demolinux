@@ -1,10 +1,6 @@
 #!/bin/bash
 
 expect_middle_color() {
-	# TODO: uh, gimp has to be screenshotted twice to properly
-	# be redrawn correctly in fullscreen....
-	# that's probably not the correct solution...
-	mc=$(import -window root png:- | magick png:- -format "%[pixel:p{%[fx:int(w/2)],%[fx:int(h/2)]}]" info:)
 	mc=$(import -window root png:- | magick png:- -format "%[pixel:p{%[fx:int(w/2)],%[fx:int(h/2)]}]" info:)
 
 	if [ "$mc" != "$1" ]; then
@@ -23,7 +19,10 @@ deferedinstall gimp >/dev/null 2>&1 &
 sleep 60
 xdotool key Escape
 sleep 1
-modkeypress w
+# gimp doesn't redraw properly if we don't spam the maximize key..
+# it seems to be needed since i removed -vga virtio, that would
+# prevent Xorg from starting. TODO: bring back virtio rendering?
+for i in {1..127}; do modkeypress w; done
 expectfocus "GNU Image Manipulation Program"
 expect_middle_color "srgb(26,9,45)"
 quitwin

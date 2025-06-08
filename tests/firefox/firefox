@@ -31,4 +31,4 @@ sleep 1
 expectfocus 'demostanis · GitHub — Mozilla Firefox'
 
 quitwin
-pkill firefox
+pkill firefox || :

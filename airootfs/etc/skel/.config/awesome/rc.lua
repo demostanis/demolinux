@@ -108,7 +108,7 @@ client.connect_signal("manage", function(c)
 
     -- this dumbass can't minimize on startup without tray
     if c.class == "KeePassXC" and not did_minimize_keepassxc then
-        delayed(function() c.minimized = true end, 0.1)
+        delayed(function() c:kill() end, 0.1)
         did_minimize_keepassxc = true
     end
 end)

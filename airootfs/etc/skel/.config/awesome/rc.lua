@@ -71,6 +71,8 @@ awful.screen.connect_for_each_screen(function(s)
     end
 end)
 
+local did_minimize_keepassxc = false
+
 client.connect_signal("manage", function(c)
     if not c.icon and not c.transient_for then
         -- default icon
@@ -102,6 +104,12 @@ client.connect_signal("manage", function(c)
                 tabs.switch_to_next_tab(c)
             end)
         )
+    end
+
+    -- this dumbass can't minimize on startup without tray
+    if c.class == "KeePassXC" and not did_minimize_keepassxc then
+        delayed(function() c.minimized = true end, 0.1)
+        did_minimize_keepassxc = true
     end
 end)
 

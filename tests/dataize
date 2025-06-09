@@ -1,0 +1,44 @@
+#!/bin/bash
+
+export TERM=xterm-256color
+
+# dataize is very noisy
+exec > >(cat >/dev/null) || :
+exec 2> >(cat >/dev/null) || :
+
+alias dataize='sudo dataize'
+
+rm -rf ~/dtests
+mkdir ~/dtests
+cd ~/dtests
+
+# adding a file
+touch a
+dataize a
+[ -L a ]
+[ -O a ]
+[ -f /data/_home_demostanis_dtests_a ]
+[ -O /data/_home_demostanis_dtests_a ]
+sudo persistfs list | grep -q /home/demostanis/dtests/a
+# twice should error out (we can't dataize a symlink)
+! dataize a
+rm -rf /data/_home_demostanis_dtests_a a
+
+# adding a directory
+mkdir -p a/b/c
+dataize a
+[ -L a ]
+[ -O a ]
+[ -d /data/_home_demostanis_dtests_a ]
+[ -O /data/_home_demostanis_dtests_a ]
+[ -d /data/_home_demostanis_dtests_a/b/c ]
+[ -O /data/_home_demostanis_dtests_a/b/c ]
+rm -rf /data/_home_demostanis_dtests_a a
+
+# adding a directory with a trailing slash
+mkdir -p a/b/c
+dataize a/
+[ -L a ]
+[ -d /data/_home_demostanis_dtests_a ]
+[ -d /data/_home_demostanis_dtests_a/b/c ]
+rm -rf /data/_home_demostanis_dtests_a a

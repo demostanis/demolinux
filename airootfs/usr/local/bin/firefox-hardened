@@ -117,8 +117,8 @@ bwrap \
 	--ro-bind /sys/class/hidraw /sys/class/hidraw \
 	`# KeePassXC` \
 	--ro-bind \
-		$XDG_RUNTIME_DIR/app/org.keepassxc.KeePassXC/org.keepassxc.KeePassXC.BrowserServer \
-		$XDG_RUNTIME_DIR/app/org.keepassxc.KeePassXC/org.keepassxc.KeePassXC.BrowserServer \
+		$XDG_RUNTIME_DIR/app/org.keepassxc.KeePassXC \
+		$XDG_RUNTIME_DIR/app/org.keepassxc.KeePassXC \
 	--symlink \
 		$XDG_RUNTIME_DIR/app/org.keepassxc.KeePassXC/org.keepassxc.KeePassXC.BrowserServer \
 		$XDG_RUNTIME_DIR/org.keepassxc.KeePassXC.BrowserServer \

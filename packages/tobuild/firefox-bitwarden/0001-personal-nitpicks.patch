@@ -1,0 +1,41 @@
+From 1d3987a023f05a79fd823908475b30743c5445d8 Mon Sep 17 00:00:00 2001
+From: demostanis <demostanis@protonmail.com>
+Date: Wed, 18 Jun 2025 15:36:46 +0200
+Subject: [PATCH] personal nitpicks
+
+---
+ .../apps/browser/src/background/runtime.background.ts         | 4 ----
+ .../src/platform/services/default-environment.service.ts      | 2 +-
+ 2 files changed, 1 insertion(+), 5 deletions(-)
+
+diff --git a/apps/browser/src/background/runtime.background.ts b/apps/browser/src/background/runtime.background.ts
+index ec8ff73..876ab4a 100644
+--- a/apps/browser/src/background/runtime.background.ts
++++ b/apps/browser/src/background/runtime.background.ts
+@@ -393,10 +393,6 @@ export default class RuntimeBackground {
+           this.onInstalledReason === "install" &&
+           !(await firstValueFrom(this.browserInitialInstallService.extensionInstalled$))
+         ) {
+-          if (!devFlagEnabled("skipWelcomeOnInstall")) {
+-            void BrowserApi.createNewTab("https://bitwarden.com/browser-start/");
+-          }
+-
+           await this.autofillSettingsService.setInlineMenuVisibility(
+             AutofillOverlayVisibility.OnFieldFocus,
+           );
+diff --git a/libs/common/src/platform/services/default-environment.service.ts b/libs/common/src/platform/services/default-environment.service.ts
+index df55693..2b1bb3c 100644
+--- a/libs/common/src/platform/services/default-environment.service.ts
++++ b/libs/common/src/platform/services/default-environment.service.ts
+@@ -116,7 +116,7 @@ export const PRODUCTION_REGIONS: RegionConfig[] = [
+ /**
+  * The default region when starting the app.
+  */
+-const DEFAULT_REGION = Region.US;
++const DEFAULT_REGION = Region.EU;
+ 
+ /**
+  * The default region configuration.
+-- 
+2.49.0
+

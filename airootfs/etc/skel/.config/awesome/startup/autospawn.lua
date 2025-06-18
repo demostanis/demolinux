@@ -7,7 +7,7 @@ autospawn("flameshot")
 
 autospawn("kdeconnectd")
 
-autospawn("keepassxc")
+--autospawn("keepassxc")
 
 -- We need a small timeout because
 -- Picom acts weird on first start.

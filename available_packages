@@ -43,10 +43,12 @@ neovim
 xterm
 cmus
 local stremio
+python-pynitrokey
 aur python-usb_monitor # nitrokey-app2 dep
 aur nitrokey-app2
 aur freetube
 keepassxc
+bitwarden # yes, too...
 dolphin-emu
 flatpak
 
@@ -62,7 +64,8 @@ local firefox-ff2mpv
 local firefox-sponsorblock
 local firefox-vimfx
 local firefox-ytarb
-aur firefox-extension-keepassxc-browser
+local firefox-bitwarden
+#aur firefox-extension-keepassxc-browser
 
 # Fonts
 local ttf-font-awesome-pro

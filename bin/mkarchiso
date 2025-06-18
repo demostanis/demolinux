@@ -549,7 +549,7 @@ _make_bootmode_hybrid.grub.gpt() {
     # copied to the Btrfs subvolume), we set a fixed size. this also
     # ensures the system won't take up an extravagant amount of
     # space in the future.
-    system_size=$( numfmt --from=iec --to=none --to-unit=1000000 <<< 4G)M
+    system_size=$( numfmt --from=iec --to=none --to-unit=1000000 <<< 5G)M
     disk_size=$( echo $(( "$(numfmt --from=iec --field=1,3,5 <<< "$system_size + 1M + 200M")" )) | numfmt --to=none --to-unit=1000000 --format=%.0f )M
     imgpath="${work_dir}/disk.img"
 

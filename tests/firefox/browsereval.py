@@ -102,6 +102,8 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     assert "mellow-purple@demostanis" in enabled_addons
     assert "VimFx-unlisted@akhodakivskiy.github.com" in enabled_addons
     assert "CanvasBlocker@kkapsner.de" in enabled_addons
+    assert "mellow-purple@demostanis" in enabled_addons
+    assert "{446900e4-71c2-419f-a6a7-df9c091e268b}" in enabled_addons # Bitwarden
 
     # taken from https://searchfox.org/mozilla-central/source/toolkit/content/aboutSupport.js#1670
     eval("""

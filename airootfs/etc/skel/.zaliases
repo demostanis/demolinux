@@ -43,3 +43,5 @@ alias ls='ls --color'
 alias t='trans -brief'
 alias rz='rz-ax -r'
 alias pfs='sudo persistfs'
+
+alias dm='cd ~d'

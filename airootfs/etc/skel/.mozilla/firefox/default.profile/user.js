@@ -33,6 +33,9 @@ user_pref("browser.urlbar.tipShownCount.searchTip_onboard", 999);
 // Do not show addon ad
 user_pref("browser.newtabpage.activity-stream.asrouter.userprefs.cfr.addons", false);
 
+// Disable form autofill since it covers Bitwarden
+user_pref("signon.autofillForms", false);
+
 // Disable Firefox Home
 user_pref("browser.startup.page",                               0);
 user_pref("browser.startup.homepage",                           "about:blank");

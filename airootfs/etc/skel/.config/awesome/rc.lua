@@ -25,6 +25,7 @@ require"awful.autofocus"
 require"startup"
 require"globalkeys"
 require"notifications"
+require"tagpopup"
 
 local function hide_splash()
     delayed(function()

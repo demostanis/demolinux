@@ -458,6 +458,18 @@ client.connect_signal("manage", function(c)
 	end, 0.1)
 end)
 
+local global_x_by_tag = {}
+awesome.connect_signal("tag::switching", function()
+	local t = awful.screen.focused().selected_tag
+	global_x_by_tag[t.index] = global_x
+end)
+awesome.connect_signal("tag::switched", function()
+	local t = awful.screen.focused().selected_tag
+	global_x = global_x_by_tag[t.index] or 0
+	awful.layout.arrange(mouse.screen)
+end)
+
+
 return {
 	move_left = move_left,
 	move_right = move_right,

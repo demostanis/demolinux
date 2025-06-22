@@ -2,7 +2,7 @@
 Version=1.0
 Name=Stremio
 Comment=Video organizer for your Movies, TV Shows and TV Channels
-Exec=/usr/bin/sudo /usr/local/bin/stremio-vpn %U
+Exec=/usr/local/bin/stremio
 Icon=smartcode-stremio-vpn
 Terminal=false
 Type=Application

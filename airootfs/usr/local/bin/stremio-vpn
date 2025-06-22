@@ -25,5 +25,5 @@ bwrap \
 		   =(echo nameserver 8.8.8.8) \
 	ip netns exec $namespace \
 	sudo -u ${SUDO_USER:-demostanis} env \
-		XDG_RUNTIME_DIR=/run/user/1000 stremio
+		XDG_RUNTIME_DIR=/run/user/1000 /usr/bin/stremio
 

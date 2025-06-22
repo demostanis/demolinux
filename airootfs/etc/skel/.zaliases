@@ -21,7 +21,6 @@ alias gfp="git format-patch --default-prefix"
 alias imv=imv-hardened
 alias mpv=mpv-hardened
 alias firefox=firefox-hardened
-alias stremio='sudo stremio-vpn'
 
 alias -g DN='>/dev/null'
 alias -g DN2='2>/dev/null'

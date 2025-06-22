@@ -1,0 +1,12 @@
+#!/bin/bash
+
+SUDO=sudo
+CMD=stremio-vpn
+INHIBIT='systemd-inhibit --what=idle'
+
+if [ "$1" = --no-vpn ]; then
+	SUDO=
+	CMD=stremio
+fi
+
+$SUDO $INHIBIT $CMD

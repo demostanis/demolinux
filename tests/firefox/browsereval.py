@@ -108,6 +108,10 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     # taken from https://searchfox.org/mozilla-central/source/toolkit/content/aboutSupport.js#1670
     eval("""
         await (async () => {
+          function getLoadContext() {
+            return window.docShell.QueryInterface(Ci.nsILoadContext);
+          }
+
           let supportsStringClass = Cc["@mozilla.org/supports-string;1"];
           let ssText = supportsStringClass.createInstance(Ci.nsISupportsString);
 

@@ -41,15 +41,9 @@ const disableCtrlW = data => {
 	// this disables Ctrl-W to close a tab and replaces
 	// it with readline-like behavior, deleting the word
 	// behind the cursor.
-	window.hijackCtrlW = () => {
-		// in recent firefox versions, overriding oncommand
-		// still calls closeTabOrWindow()...
-
-		window.BrowserCommands.closeTabOrWindow = function() {}
+	window.BrowserCommands.closeTabOrWindow = function() {
 		window.goDoCommand('cmd_deleteWordBackward')
 	}
-	window.document.querySelector('#cmd_close').setAttribute('oncommand', 'hijackCtrlW()')
-	window.BrowserCommands.closeTabOrWindow = function() {}
 };
 
 vimfx.on("TabSelect", disableCtrlW);

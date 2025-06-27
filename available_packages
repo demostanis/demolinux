@@ -146,10 +146,8 @@ clang
 github-cli
 gopls
 go-tools # goimports
-podman
-fuse-overlayfs # for podman
+docker
 docker-compose
-podman-docker
 python-virtualenv
 deno
 meson

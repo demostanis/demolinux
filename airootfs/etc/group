@@ -3,3 +3,4 @@ demostanis:x:1000:demostanis
 wheel:x:998:demostanis
 network:x:90:demostanis
 nix-users:x:967:demostanis
+docker:x:951:demostanis

@@ -1,0 +1,8 @@
+#!/bin/bash
+
+errors=$(nvim --headless +:messages +:q 2>&1)
+
+if [ -n "$errors" ]; then
+	echo got errors when launching neovim: "$errors"
+	exit 1
+fi

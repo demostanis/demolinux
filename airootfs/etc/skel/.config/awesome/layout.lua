@@ -196,6 +196,10 @@ local function move_left()
 end
 
 local function global_x_of_client(c)
+	while c.transient_for do
+		c = c.transient_for
+	end
+
 	local first = first_window()
 	local new_global_x = c.x-first.x
 	if new_global_x <= 0 then
@@ -262,9 +266,6 @@ local function on_window_appearance_change(c)
 	delayed(function()
 		local is_valid = pcall(function() return c.valid end) and c.valid
 		if is_valid then
-			if c.transient_for then
-				c = c.transient_for
-			end
 			if #mouse.screen.clients > 0 then -- why to we reach here?
 				set_global_x(global_x_of_client(c))
 			end

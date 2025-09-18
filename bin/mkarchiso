@@ -182,6 +182,12 @@ _make_pacman_conf() {
     # Arch Linux archive so we don't have to -y all the time
     mirror=https://archive.archlinux.org/repos/$(date -d yesterday -u +%Y/%m/%d)/'$repo'/os/'$arch'
     echo Server = $mirror >> "${work_dir}/mirrorlist"
+    echo '[options]' >> "${work_dir}/chroot.pacman.conf"
+    echo 'Architecture = auto' >> "${work_dir}/chroot.pacman.conf"
+    echo '[core]' >> "${work_dir}/chroot.pacman.conf"
+    echo Server = $mirror >> "${work_dir}/chroot.pacman.conf"
+    echo '[extra]' >> "${work_dir}/chroot.pacman.conf"
+    echo Server = $mirror >> "${work_dir}/chroot.pacman.conf"
 
     _msg_info "Copying custom pacman.conf to work directory..."
     _msg_info "Using pacman CacheDir: ${_cache_dirs}"
@@ -242,12 +248,8 @@ _make_chroot() {
     if [ ! -e "${chroot_dir}" ]; then
         mkdir -p "${chroot_dir}"
         _msg_info "Creating build chroot..."
-        mkarchroot "${chroot_dir}/root" base-devel
+        mkarchroot -C "${work_dir}/chroot.pacman.conf" "${chroot_dir}/root" base-devel
         sed -i 's/ debug / !debug /g' "${chroot_dir}/root/etc/makepkg.conf"
-        cp "${work_dir}/mirrorlist" "${chroot_dir}/root/etc/pacman.d/mirrorlist"
-    else
-        _msg_info "Updating build chroot..."
-        arch-nspawn "${chroot_dir}/root" pacman --noconfirm -Syu
     fi
 
     buildpkg() {
@@ -262,11 +264,11 @@ _make_chroot() {
             chown -R $SUDO_USER:$SUDO_USER "${pkgdir}"
 
             realpkgname() {
-                tar -xOf "$1" .PKGINFO | \
+                tar -xOf "$1" .PKGINFO 2>/dev/null | \
                     awk -F"[= ]" '/pkgname/{print$4}'
             }
 
-            if compgen -G "${profile}"/packages/db/*"$pkg"-*pkg.tar*; then
+            if compgen -G "${profile}"/packages/db/*"$pkg"-*pkg.tar* >/dev/null; then
                 file="${profile}"/packages/db/*"$pkg"-*pkg.tar*
                 if [ "$(realpkgname "$file")" = "$pkg" ]; then
                     rm "$file"

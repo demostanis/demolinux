@@ -1,0 +1,26 @@
+#!/bin/bash
+
+case "$1" in
+	closewindow)
+		awesome-client 'client.focus:kill()'
+		;;
+	fullscreen)
+		awesome-client 'client.focus.fullscreen = not client.focus.fullscreen'
+		;;
+	leftwindow)
+		awesome-client 'layout.move_left_window()'
+		;;
+	rightwindow)
+		awesome-client 'layout.move_right_window()'
+		;;
+	applauncher)
+		awesome-client 'require"applauncher"()'
+		;;
+	keyboard)
+		if pgrep corekeyboard; then
+			pkill corekeyboard
+		else
+			corekeyboard
+		fi
+		;;
+esac

@@ -1,0 +1,11 @@
+[{
+    "action": "shell(\"sc-controller --osd\")", 
+    "icon": "system/edit", 
+    "id": "item_i9", 
+    "name": "Edit Bindings"
+}, {
+    "action": "osd(turnoff())", 
+    "icon": "system/turn-off", 
+    "id": "item4", 
+    "name": "Turn Controller OFF"
+}]

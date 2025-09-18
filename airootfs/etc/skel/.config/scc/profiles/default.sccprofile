@@ -1,0 +1,54 @@
+{
+    "_": "", 
+    "buttons": {
+        "A": {
+            "action": "button(Keys.BTN_MOUSE)"
+        }, 
+        "B": {
+            "action": "button(Keys.KEY_ESC)"
+        }, 
+        "C": {
+            "action": "hold(menu('Default.menu'), shell('/usr/local/bin/controllerctrl applauncher'))"
+        }, 
+        "LB": {
+            "action": "shell('/usr/local/bin/controllerctrl leftwindow')"
+        }, 
+        "RB": {
+            "action": "shell('/usr/local/bin/controllerctrl rightwindow')"
+        }, 
+        "RPAD": {
+            "action": "shell('/usr/local/bin/controllerctrl keyboard')"
+        }, 
+        "STICKPRESS": {
+            "action": "menu('Default.menu')"
+        }, 
+        "X": {
+            "action": "shell('/usr/local/bin/controllerctrl closewindow')"
+        }, 
+        "Y": {
+            "action": "shell('/usr/local/bin/controllerctrl fullscreen')"
+        }
+    }, 
+    "cpad": {}, 
+    "dpad": {}, 
+    "gyro": {}, 
+    "is_template": false, 
+    "menus": {}, 
+    "pad_left": {
+        "action": "dpad(button(Keys.KEY_UP), button(Keys.KEY_DOWN), button(Keys.KEY_LEFT), button(Keys.KEY_RIGHT))"
+    }, 
+    "pad_right": {
+        "action": "dpad(button(Keys.KEY_UP), button(Keys.KEY_DOWN), button(Keys.KEY_LEFT), button(Keys.KEY_RIGHT))"
+    }, 
+    "rstick": {}, 
+    "stick": {
+        "action": "smooth(8, 0.78, 2.0, feedback(RIGHT, 256, mouse()))"
+    }, 
+    "trigger_left": {
+        "action": "trigger(254, 255, button(Keys.KEY_BACKSPACE))"
+    }, 
+    "trigger_right": {
+        "action": "trigger(254, 255, button(Keys.KEY_ENTER))"
+    }, 
+    "version": 1.4
+}

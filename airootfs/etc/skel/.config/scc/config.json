@@ -1,0 +1,8 @@
+{
+    "gui": {
+        "news": {
+            "enabled": false, 
+            "last_version": "0.3.12"
+        }
+    }
+}

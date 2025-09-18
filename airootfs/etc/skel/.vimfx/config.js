@@ -2,7 +2,7 @@ vimfx.addCommand({
 	name: 'bookmarks',
 	description: 'Open bookmarks side bar'
 }, ({ vim }) =>
-	vim.window.SidebarUI.toggle('viewBookmarksSidebar'))
+	vim.window.BookmarkingUI.toggleBookmarksToolbar())
 vimfx.set('custom.mode.normal.bookmarks', 'B')
 
 vimfx.addCommand({

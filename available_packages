@@ -190,6 +190,11 @@ luarocks
 rlwrap
 pv
 reflector
+aur python-ioctl-opt # sc-controller dep
+aur python-vdf # sc-controller dep
+aur sc-controller
+aur libcprime # corekeyboard dep
+aur corekeyboard
 xdotool
 rsync
 yad

@@ -43,10 +43,11 @@ vim.diagnostic.enable(false)
 
 local function enable_ls(name, settings)
     local capabilities = require"cmp_nvim_lsp".default_capabilities()
-    require"lspconfig"[name].setup{
+    vim.lsp.config[name] = {
         capabilities = capabilities,
         settings = settings,
     }
+    vim.lsp.enable(name)
 end
 enable_ls("clangd")
 enable_ls("lua_ls", {Lua = {

@@ -5,7 +5,8 @@ local app_whitelist = {
     "Stremio", "Transmission", "Tor Browser",
     "Ghidra", "FreeTube", "Bottles", "Stremio (no VPN)",
     "Chromium", "Bitwarden", "Dolphin Emulator",
-    "Nitrokey App 2", "KDE Connect"
+    "Nitrokey App 2", "KDE Connect",
+    "Volume Control"
 }
 
 return function()

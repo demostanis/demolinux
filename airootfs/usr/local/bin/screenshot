@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# https://github.com/flameshot-org/flameshot/issues/784#issuecomment-1642261718
+focusedwindow_before=$(xdotool getactivewindow)
+flameshot gui
+[ "$focusedwindow_before" = "$(xdotool getactivewindow)" ] && xdotool windowfocus $focusedwindow_before
+

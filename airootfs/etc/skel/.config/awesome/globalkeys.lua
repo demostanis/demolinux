@@ -34,7 +34,7 @@ local function app_shortcut(app, key)
 end
 
 local globalkeys = gears.table.join(
-    awful.key({ modkey }, "s", function() awful.spawn("flameshot gui") end),
+    awful.key({ modkey }, "s", function() awful.spawn("screenshot") end),
     awful.key({ modkey }, "b", function() awful.spawn("boomer", false) end),
 
     app_shortcut(terminal, "Return"),

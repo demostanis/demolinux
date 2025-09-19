@@ -19,6 +19,7 @@ build() {
     add_binary plymouth
     add_binary lsblk
     add_binary kexec
+    add_binary attr
     add_binary date # why not in busybox??
     add_binary growpart
     # growpart deps

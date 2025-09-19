@@ -52,6 +52,8 @@ else
 	fi
 fi
 
+attr -qs createdbysysupdate -V yes demolinux.img
+
 echo installing new kernel...
 mkdir -p ../.boot.bak
 cp /run/archiso/bootmnt/vmlinuz-linux ../.boot.bak

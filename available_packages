@@ -71,7 +71,7 @@ local firefox-bitwarden
 local ttf-font-awesome-pro
 ttf-firacode-nerd
 ttf-fira-sans
-ttf-font-awesome
+otf-font-awesome
 noto-fonts
 noto-fonts-emoji
 

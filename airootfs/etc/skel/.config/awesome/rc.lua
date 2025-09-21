@@ -28,14 +28,16 @@ require"notifications"
 require"tagpopup"
 
 local function hide_splash()
-    delayed(function()
-        awful.spawn.with_shell([[
-            if [ -e ~/.feh.pid ]; then
-                kill $(<~/.feh.pid)
-                rm ~/.feh.pid
-            fi
-        ]])
-    end, 1)
+    awful.spawn.with_shell([[
+        if [ -e ~/.feh.pid ]; then
+            kill $(<~/.feh.pid)
+            rm ~/.feh.pid
+            sleep 1
+        fi
+        # current picom is loading ~/.config/picom/picom.splash.conf,
+        # kill it so autospawn loads ~/.config/picom/picom.conf
+        pkill picom
+    ]])
 end
 
 local c = 0

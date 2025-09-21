@@ -1,9 +1,0 @@
-[Unit]
-Description=Deactivate Plymouth
-After=getty.target
-
-[Service]
-ExecStart=/usr/bin/plymouth deactivate
-
-[Install]
-WantedBy=multi-user.target

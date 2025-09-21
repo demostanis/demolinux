@@ -14,4 +14,4 @@ ExecStart=/usr/bin/pacman-key --populate
 ExecStart=/usr/bin/pacman -Fy
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=graphical.target

@@ -9,4 +9,4 @@ ExecStart=/usr/bin/nix-channel --add https://nixos.org/channels/nixos-unstable n
 ExecStart=/usr/bin/nix-channel --update
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=graphical.target

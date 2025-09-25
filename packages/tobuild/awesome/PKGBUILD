@@ -11,7 +11,7 @@
 _pkgname=awesome
 pkgname=${_pkgname}
 pkgver=4.3.1683.g691e36425
-pkgrel=4
+pkgrel=5
 pkgdesc='Highly configurable framework window manager'
 arch=('i686' 'x86_64')
 url='http://awesome.naquadah.org/'
@@ -37,7 +37,8 @@ source=("$pkgname::git+https://github.com/awesomeWM/awesome.git#commit=691e36425
 	0005-Add-margins-to-wicon.patch
         0006-push-new-windows-in-the-stack-after-the-focused-wind.patch
         0007-add-client-insert_before.patch
-        0008-rlwrap.patch)
+        0008-rlwrap.patch
+        https://patch-diff.githubusercontent.com/raw/awesomeWM/awesome/pull/4022.patch) # use GioUnix to use platform-specific Gio classes
 md5sums=('SKIP'
          'bdf30656a639bd0d2e9ce740882dec59'
          'c987300e07e58d6dbae37e40734a8f56'
@@ -46,7 +47,8 @@ md5sums=('SKIP'
          'a06a41d70750b3fdcdf5a111ac469f10'
          'e7bbb703b74f17625f37dfad66201cea'
          '90340481f9ae0e41241c7d02ad611b66'
-         '31cb43c7cd5bcf202a267c6e813e68ea')
+         '31cb43c7cd5bcf202a267c6e813e68ea'
+         'ea3f40567ccd119dde9a13876ec9455b')
 _LUA_VER=5.4
 
 pkgver() {

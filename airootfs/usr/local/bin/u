@@ -1,6 +1,8 @@
 #!/bin/sh
 
 term=$(echo ${@:-'ur stupid'} | sed 's/ /+/g')
-curl -G "https://www.urbandictionary.com/define.php" --data "term=$term" -Ls |\
-  xmllint --html --xpath 'string(//meta[@property="og:description"]/@content)' - 2>/dev/null
-
+curl -G https://urbandictionary.com/define.php -sL --data "term=$term" | \
+  xmllint --html --xpath '//*[@class="break-words meaning mb-4"]' - 2>/dev/null | \
+  head -1 | xmllint --xpath '//text()' - | tr -d \\n | \
+  sed 's/&#13;/\n/g'
+echo

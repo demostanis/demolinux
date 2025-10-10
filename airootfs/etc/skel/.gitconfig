@@ -16,6 +16,7 @@
         algorithm = histogram
         srcPrefix = "prev "
         dstPrefix = "new "
+        relative = true
 
 [rerere]
         enabled = true

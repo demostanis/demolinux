@@ -577,6 +577,14 @@ _make_bootmode_hybrid.grub.gpt() {
     mount -o compress=zstd,noatime /dev/loop0p3 /mnt/demolinux/root
     btrfs subvolume create /mnt/demolinux/root/system
     btrfs subvolume create /mnt/demolinux/root/system/airootfs
+
+    # the copying files operation causes the CI to fail
+    # with No space left on device, so we remove some stuff...
+    # TODO: something better??
+    if [ -n "$CI" ]; then
+        rm -rf "${profile}/packages/chroot"
+    fi
+
     _msg_info "Copying files to the disk image..."
     cp -a "${pacstrap_dir}"/* /mnt/demolinux/root/system/airootfs
     cp -r "${profile}/packages/db" /mnt/demolinux/root/system/airootfs/packages

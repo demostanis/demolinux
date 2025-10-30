@@ -6,6 +6,9 @@ XDG_CONFIG_HOME="$DEST"/../.config
 
 # TODO: use CUSTOM_PATHLIST
 
+# https://gitlab.gnome.org/GNOME/gdk-pixbuf/-/issues/286
+sed -i "s/ preprocess='to-pixdata'//" /usr/share/oomox/plugins/theme_oomox/src/gtk-3.{,2}0/gtk.gresource.xml
+
 python -c "
 import sys, gi
 sys.path.append('$OOMOX_PATH/')

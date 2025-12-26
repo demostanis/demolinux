@@ -42,7 +42,6 @@ local iwgtk
 neovim
 xterm
 cmus
-local stremio
 python-pynitrokey
 aur python-usb_monitor # nitrokey-app2 dep
 aur nitrokey-app2

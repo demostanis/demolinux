@@ -184,6 +184,8 @@ _make_pacman_conf() {
     echo Server = $mirror >> "${work_dir}/mirrorlist"
     echo '[options]' >> "${work_dir}/chroot.pacman.conf"
     echo 'Architecture = auto' >> "${work_dir}/chroot.pacman.conf"
+    echo 'SigLevel = Required DatabaseOptional' >> "${work_dir}/chroot.pacman.conf"
+    echo 'LocalFileSigLevel = Optional' >> "${work_dir}/chroot.pacman.conf"
     echo '[core]' >> "${work_dir}/chroot.pacman.conf"
     echo Server = $mirror >> "${work_dir}/chroot.pacman.conf"
     echo '[extra]' >> "${work_dir}/chroot.pacman.conf"

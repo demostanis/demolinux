@@ -136,6 +136,7 @@ aur paru
 openbsd-netcat
 tinyxxd
 mesa-utils
+gemini-cli
 aria2
 tmux
 xcolor
@@ -152,6 +153,8 @@ python-virtualenv
 deno
 meson
 npm
+yarn
+uv
 gdb
 
 # System

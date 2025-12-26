@@ -46,7 +46,6 @@ python-pynitrokey
 aur python-usb_monitor # nitrokey-app2 dep
 aur nitrokey-app2
 aur freetube
-keepassxc
 bitwarden # yes, too...
 dolphin-emu
 flatpak
@@ -64,7 +63,6 @@ local firefox-sponsorblock
 local firefox-vimfx
 local firefox-ytarb
 local firefox-bitwarden
-#aur firefox-extension-keepassxc-browser
 
 # Fonts
 local ttf-font-awesome-pro

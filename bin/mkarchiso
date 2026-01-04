@@ -583,7 +583,7 @@ _make_bootmode_hybrid.grub.gpt() {
     # the copying files operation causes the CI to fail
     # with No space left on device, so we remove some stuff...
     # TODO: something better??
-    if [ -n "$CI" ]; then
+    if [ -n "${CI-}" ]; then
         rm -rf "${profile}/packages/chroot"
     fi
 

@@ -1,6 +1,6 @@
 local app_whitelist = {
     "Firefox Web Browser",
-    "urxvt", "Nemo", "Neovim",
+    "urxvt", "Files", "Neovim",
     "scrcpy", "GNU Image Manipulation Program",
     "Transmission", "Tor Browser", "Ghidra",
     "FreeTube", "Bottles", "Chromium",

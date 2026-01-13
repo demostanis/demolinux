@@ -46,7 +46,6 @@ python-pynitrokey
 aur python-usb_monitor # nitrokey-app2 dep
 aur nitrokey-app2
 aur freetube
-bitwarden # yes, too...
 dolphin-emu
 flatpak
 
@@ -105,12 +104,11 @@ man-pages
 libqalculate
 expac
 patchutils
-rizin
-rz-ghidra
 lsof
 irssi
 btop
 jq
+ncdu
 lynx
 nmap
 sudo

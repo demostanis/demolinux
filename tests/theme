@@ -10,7 +10,7 @@ expect_middle_color() {
 }
 
 yad &
-sleep 1
+sleep 2
 expect_middle_color "srgb(26,9,45)"
 quitwin
 

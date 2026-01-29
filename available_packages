@@ -144,6 +144,7 @@ go-tools # goimports
 docker
 docker-compose
 python-virtualenv
+aur opencode
 deno
 meson
 npm

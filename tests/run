@@ -29,8 +29,8 @@ run &
 start=$(date +%s)
 while :; do
 	now=$(date +%s)
-	if (( now - start >= 180 )); then
-		die VM did not start after 3 minutes.
+	if (( now - start >= 240 )); then
+		die VM did not start after 4 minutes.
 	fi
 
 	[ -t ] && reset

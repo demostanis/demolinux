@@ -37,7 +37,6 @@ aur mpv-thumbfast-git
 zathura
 zathura-pdf-mupdf
 torbrowser-launcher
-rz-cutter
 local iwgtk
 neovim
 xterm
@@ -198,4 +197,3 @@ rsync
 yad
 iwd
 zsh
-nix

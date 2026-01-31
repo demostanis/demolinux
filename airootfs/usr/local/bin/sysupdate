@@ -54,18 +54,10 @@ fi
 
 attr -qs createdbysysupdate -V yes demolinux.img
 
-echo installing new kernel...
-mkdir -p ../.boot.bak
-cp /run/archiso/bootmnt/vmlinuz-linux ../.boot.bak
-cp /run/archiso/bootmnt/initramfs-linux.img ../.boot.bak
-mkdir -p /run/archiso/newbootmnt
-dev=$(losetup --show -Pf demolinux.img)
-mount "$dev"p2 /run/archiso/newbootmnt
-mount -o remount,rw /run/archiso/bootmnt
-cp -a /run/archiso/newbootmnt/{vmlinuz-linux,initramfs-linux.img,amd-ucode.img,intel-ucode.img} /run/archiso/bootmnt
-umount /run/archiso/newbootmnt
-rm -r /run/archiso/newbootmnt
-
 echo rebooting...
-kexec -l /run/archiso/bootmnt/vmlinuz-linux --initrd=/run/archiso/bootmnt/initramfs-linux.img --command-line="$(sed -E 's/btrfs_snapshot=([^ ]|$)+ ?//' /proc/cmdline)"
+dev=$(losetup --show -Pf demolinux.img)
+mount "$dev"p3 -o subvol=/system/airootfs /run/archiso/bootmnt
+kexec -l /run/archiso/bootmnt/boot/vmlinuz-linux \
+	--initrd=/run/archiso/bootmnt/boot/initramfs-linux.img \
+	--command-line="$(sed -E 's/btrfs_snapshot=([^ ]|$)+ ?//' /proc/cmdline)"
 kexec -e

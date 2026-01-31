@@ -509,27 +509,30 @@ copy_boot_files() {
     local ucode_image
     _msg_info "Preparing kernel and initramfs for the disk image..."
 
+    boot_dir=/mnt/demolinux/root/system/airootfs/boot
+    mkdir -p $boot_dir
+
     # Way too many MBs wasted...
     rm -f "${work_dir}/boot/"*"fallback"*".img"
-    cp -- "${work_dir}/boot/initramfs-"*".img" /mnt/demolinux/boot
-    cp -- "${work_dir}/boot/vmlinuz-"* /mnt/demolinux/boot
+    cp -- "${work_dir}/boot/initramfs-"*".img" $boot_dir
+    cp -- "${work_dir}/boot/vmlinuz-"* $boot_dir
 
     if [ -e /usr/share/ipxe/ipxe.lkrn ]; then
-        cp /usr/share/ipxe/ipxe.lkrn /mnt/demolinux/boot
+        cp /usr/share/ipxe/ipxe.lkrn $boot_dir
     fi
     if [ -e /usr/share/ipxe/x86_64/ipxe.efi ]; then
-        cp /usr/share/ipxe/x86_64/ipxe.efi /mnt/demolinux/boot
+        cp /usr/share/ipxe/x86_64/ipxe.efi $boot_dir
     fi
     if [ -e /boot/memtest86+/memtest.bin ]; then
-        cp /boot/memtest86+/memtest.bin /mnt/demolinux/boot
+        cp /boot/memtest86+/memtest.bin $boot_dir
     fi
     if [ -e /boot/memtest86+/memtest.efi ]; then
-        cp /boot/memtest86+/memtest.efi /mnt/demolinux/boot
+        cp /boot/memtest86+/memtest.efi $boot_dir
     fi
 
     for ucode_image in "${ucodes[@]}"; do
         if [[ -e "${work_dir}/boot/${ucode_image}" ]]; then
-            cp -- "${work_dir}/boot/${ucode_image}" /mnt/demolinux/boot/
+            cp -- "${work_dir}/boot/${ucode_image}" $boot_dir/
         fi
     done
     _msg_info "Done!"
@@ -563,7 +566,7 @@ _make_bootmode_hybrid.grub.gpt() {
     truncate -s $disk_size "$imgpath"
     sgdisk \
         -n 1:0:+1M -t 1:ef02 -c 1:legacyboot \
-        -n 2:0:+200M -t 2:ef00 -c 2:boot \
+        -n 2:0:+20M -t 2:ef00 -c 2:boot \
         -n 3:0:+$system_size -t 3:8300 -c 3:system \
         -p "$imgpath"
 
@@ -580,6 +583,10 @@ _make_bootmode_hybrid.grub.gpt() {
     btrfs subvolume create /mnt/demolinux/root/system
     btrfs subvolume create /mnt/demolinux/root/system/airootfs
 
+    mkdir -p /mnt/demolinux/boot
+    mount /dev/loop0p2 /mnt/demolinux/boot
+    copy_boot_files
+
     # the copying files operation causes the CI to fail
     # with No space left on device, so we remove some stuff...
     # TODO: something better??
@@ -591,10 +598,6 @@ _make_bootmode_hybrid.grub.gpt() {
     cp -a "${pacstrap_dir}"/* /mnt/demolinux/root/system/airootfs
     cp -r "${profile}/packages/db" /mnt/demolinux/root/system/airootfs/packages
     btrfs property set /mnt/demolinux/root/system/airootfs ro true
-
-    mkdir -p /mnt/demolinux/boot
-    mount /dev/loop0p2 /mnt/demolinux/boot
-    copy_boot_files
 
     _msg_info "Installing grub..."
     # Install grub for both BIOS and UEFI boot

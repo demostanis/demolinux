@@ -10,9 +10,9 @@ datadir="${datarootdir}"
 
 . "${datadir}/grub/grub-mkconfig_lib"
 
-prepare_boot_cache="$(prepare_grub_to_access_device ${GRUB_DEVICE_BOOT} | sed -e "s/^/\t/")"
+prepare_boot_cache="$(prepare_grub_to_access_device /dev/loop0p3 | sed -e "s/^/\t/")"
 
-IPXE=/mnt/demolinux/boot/ipxe.lkrn
+IPXE=/mnt/demolinux/root/system/airootfs/boot/ipxe.lkrn
 
 if test -e "$IPXE" ; then
   IPXEPATH=$( make_system_path_relative_to_its_root "$IPXE" )

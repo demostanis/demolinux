@@ -134,21 +134,14 @@ linux_entry ()
 
   echo "	insmod gzio" | sed "s/^/$submenu_indentation/"
 
-  if [ x$dirname = x/ ]; then
-    if [ -z "${prepare_root_cache}" ]; then
-      prepare_root_cache="$(prepare_grub_to_access_device ${GRUB_DEVICE} | grub_add_tab)"
-    fi
-    printf '%s\n' "${prepare_root_cache}" | sed "s/^/$submenu_indentation/"
-  else
-    if [ -z "${prepare_boot_cache}" ]; then
-      prepare_boot_cache="$(prepare_grub_to_access_device ${GRUB_DEVICE_BOOT} | grub_add_tab)"
-    fi
-    printf '%s\n' "${prepare_boot_cache}" | sed "s/^/$submenu_indentation/"
+  if [ -z "${prepare_boot_cache}" ]; then
+    prepare_boot_cache="$(prepare_grub_to_access_device /dev/loop0p3 | grub_add_tab)"
   fi
+  printf '%s\n' "${prepare_boot_cache}" | sed "s/^/$submenu_indentation/"
   message="$(gettext_printf "Loading kernel %s..." ${version})"
   sed "s/^/$submenu_indentation/" << EOF
 	echo	'$(echo "$message" | grub_quote)'
-	linux	${rel_dirname}/${basename} ${args}
+	linux	/system/airootfs/boot/${basename} ${args}
 EOF
   if test -n "${initrd}" ; then
     # TRANSLATORS: ramdisk isn't identifier. Should be translated.
@@ -159,9 +152,9 @@ EOF
     done
     sed "s/^/$submenu_indentation/" << EOF
 	echo	'$(echo "$message" | grub_quote)'
-        initrd  /intel-ucode.img
-        initrd  /amd-ucode.img
-	initrd	$(echo $initrd_path)
+        initrd  /system/airootfs/boot/intel-ucode.img
+        initrd  /system/airootfs/boot/amd-ucode.img
+	initrd	/system/airootfs/boot$(echo $initrd_path)
 EOF
   fi
   sed "s/^/$submenu_indentation/" << EOF
@@ -171,6 +164,7 @@ EOF
 
 # hardcode kernel since im too lazy to understand
 # why it doesnt work otherwise...
+# TODO: is this still used? that's the wrong path now
 list="/mnt/demolinux/boot/vmlinuz-linux"
 
 case "$machine" in

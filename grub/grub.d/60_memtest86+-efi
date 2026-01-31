@@ -12,7 +12,7 @@ datadir="${datarootdir}"
 
 . "${datadir}/grub/grub-mkconfig_lib"
 
-MEMTEST86_IMAGE="/mnt/demolinux/boot/memtest.efi"
+MEMTEST86_IMAGE="/mnt/demolinux/root/system/airootfs/boot/memtest.efi"
 CLASS="--class memtest86 --class gnu --class tool"
 
 if [ -e "${MEMTEST86_IMAGE}" ] && is_path_readable_by_grub "${MEMTEST86_IMAGE}" ; then

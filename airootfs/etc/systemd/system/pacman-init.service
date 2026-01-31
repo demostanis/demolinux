@@ -3,7 +3,8 @@ Description=Initializes Pacman keyring
 Requires=etc-pacman.d-gnupg.mount
 After=etc-pacman.d-gnupg.mount time-sync.target
 BindsTo=etc-pacman.d-gnupg.mount
-Before=archlinux-keyring-wkd-sync.service
+Before=archlinux-keyring-wkd-sync.service archlinux-keyring-wkd-sync.service
+Wants=archlinux-keyring-wkd-sync.service
 
 [Service]
 Type=oneshot
@@ -14,4 +15,4 @@ ExecStart=/usr/bin/pacman-key --populate
 ExecStart=/usr/bin/pacman -Fy
 
 [Install]
-WantedBy=graphical.target
+WantedBy=network-online.target

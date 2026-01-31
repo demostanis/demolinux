@@ -1,0 +1,4 @@
+#!/bin/bash
+
+root=https://mirror.rackspace.com/archlinux/core/os/x86_64/ 
+curl -s $root | awk -F\" '/archlinux-keyring/{print$2;exit}' | xargs -I@ sudo pacman --noconfirm -U $root@

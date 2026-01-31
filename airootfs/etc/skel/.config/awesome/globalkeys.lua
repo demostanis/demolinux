@@ -41,7 +41,7 @@ local globalkeys = gears.table.join(
     app_shortcut("firefox-hardened", "f"),
     app_shortcut("copyq show", ","),
 
-    awful.key({ modkey }, "r", awesome.restart),
+    awful.key({ modkey, "Shift" }, "r", awesome.restart),
 
     awful.key({ modkey }, "p", function() show_panel() end, nil),
     awful.key({ modkey, "Shift" }, "k", require"screenlock", nil),

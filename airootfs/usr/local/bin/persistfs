@@ -14,7 +14,11 @@ fi
 is_adding_pkg=0
 
 absolute_path() {
-	echo $(realpath -s "$(dirname "$1")")/"$(basename "$1")"
+	if [[ "$1" = /* ]]; then
+		echo "$1"
+	else
+		echo "$(realpath -s "$(dirname "$1")")/"$(basename "$1")""
+	fi
 }
 
 add_files() {
@@ -22,6 +26,15 @@ add_files() {
 
 	for file in "$@"; do
 		export file=$(absolute_path "$file")
+		files+=( "$file" )
+	done
+
+	done=
+	for file in "${files[@]}"; do
+		if [ -n "$done" ]; then
+			echo
+			break
+		fi
 
 		# e.g. files removed by localepurge
 		if [ ! -e "$file" ]; then
@@ -40,7 +53,7 @@ add_files() {
 		printf "%.${maxsize}s\n" "Adding file $file to persistfs..."
 
 		files+=( "$file" )
-	done
+	done &
 
 	(
 		exec 3> >( awk '
@@ -49,6 +62,8 @@ add_files() {
 		for f in "${files[@]}"; do printf "%s\n" "$f"; done | \
 			rsync -arq --mkpath --files-from=- / $pfs_dir/upperdir 2>&3
 	)
+	done=1
+	wait
 }
 
 actual_pkg() {
@@ -106,7 +121,7 @@ case $1 in
 				exit 1
 			fi
 			echo -e Adding "\033[1;31m$pkg\033[0m" to persistfs...
-			echo
+			echo Computing file list...
 
 			add_files $(pacman -Ql "$pkg" | \
 				cut -d\  -f2 | \

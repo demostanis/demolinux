@@ -85,13 +85,13 @@ squashfs-tools
 btrfs-progs
 e2fsprogs
 cryptsetup
+dosfstools
 
 # Utilities
 bat
 bind
 fd
 fzf
-sd
 git
 git-absorb
 tree
@@ -113,9 +113,6 @@ nmap
 sudo
 fastfetch
 pacman-contrib
-python-pipx
-python-pip
-translate-shell
 qemu-desktop
 kdeconnect
 ripgrep
@@ -130,8 +127,6 @@ aur paru
 openbsd-netcat
 tinyxxd
 mesa-utils
-gemini-cli
-aria2
 tmux
 xcolor
 
@@ -149,6 +144,8 @@ deno
 meson
 npm
 yarn
+python-pipx
+python-pip
 uv
 gdb
 

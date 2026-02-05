@@ -1,16 +1,22 @@
 #!/bin/bash
 
 expect_middle_color() {
-	mc=$(import -window root png:- | magick png:- -format "%[pixel:p{%[fx:int(w/2)],%[fx:int(h/2)]}]" info:)
+	mc=
+	tries=${2:-10}
+	for i in {1..$tries}; do
+		mc=$(import -window root png:- | magick png:- -format "%[pixel:p{%[fx:int(w/2)],%[fx:int(h/2)]}]" info:)
 
-	if [ "$mc" != "$1" ]; then
-		echo expected color at the middle of the screen to be $1 but got $mc
-		exit 1
-	fi
+		if [ "$mc" = "$1" ]; then
+			return
+		fi
+		sleep 1
+	done
+	echo expected color at the middle of the screen to be $1 but got $mc
+	exit 1
 }
 
 yad &
-sleep 2
+sleep 1
 expect_middle_color "srgb(26,9,45)"
 quitwin
 

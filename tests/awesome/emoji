@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# term
+modkeypress Enter
+xdotool type 'sleep 5 && '
+
+# emoji picker
+modkeypress e
+xdotool type pleading
+# TODO: not sleep 1?
+sleep 1
+xdotool key Enter
+
+# term
+sleep 1
+xdotool key Enter
+
+expectwin 'sleep 5 && 🥺'
+
+quitwin

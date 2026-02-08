@@ -24,6 +24,32 @@ expectmusic() {
 
 expectmusic "Not playing"
 
+ffmpeg -f lavfi -y -i sine=frequency=440:duration=3 \
+	-metadata title='demolinux song' \
+	-metadata artist='demostanis' \
+	~/music/test1.mp3 >/dev/null 2>&1
+ffmpeg -f lavfi -y -i sine=frequency=440:duration=3 \
+	-metadata title='demolinoox song' \
+	-metadata artist='demostanus' \
+	~/music/test2.mp3 >/dev/null 2>&1
+
+rhythmbox >/dev/null 2>&1 &
+expectwin Rhythmbox
+# even if the window is created, it might not mean
+# it's visible..
+sleep 1
+
+# play button
+xdotool mousemove 100 100
+xdotool click 1
+sleep 1
+
+expectmusic 'demostanis - demolinux song'
+sleep 4
+expectmusic 'demostanus - demolinoox song'
+
+quitwin
+
 # this is currently broken on GitHub Actions...
 #freetube >/dev/null 2>&1 &
 #expectwin 'Subscriptions - FreeTube'

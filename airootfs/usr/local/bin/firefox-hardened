@@ -85,6 +85,7 @@ bwrap \
 	--ro-bind /usr/share/X11/xkb /usr/share/X11/xkb \
 	--ro-bind /usr/share/icons /usr/share/icons \
 	--ro-bind /usr/share/mime /usr/share/mime \
+	--ro-bind /usr/share/glycin-loaders /usr/share/glycin-loaders \
 	--ro-bind /etc/fonts /etc/fonts \
 	`# Restricted IPC with DBus` \
 	--ro-bind "$XDG_RUNTIME_DIR"/dbus-proxy/firefox "$XDG_RUNTIME_DIR"/bus \

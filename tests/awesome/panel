@@ -1,0 +1,49 @@
+#!/bin/bash
+
+modkeypress p
+xdotool key w
+expectwin iwgtk
+quitwin
+
+modkeypress p
+orig=$(curl -s icanhazip.com)
+xdotool key v
+sleep 10
+new=$(curl -s icanhazip.com)
+if [ "$orig" = "$new" ]; then
+	echo RiseupVPN is broken, can\'t connect >&2
+	exit 1
+fi
+
+modkeypress p
+xdotool key v
+sleep 5
+
+new=$(curl -s icanhazip.com)
+if [ "$new" != "$orig" ]; then
+	echo RiseupVPN is broken, can\'t disconnect >&2
+	exit 1
+fi
+
+# TODO: safer?
+( rm -f ~/movies/screenrecording-* || : ) 2>/dev/null
+
+modkeypress p
+xdotool key r
+sleep 5
+xdotool key r
+sleep 5
+xdotool key Escape
+
+mv ~/movies/screenrecording-* record.mp4
+trap 'rm -f record.mp4' EXIT
+xdg-open record.mp4 >/dev/null 2>&1 & sleep 1
+expectwin 'record.mp4 - mpv'
+wait
+
+modkeypress p
+xdotool key c
+sleep 1
+xdotool click 1
+expectwin 'Color picker'
+quitwin

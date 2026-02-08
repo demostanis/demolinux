@@ -21,6 +21,16 @@ nvimpkg() {
 	wait
 }
 
+nvim() {
+	if [ -n "$NVIM" ]; then
+		if (( $# > 0 )); then
+			command nvim --server "$NVIM" --remote "$@"
+		fi
+	else
+		command nvim "$@"
+	fi
+}
+
 #ssh() {
 #	SSH_USER=...
 #	SSH_HOST=...

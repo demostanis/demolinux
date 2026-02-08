@@ -47,7 +47,7 @@ headless(){
 }
 
 tests() {
-	without_root ./tests/run
+	without_root ./tests/run $1
 }
 
 flash(){
@@ -86,7 +86,7 @@ case $1 in
 	__headless) headless ;; # for tests
 	clean) clean ;;
 	build) clean; build ;;
-	tests) tests ;;
+	tests) tests $2 ;;
 	schemes) rebuild_schemes $2 ;;
 	flash) flash $2 ;;
 	all) clean; rebuild_schemes && build && run ;;

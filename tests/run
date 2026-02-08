@@ -60,7 +60,9 @@ echo changing display resolution...
 # for the screen to refresh
 sleep 5
 
-./dctrl push tests /tmp/tests >/dev/null
+./dctrl shell "mkdir /tmp/tests"
+for t in tests/${1:-*}; do ./dctrl push "$t" /tmp/tests >/dev/null; done
+./dctrl push tests/utils /tmp/tests >/dev/null
 
 ./dctrl shell <<'EOC' || die
 

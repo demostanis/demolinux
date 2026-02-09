@@ -6,7 +6,7 @@ expectmusic() {
 	awesome-client 'show_panel()'
 
 	music=
-	tries=${2:-60}
+	tries=${2:-10}
 	for i in {1..$tries}; do
 		music=$(import -window root -crop 409x147+8+442 png:- | tesseract - - 2>/dev/null)
 
@@ -37,7 +37,7 @@ rhythmbox >/dev/null 2>&1 &
 expectwin Rhythmbox
 # even if the window is created, it might not mean
 # it's visible..
-sleep 1
+sleep 10
 
 # play button
 xdotool mousemove 100 100

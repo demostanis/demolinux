@@ -19,10 +19,9 @@ expectvim() {
 		--server /tmp/nvim-tests.sock \
 		--remote-send "$1" \
 		>/dev/null 2>&1 </dev/null
-	sleep 1
 	out=$(nvim \
 		--server /tmp/nvim-tests.sock \
-		--remote-expr "join(getline(1, '$'),'\n')" \
+		--remote-expr "join(getline(1,'$'),'\n')" \
 		2>&1 </dev/null)
 
 	if [[ "$out" != "$2" ]]; then
@@ -31,8 +30,10 @@ expectvim() {
 	fi
 }
 
-expectvim "ihello world<Esc>" "hello world"
+expectvim "ihello world<esc>" "hello world"
 expectvim "dd" ""
-expectvim "<space>fde<cr>" "{}"
+expectvim "<space>fde" "> de" # telescope prompt
+sleep 1
+expectvim "<cr>" "{}" # pick deno.json
 
 popd>/dev/null

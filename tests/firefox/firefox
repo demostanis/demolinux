@@ -14,7 +14,7 @@ while ! nc -z localhost 6000 2>/dev/null; do
 done
 
 # wait for the browser to initialize a bit..
-sleep 2
+sleep 5
 
 python firefox/browsereval.py
 ret=$?
@@ -24,6 +24,7 @@ sleep 1
 xdotool key o
 sleep 1
 xdotool type https://github.com/demostanis/
+sleep 1
 xdotool key Enter
 expectfocus 'demostanis · GitHub — Mozilla Firefox' 180
 xdotool key ctrl+w # remapped to deleteWordBackward in .vimfx/config.js

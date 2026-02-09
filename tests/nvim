@@ -6,3 +6,33 @@ if [ -n "$errors" ]; then
 	echo got errors when launching neovim: "$errors"
 	exit 1
 fi
+
+pushd `mktemp -d`>/dev/null
+echo '{}' > deno.json # required by the deno LSP which we're testing against
+
+nvim --listen /tmp/nvim-tests.sock --headless >/dev/null 2>&1 & pid=$!
+trap 'kill $pid; rm -f /tmp/nvim-tests.sock' EXIT
+sleep 1
+
+expectvim() {
+	nvim \
+		--server /tmp/nvim-tests.sock \
+		--remote-send "$1" \
+		>/dev/null 2>&1 </dev/null
+	sleep 1
+	out=$(nvim \
+		--server /tmp/nvim-tests.sock \
+		--remote-expr "join(getline(1, '$'),'\n')" \
+		2>&1 </dev/null)
+
+	if [[ "$out" != "$2" ]]; then
+		echo expected nvim output of \"$1\" to be \"$2\" but got \"$out\" >&2
+		exit 1
+	fi
+}
+
+expectvim "ihello world<Esc>" "hello world"
+expectvim "dd" ""
+expectvim "<space>fde<cr>" "{}"
+
+popd>/dev/null

@@ -30,10 +30,31 @@ expectvim() {
 	fi
 }
 
+expectvimcontains() {
+	nvim \
+		--server /tmp/nvim-tests.sock \
+		--remote-send "$1" \
+		>/dev/null 2>&1 </dev/null
+	out=$(nvim \
+		--server /tmp/nvim-tests.sock \
+		--remote-expr "join(getline(1,'$'),'\n')" \
+		2>&1 </dev/null)
+
+	if [[ "$out" != *"$2"* ]]; then
+		echo expected nvim output of \"$1\" to be \"$2\" but got \"$out\" >&2
+		exit 1
+	fi
+}
+
 expectvim "ihello world<esc>" "hello world"
 expectvim "dd" ""
 expectvim "<space>fde" "> de" # telescope prompt
 sleep 1
 expectvim "<cr>" "{}" # pick deno.json
+expectvim ":e main.ts<cr>:w<cr>" ""
+sleep 1 # wait for LSP to start
+expectvim "iconsole.log<esc>K" "console.log"
+sleep 1 # wait for the popup
+expectvimcontains "K" 'Outputs a message to the console'
 
 popd>/dev/null

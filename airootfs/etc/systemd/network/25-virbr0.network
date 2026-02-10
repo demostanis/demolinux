@@ -3,3 +3,5 @@ Name=virbr0
 
 [Network]
 DHCP=yes
+BindCarrier=en*
+BindCarrier=eth*

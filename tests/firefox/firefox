@@ -19,6 +19,10 @@ sleep 5
 python firefox/browsereval.py
 ret=$?
 
+# move the mouse elsewhere than the tab tooltip,
+# otherwise Escape hides the tooltip instead of unfocus the search bar
+xdotool mousemove 0 0
+sleep 1
 xdotool key Escape
 sleep 1
 xdotool key o

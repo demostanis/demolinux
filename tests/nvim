@@ -19,6 +19,7 @@ expectvim() {
 		--server /tmp/nvim-tests.sock \
 		--remote-send "$1" \
 		>/dev/null 2>&1 </dev/null
+	sleep 1
 	out=$(nvim \
 		--server /tmp/nvim-tests.sock \
 		--remote-expr "join(getline(1,'$'),'\n')" \
@@ -35,13 +36,14 @@ expectvimcontains() {
 		--server /tmp/nvim-tests.sock \
 		--remote-send "$1" \
 		>/dev/null 2>&1 </dev/null
+	sleep 1
 	out=$(nvim \
 		--server /tmp/nvim-tests.sock \
 		--remote-expr "join(getline(1,'$'),'\n')" \
 		2>&1 </dev/null)
 
 	if [[ "$out" != *"$2"* ]]; then
-		echo expected nvim output of \"$1\" to be \"$2\" but got \"$out\" >&2
+		echo expected nvim output of \"$1\" to contain \"$2\" but got \"$out\" >&2
 		exit 1
 	fi
 }
@@ -56,5 +58,6 @@ sleep 1 # wait for LSP to start
 expectvim "iconsole.log<esc>K" "console.log"
 sleep 1 # wait for the popup
 expectvimcontains "K" 'Outputs a message to the console'
+expectvim ":q<cr>dd" ''
 
 popd>/dev/null

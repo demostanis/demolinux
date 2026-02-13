@@ -1,6 +1,9 @@
 #!/bin/sh
-# disable blur if running inside QEMU
-if grep QEMU /proc/cpuinfo >/dev/null 2>&1; then
+# disable blur if running inside a VM/old PC
+
+if grep -q QEMU /proc/cpuinfo || \
+	(glxinfo | grep -q llvmpipe) || \
+	(glxinfo | grep 'OpenGL version string' | grep -qv ': 4\.'); then
 	sed 25,\$d -i ~/.config/picom/picom.conf
 	echo 'backend = "xrender";' >> ~/.config/picom/picom.conf
 fi

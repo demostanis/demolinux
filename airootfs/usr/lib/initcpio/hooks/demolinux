@@ -140,10 +140,12 @@ archiso_mount_handler() {
         if grep $offset_magic $rundir/bootmnt/grub/grub.cfg; then
              plymouth update --status="Updating boot params for hibernation..."
              _mnt_dev /dev/disk/by-partlabel/boot "$rundir/bootmnt" "-w" "defaults"
+             _mnt_dev /dev/disk/by-partlabel/system $rundir/airootfs "-r" "subvol=/system/airootfs,compress=zstd,noatime"
+
              offset=$(btrfs inspect-internal map-swapfile -r $rundir/btrfs/swap/swapfile)
              sed -i 's/'$offset_magic'/'$offset/ $rundir/bootmnt/grub/grub.cfg
              cmdline=$(sed 's/'$offset_magic'/'$offset/ /proc/cmdline)
-             kexec -l $rundir/bootmnt/vmlinuz-linux --initrd=$rundir/bootmnt/initramfs-linux.img --command-line="$cmdline"
+             kexec -l $rundir/airootfs/boot/vmlinuz-linux --initrd=$rundir/airootfs/boot/initramfs-linux.img --command-line="$cmdline"
              kexec -e
         else
              _mnt_dev /dev/disk/by-partlabel/boot "$rundir/bootmnt" "-r" "defaults,remount"

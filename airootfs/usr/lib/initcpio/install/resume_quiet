@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-only
+
+build() {
+    local systemd_ver
+
+    map add_module 'crypto-lzo' 'crypto-lz4'
+
+    if command -v systemctl &>/dev/null; then
+        IFS=' .-~^' read -r _ systemd_ver _ < <(systemctl --version)
+        if (( systemd_ver >= 255 )); then
+            add_binary /usr/lib/systemd/systemd-hibernate-resume
+        fi
+    fi
+
+    add_runscript
+}
+
+help() {
+    cat <<HELPEOF
+This hook initializes support for resuming from disk using swsusp.
+HELPEOF
+}
+
+# vim: set ft=sh ts=4 sw=4 et:

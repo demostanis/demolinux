@@ -1,0 +1,43 @@
+#!/usr/bin/ash
+# SPDX-License-Identifier: GPL-2.0-only
+
+run_hook() {
+    local resumedev noresume resume rootdelay
+
+    noresume="$(getarg noresume)"
+    if [ -n "$noresume" ]; then
+        return 0
+    fi
+
+    # systemd-hibernate-resume supports resuming from 'HibernateLocation'
+    # EFI variable. $resume can be empty in this case.
+    if [ -x /usr/lib/systemd/systemd-hibernate-resume ]; then
+        # harmless errors
+        /usr/lib/systemd/systemd-hibernate-resume 2>&1 | grep -v 'Unable to resume'
+        return
+    fi
+
+    resume="$(getarg resume)"
+    if [ -z "$resume" ]; then
+        err 'resume: no device specified for hibernation'
+        return 1
+    fi
+
+    if [ ! -e /sys/power/resume ]; then
+        err 'resume: no hibernation support found'
+        return 1
+    fi
+
+    rootdelay="$(getarg rootdelay)"
+    if resumedev="$(resolve_device "$resume" "$rootdelay")"; then
+        # shellcheck disable=SC3001
+        read -r major minor < <(stat -Lc '0x%t 0x%T' "$resumedev")
+        printf '%d:%d' "$major" "$minor" >/sys/power/resume
+        return 0
+    fi
+
+    err "resume: hibernation device '$resume' not found"
+    return 1
+}
+
+# vim: set ft=sh ts=4 sw=4 et:

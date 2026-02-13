@@ -64,8 +64,8 @@ local function makelauncher(app, opts)
         forced_width = 48,
         forced_height = 48,
     }
-    mylauncher:connect_signal("button::press", function()
-        if overview_shown then return end
+    mylauncher:connect_signal("button::press", function(_,_,_,button)
+        if button ~= 1 or overview_shown then return end
         app_name = app
         if opts and opts.hardened then
             app_name = app.."-hardened"

@@ -178,7 +178,6 @@ archiso_mount_handler() {
     plymouth update --status="Mouting filesystems..."
     _mnt_dev /dev/disk/by-partlabel/system $rundir/persistfs "-w" "subvol=/system/persistfs,compress=zstd,noatime"
     _mnt_dev /dev/disk/by-partlabel/system $rundir/snapshots "-w" "subvol=/system/snapshots,compress=zstd,noatime"
-    _mnt_dev /dev/disk/by-partlabel/system $rundir/data "-w" "subvol=/system/data,compress=zstd,noatime"
     snapshot="${btrfs_snapshot##*/}"
     snapshot="${snapshot:+snapshots/$snapshot}"
     _mnt_dev /dev/disk/by-partlabel/system $rundir/airootfs "-r" "subvol=/system/${snapshot:-airootfs},compress=zstd,noatime"

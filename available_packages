@@ -57,9 +57,7 @@ aur legacyfox
 local firefox-base16
 local firefox-canvasblocker
 local firefox-ff2mpv
-local firefox-sponsorblock
 local firefox-vimfx
-local firefox-ytarb
 local firefox-bitwarden
 
 # Fonts

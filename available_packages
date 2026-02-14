@@ -147,6 +147,7 @@ npm
 yarn
 python-pipx
 python-pip
+local agent-skills
 uv
 gdb
 

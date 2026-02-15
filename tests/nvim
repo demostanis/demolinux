@@ -41,10 +41,23 @@ expectvim "<space>fde" "> de" # telescope prompt
 sleep 1
 expectvim "<cr>" "{}" # pick deno.json
 expectvim ":e main.ts<cr>:w<cr>" ""
-sleep 1 # wait for LSP to start
+sleep 5 # wait for LSP to start (else K will show a man page)
 expectvim "iconsole.log<esc>K" "console.log"
-sleep 1 # wait for the popup
 expectvim "K" '*Outputs a message to the console*'
-expectvim ":q<cr>dd" ''
+expectvim ":q<cr>dd" ""
+
+expectvim "<c-t>" "*demostanis on demolinux*"
+expectvim "echo hello" "*demostanis on demolinux*hello*"
+expectvim "<c-t>" ""
+
+expectvim ":e main.go<cr>:w<cr>" ""
+expectvim "imain" "main"
+sleep 1 # wait for the completion popup, it's async
+expectvim "<tab><cr>" "func main()*"
+expectvim 'fmt.Println<esc>:w<cr>' "package main*import*main*" # goimports
+expectvim "Lo" "󰊕  main" # outline
+expectvim "<esc>ggdGia<esc>" "a" # remapped esc in outline to close it
+expectvim "-" "deno.json*main.go*main.ts" # vinegar opens netrw
+expectvim "<c-o>" "a"
 
 popd>/dev/null

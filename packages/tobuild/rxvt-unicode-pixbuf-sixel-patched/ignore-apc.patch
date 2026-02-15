@@ -1,0 +1,47 @@
+diff --git src/command.C src/command.C
+index d84c14c..aa51138 100644
+--- src/command.C
++++ src/command.C
+@@ -2776,6 +2776,10 @@ rxvt_term::process_escape_seq ()
+         process_osc_seq ();
+         break;
+ 
++      case C1_APC:             /* ESC _ */
++        process_apc_seq ();
++        break;
++
+         /* 8.3.106: RESET TO INITIAL STATE (RIS) */
+       case 'c':
+         mbstate.reset ();
+@@ -3543,6 +3547,16 @@ rxvt_term::process_osc_seq ()
+     }
+ }
+ 
++void
++rxvt_term::process_apc_seq ()
++{
++    unicode_t eh;
++    char *s = get_to_st (eh);
++
++    if (s)
++      free (s);
++}
++
+ static unsigned int
+ colorcube_index (unsigned int idx_r,
+                  unsigned int idx_g,
+diff --git src/rxvt.h src/rxvt.h
+index b26b71f..783273d 100644
+--- src/rxvt.h
++++ src/rxvt.h
+@@ -1408,6 +1408,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
+   char *get_to_st (unicode_t &ends_how);
+   void process_dcs_seq ();
+   void process_osc_seq ();
++  void process_apc_seq ();
+   void process_color_seq (int report, int color, const char *str, char resp);
+   void process_xterm_seq (int op, char *str, char resp);
+   unsigned int map_rgb24_color (unsigned int r, unsigned int g, unsigned int b, unsigned int a);
+-- 
+2.51.0
+

@@ -127,6 +127,7 @@ aur paru
 openbsd-netcat
 tinyxxd
 mesa-utils
+poppler
 tmux
 xcolor
 
@@ -139,7 +140,7 @@ go-tools # goimports
 docker
 docker-compose
 python-virtualenv
-aur opencode
+aur opencode-bin
 deno
 meson
 npm
@@ -148,6 +149,7 @@ python-pipx
 python-pip
 local agent-skills
 uv
+ty
 gdb
 
 # System

@@ -59,6 +59,7 @@ local firefox-canvasblocker
 local firefox-ff2mpv
 local firefox-vimfx
 local firefox-bitwarden
+local firefox-metamask
 
 # Fonts
 local ttf-font-awesome-pro

@@ -1,0 +1,23 @@
+pkgname='firefox-metamask'
+pkgver=13.16.4
+pkgrel=6
+pkgdesc='The MetaMask browser extension enables browsing Ethereum blockchain enabled websites'
+arch=('any')
+url=https://metamask.io
+groups=('firefox-addons')
+license=('custom') # is that even open-source?
+source=("https://github.com/MetaMask/metamask-extension/releases/download/v$pkgver/metamask-firefox-$pkgver.zip")
+b2sums=('a11e8ab03235bffb59b4ecce6703e82fbb03e9b8b16013aa871072504309fe445158c199a37488f81e13a50b65417227c50b1b5bc2729215424a52175d4f6656')
+noextract=("metamask-firefox-$pkgver.zip")
+
+package() {
+  rm -rf repack
+  mkdir repack
+  unzip -d repack "metamask-firefox-$pkgver.zip"
+  sed -i 's/\.openExtensionInBrowser//' repack/background-9.js
+  rm -rf repack/META-INF
+  (cd repack; zip -r ../"metamask-firefox-$pkgver.zip.new" . )
+
+  install -Dm644 "metamask-firefox-$pkgver.zip.new" \
+    "$pkgdir"/usr/lib/firefox/browser/extensions/webextension@metamask.io.xpi
+}

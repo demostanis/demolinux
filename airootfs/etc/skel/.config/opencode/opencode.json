@@ -19,5 +19,10 @@
         "-e", "/usr/bin/chromium"
       ]
     }
+  },
+  "permission": {
+    "external_directory": {
+      "/tmp": "allow"
+    }
   }
 }

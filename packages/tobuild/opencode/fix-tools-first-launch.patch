@@ -1,0 +1,172 @@
+From f98854b0b405e9fedd294061bf8114c9b5e16d64 Mon Sep 17 00:00:00 2001
+From: demostanis <demostanis@protonmail.com>
+Date: Mon, 16 Feb 2026 23:01:53 +0100
+Subject: [PATCH] fix: pre-build custom tools instead of blindly import()ing
+ them
+
+on first launch, opencode installs @opencode-ai/plugin. but without
+restarting opencode when it's done, the following error appears:
+
+ error: Cannot find package 'zod' from '/home/demostanis/.config/opencode/node_modules/@opencode-ai/plugin/dist/tool.js'
+---
+ packages/opencode/src/config/config.ts | 104 +++++++++++++++++++++++--
+ packages/opencode/src/tool/registry.ts |   3 +-
+ 2 files changed, 101 insertions(+), 6 deletions(-)
+
+diff --git a/packages/opencode/src/config/config.ts b/packages/opencode/src/config/config.ts
+index 261731b8b0a4..12bb29f023f2 100644
+--- a/packages/opencode/src/config/config.ts
++++ b/packages/opencode/src/config/config.ts
+@@ -24,7 +24,7 @@ import { LSPServer } from "../lsp/server"
+ import { BunProc } from "@/bun"
+ import { Installation } from "@/installation"
+ import { ConfigMarkdown } from "./markdown"
+-import { constants, existsSync } from "fs"
++import { constants, existsSync, readFileSync } from "fs"
+ import { Bus } from "@/bus"
+ import { GlobalBus } from "@/bus/global"
+ import { Event } from "../server/event"
+@@ -247,13 +247,105 @@ export namespace Config {
+   })
+ 
+   export async function waitForDependencies() {
+-    const deps = await state().then((x) => x.deps)
++    const { deps, directories } = await state()
+     await Promise.all(deps)
++    const paths = unique([...directories, Global.Path.cache])
++    for (const dir of paths) {
++      const nm = path.join(dir, "node_modules")
++      if (existsSync(nm)) {
++        for (const sub of ["tool", "tools"]) {
++          const toolDir = path.join(dir, sub)
++          if (existsSync(toolDir)) {
++            const target = path.join(toolDir, "node_modules")
++            if (!existsSync(target)) {
++              try {
++                await fs.symlink(nm, target, "dir")
++              } catch {
++                // ignore if symlink already exists or fails
++              }
++            }
++          }
++        }
++
++        process.env.NODE_PATH = unique([nm, ...(process.env.NODE_PATH?.split(path.delimiter) ?? [])])
++          .filter(Boolean)
++          .join(path.delimiter)
++      }
++    }
++  }
++
++  // Build a tool/plugin file using Bun.build() to bundle all dependencies.
++  // This is needed because compiled Bun binaries can't resolve transitive
++  // dependencies (e.g. zod from @opencode-ai/plugin) at runtime.
++  export async function build(file: string) {
++    const outdir = path.join(Global.Path.cache, "tool-builds")
++    const { directories } = await state()
++    const nmPaths = unique([...directories, Global.Path.cache])
++      .map((dir) => path.join(dir, "node_modules"))
++      .filter(existsSync)
++    const result = await Bun.build({
++      entrypoints: [file],
++      outdir,
++      target: "bun",
++      naming: "[name]-[hash].[ext]",
++      plugins: nmPaths.length
++        ? [
++            {
++              name: "opencode-resolve",
++              setup(builder) {
++                builder.onResolve({ filter: /.*/ }, (args) => {
++                  if (args.path.startsWith(".") || args.path.startsWith("/")) return
++                  for (const nm of nmPaths) {
++                    const parts = args.path.startsWith("@")
++                      ? args.path.split("/").slice(0, 2)
++                      : [args.path.split("/")[0]]
++                    const pkgDir = path.join(nm, ...parts)
++                    if (!existsSync(pkgDir)) continue
++                    const subpath = args.path.startsWith("@")
++                      ? args.path.split("/").slice(2).join("/")
++                      : args.path.split("/").slice(1).join("/")
++                    const pkgJson = path.join(pkgDir, "package.json")
++                    if (!existsSync(pkgJson)) continue
++                    const pkg = JSON.parse(readFileSync(pkgJson, "utf8"))
++                    if (subpath) {
++                      const entry = pkg.exports?.["./" + subpath]
++                      const resolved = entry
++                        ? typeof entry === "string"
++                          ? entry
++                          : entry.import || entry.default || entry.require
++                        : null
++                      if (resolved) return { path: path.join(pkgDir, resolved) }
++                      const direct = path.join(pkgDir, subpath)
++                      for (const ext of ["", ".js", ".mjs", ".ts"]) {
++                        if (existsSync(direct + ext)) return { path: direct + ext }
++                      }
++                      continue
++                    }
++                    const mainExport = pkg.exports?.["."]
++                    const resolved = mainExport
++                      ? typeof mainExport === "string"
++                        ? mainExport
++                        : mainExport.import || mainExport.default || mainExport.require
++                      : pkg.module || pkg.main || "index.js"
++                    if (resolved) return { path: path.join(pkgDir, resolved) }
++                  }
++                })
++              },
++            },
++          ]
++        : [],
++    })
++    if (!result.success) {
++      throw new Error(`Failed to build ${file}: ${result.logs.map(String).join("\n")}`)
++    }
++    return result.outputs[0].path
+   }
+ 
+   export async function installDependencies(dir: string) {
+     const pkg = path.join(dir, "package.json")
+-    const targetVersion = Installation.isLocal() ? "*" : Installation.VERSION
++    const isDev =
++      Installation.VERSION.includes("-dev") || Installation.VERSION.startsWith("0.0.0") || Installation.isLocal()
++    const targetVersion = isDev ? "latest" : Installation.VERSION
+ 
+     const json = await Bun.file(pkg)
+       .json()
+@@ -263,7 +355,6 @@ export namespace Config {
+       "@opencode-ai/plugin": targetVersion,
+     }
+     await Bun.write(pkg, JSON.stringify(json, null, 2))
+-    await new Promise((resolve) => setTimeout(resolve, 3000))
+ 
+     const gitignore = path.join(dir, ".gitignore")
+     const hasGitIgnore = await Bun.file(gitignore).exists()
+@@ -312,8 +403,11 @@ export namespace Config {
+     const depVersion = dependencies["@opencode-ai/plugin"]
+     if (!depVersion) return true
+ 
+-    const targetVersion = Installation.isLocal() ? "latest" : Installation.VERSION
++    const isDev =
++      Installation.VERSION.includes("-dev") || Installation.VERSION.startsWith("0.0.0") || Installation.isLocal()
++    const targetVersion = isDev ? "latest" : Installation.VERSION
+     if (targetVersion === "latest") {
++      if (depVersion === "latest") return true
+       const isOutdated = await PackageRegistry.isOutdated("@opencode-ai/plugin", depVersion, dir)
+       if (!isOutdated) return false
+       log.info("Cached version is outdated, proceeding with install", {
+diff --git a/packages/opencode/src/tool/registry.ts b/packages/opencode/src/tool/registry.ts
+index 9a06cb59937b..a27154f568a6 100644
+--- a/packages/opencode/src/tool/registry.ts
++++ b/packages/opencode/src/tool/registry.ts
+@@ -41,7 +41,8 @@ export namespace ToolRegistry {
+     if (matches.length) await Config.waitForDependencies()
+     for (const match of matches) {
+       const namespace = path.basename(match, path.extname(match))
+-      const mod = await import(match)
++      const built = await Config.build(match)
++      const mod = await import(built)
+       for (const [id, def] of Object.entries<ToolDefinition>(mod)) {
+         custom.push(fromPlugin(id === "default" ? namespace : `${namespace}_${id}`, def))
+       }
+

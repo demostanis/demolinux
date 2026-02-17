@@ -1,0 +1,97 @@
+# Maintainer: Carl Smedstad <carsme@archlinux.org>
+
+pkgname=opencode
+pkgver=1.2.6
+pkgrel=1
+pkgdesc='The open source coding agent'
+arch=('x86_64')
+url='https://github.com/anomalyco/opencode'
+license=('MIT')
+depends=(
+  'curl'
+  'gcc-libs'
+  'glibc'
+  'icu'
+  'ripgrep'
+  'tar'
+)
+makedepends=(
+  'bun'
+  'git'
+)
+optdepends=(
+  'wl-clipboard: clipboard support on Wayland'
+  'xclip: clipboard support on X11'
+)
+options=(
+  '!debug'
+  '!strip'
+)
+_opentui_ver=0.1.79
+source=(
+  "https://github.com/anomalyco/opencode/archive/refs/tags/v$pkgver.tar.gz"
+  "opentui-$_opentui_ver.tar.gz::https://github.com/anomalyco/opentui/archive/refs/tags/v$_opentui_ver.tar.gz"
+  "fix-motion-events.patch"
+  "fix-tools-first-launch.patch"
+)
+b2sums=(
+  '679816df5c791d34a54821e957bc69cf9e7bf8a38e9f0a841b15f5dc129ffa1144f32f9c4e296d8f7d550adb7f6f77295eb5b3ff1ea56cb0a02d1522958010a1'
+  'a761bdad3ff9c67b6873596100b2db88a995c5bbd3459a89ed4714806b5ed5d2452a3e476c2a99f5750f56d08b353d1e68dbdf8d6151b8ffe747c5e291d03ad1'
+  'e0a1c97ff3f0e92030353ad492b86f1b6cae73da11afc229617ad321680c2f5eea9cd00aa0290c1abe56cb5077cc3492a6ee01d6427868c4f01cfa31f6995acd'
+  '36c223c994121a5187786ac893e4362d89e6569b1dedf49c36056c08fe73fe2bf555ac6645d7e7cb5a77d08629309f621ce10b823e2dbcaa6e8ba305b6b74c6b'
+)
+
+prepare() {
+  cd "$srcdir/opentui-$_opentui_ver"
+  patch -p1 -i "$srcdir/fix-motion-events.patch"
+
+  # build opentui/core lib to get parser.worker.js
+  cd packages/core
+  bun install
+  bun run build:lib
+  # opencode build script expects parser.worker.js in the package root
+  cp dist/parser.worker.js .
+  cp dist/parser.worker.js.map .
+
+  cd "$srcdir/opentui-$_opentui_ver"
+  cp -ra "packages/core" "$srcdir/$pkgname-$pkgver/packages/"
+  cp -ra "packages/solid" "$srcdir/$pkgname-$pkgver/packages/"
+
+  cd "$srcdir/$pkgname-$pkgver"
+  patch -p1 -i "$srcdir/fix-tools-first-launch.patch"
+
+  sed -i 's/"@opentui\/core": "[^"]*"/"@opentui\/core": "workspace:*"/' packages/opencode/package.json
+  sed -i 's/"@opentui\/solid": "[^"]*"/"@opentui\/solid": "workspace:*"/' packages/opencode/package.json
+  sed -i 's/"@opentui\/core": "[^"]*"/"@opentui\/core": "workspace:*"/' packages/solid/package.json
+
+  bun install
+}
+
+build() {
+  cd $pkgname-$pkgver/packages/opencode
+  OPENCODE_VERSION=$pkgver bun run ./script/build.ts --single --baseline
+}
+
+check() {
+  cd $pkgname-$pkgver/packages/opencode
+  export GIT_CONFIG_GLOBAL=$PWD/gitconfig
+  git config --global user.email "builduser@archlinux.org"
+  git config --global user.name "Build User"
+  bun test
+}
+
+package() {
+  cd $pkgname-$pkgver
+  case $CARCH in
+  aarch64) dir=opencode-linux-arm64 ;;
+  x86_64) dir=opencode-linux-x64-baseline ;;
+  esac
+  install -vDm755 -t "$pkgdir/usr/bin" "packages/opencode/dist/$dir/bin/opencode"
+
+  install -vDm644 -t "$pkgdir/usr/share/licenses/$pkgname" LICENSE
+
+  SHELL=/bin/bash "$pkgdir/usr/bin/opencode" completion \
+    | install -vDm644 /dev/stdin "$pkgdir/usr/share/bash-completion/completions/opencode"
+  SHELL=/bin/zsh "$pkgdir/usr/bin/opencode" completion \
+    | install -vDm644 /dev/stdin "$pkgdir/usr/share/zsh/site-functions/_opencode"
+}

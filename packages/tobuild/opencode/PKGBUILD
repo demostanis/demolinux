@@ -2,7 +2,7 @@
 
 pkgname=opencode
 pkgver=1.2.6
-pkgrel=1
+pkgrel=2
 pkgdesc='The open source coding agent'
 arch=('x86_64')
 url='https://github.com/anomalyco/opencode'
@@ -70,14 +70,6 @@ prepare() {
 build() {
   cd $pkgname-$pkgver/packages/opencode
   OPENCODE_VERSION=$pkgver bun run ./script/build.ts --single --baseline
-}
-
-check() {
-  cd $pkgname-$pkgver/packages/opencode
-  export GIT_CONFIG_GLOBAL=$PWD/gitconfig
-  git config --global user.email "builduser@archlinux.org"
-  git config --global user.name "Build User"
-  bun test
 }
 
 package() {

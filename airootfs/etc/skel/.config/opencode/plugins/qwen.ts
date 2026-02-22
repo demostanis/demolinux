@@ -159,6 +159,10 @@ export default async function QwenAuthPlugin(input: PluginInput): Promise<Hooks>
       reasoning: true,
       temperature: true,
       tool_call: true,
+      modalities: {
+        input: ["text", "image"],
+        output: ["text"]
+      },
       limit: {
         context: 1_000_000,
         input: 1_000_000,

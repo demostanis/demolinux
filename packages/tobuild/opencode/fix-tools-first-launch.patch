@@ -1,23 +1,6 @@
-From f98854b0b405e9fedd294061bf8114c9b5e16d64 Mon Sep 17 00:00:00 2001
-From: demostanis <demostanis@protonmail.com>
-Date: Mon, 16 Feb 2026 23:01:53 +0100
-Subject: [PATCH] fix: pre-build custom tools instead of blindly import()ing
- them
-
-on first launch, opencode installs @opencode-ai/plugin. but without
-restarting opencode when it's done, the following error appears:
-
- error: Cannot find package 'zod' from '/home/demostanis/.config/opencode/node_modules/@opencode-ai/plugin/dist/tool.js'
----
- packages/opencode/src/config/config.ts | 104 +++++++++++++++++++++++--
- packages/opencode/src/tool/registry.ts |   3 +-
- 2 files changed, 101 insertions(+), 6 deletions(-)
-
-diff --git a/packages/opencode/src/config/config.ts b/packages/opencode/src/config/config.ts
-index 261731b8b0a4..12bb29f023f2 100644
---- a/packages/opencode/src/config/config.ts
-+++ b/packages/opencode/src/config/config.ts
-@@ -24,7 +24,7 @@ import { LSPServer } from "../lsp/server"
+--- opencode-1.2.10/packages/opencode/src/config/config.ts.orig	2026-02-22 14:39:32.163240858 +0100
++++ opencode-1.2.10/packages/opencode/src/config/config.ts	2026-02-22 14:42:00.208392271 +0100
+@@ -24,7 +24,7 @@
  import { BunProc } from "@/bun"
  import { Installation } from "@/installation"
  import { ConfigMarkdown } from "./markdown"
@@ -26,7 +9,7 @@ index 261731b8b0a4..12bb29f023f2 100644
  import { Bus } from "@/bus"
  import { GlobalBus } from "@/bus/global"
  import { Event } from "../server/event"
-@@ -247,13 +247,105 @@ export namespace Config {
+@@ -260,13 +260,105 @@
    })
  
    export async function waitForDependencies() {
@@ -132,17 +115,17 @@ index 261731b8b0a4..12bb29f023f2 100644
 +      Installation.VERSION.includes("-dev") || Installation.VERSION.startsWith("0.0.0") || Installation.isLocal()
 +    const targetVersion = isDev ? "latest" : Installation.VERSION
  
-     const json = await Bun.file(pkg)
-       .json()
-@@ -263,7 +355,6 @@ export namespace Config {
+     const json = await Filesystem.readJson<{ dependencies?: Record<string, string> }>(pkg).catch(() => ({
+       dependencies: {},
+@@ -276,7 +368,6 @@
        "@opencode-ai/plugin": targetVersion,
      }
-     await Bun.write(pkg, JSON.stringify(json, null, 2))
+     await Filesystem.writeJson(pkg, json)
 -    await new Promise((resolve) => setTimeout(resolve, 3000))
  
      const gitignore = path.join(dir, ".gitignore")
-     const hasGitIgnore = await Bun.file(gitignore).exists()
-@@ -312,8 +403,11 @@ export namespace Config {
+     const hasGitIgnore = await Filesystem.exists(gitignore)
+@@ -325,8 +416,11 @@
      const depVersion = dependencies["@opencode-ai/plugin"]
      if (!depVersion) return true
  
@@ -155,11 +138,9 @@ index 261731b8b0a4..12bb29f023f2 100644
        const isOutdated = await PackageRegistry.isOutdated("@opencode-ai/plugin", depVersion, dir)
        if (!isOutdated) return false
        log.info("Cached version is outdated, proceeding with install", {
-diff --git a/packages/opencode/src/tool/registry.ts b/packages/opencode/src/tool/registry.ts
-index 9a06cb59937b..a27154f568a6 100644
---- a/packages/opencode/src/tool/registry.ts
-+++ b/packages/opencode/src/tool/registry.ts
-@@ -41,7 +41,8 @@ export namespace ToolRegistry {
+--- opencode-1.2.10/packages/opencode/src/tool/registry.ts.orig	2026-02-22 14:39:32.165240900 +0100
++++ opencode-1.2.10/packages/opencode/src/tool/registry.ts	2026-02-22 14:42:39.998253230 +0100
+@@ -43,7 +43,8 @@
      if (matches.length) await Config.waitForDependencies()
      for (const match of matches) {
        const namespace = path.basename(match, path.extname(match))
@@ -169,4 +150,3 @@ index 9a06cb59937b..a27154f568a6 100644
        for (const [id, def] of Object.entries<ToolDefinition>(mod)) {
          custom.push(fromPlugin(id === "default" ? namespace : `${namespace}_${id}`, def))
        }
-

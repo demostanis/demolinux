@@ -122,7 +122,7 @@ run_image() {
         -vga virtio \
         -device virtio-net-pci,romfile=,netdev=net0 -netdev user,id=net0,hostfwd=tcp::60022-$bridge_ip:22 \
         -machine type=q35,smm=on,accel=kvm,usb=on \
-        -enable-kvm \
+        -cpu max -enable-kvm \
         "${qemu_options[@]}" \
         -no-reboot
 }

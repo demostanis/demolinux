@@ -1,0 +1,20 @@
+--- src/firefox-devtools-mcp-0.7.4/node_modules/selenium-webdriver/firefox.js.orig	2026-03-03 22:57:14.232630852 +0100
++++ src/firefox-devtools-mcp-0.7.4/node_modules/selenium-webdriver/firefox.js	2026-03-03 22:57:25.424061526 +0100
+@@ -215,12 +215,12 @@
+ async function buildProfile(template, extensions) {
+   let dir = template
+ 
+-  if (extensions.length) {
+-    dir = await io.tmpDir()
+-    if (template) {
+-      await io.copyDir(/** @type {string} */ (template), dir, /(parent\.lock|lock|\.parentlock)/)
+-    }
++  dir = await io.tmpDir()
++  if (template) {
++    await io.copyDir(/** @type {string} */ (template), dir, /(parent\.lock|lock|\.parentlock)/)
++  }
+ 
++  if (extensions.length) {
+     const extensionsDir = path.join(dir, 'extensions')
+     await io.mkdir(extensionsDir)
+ 

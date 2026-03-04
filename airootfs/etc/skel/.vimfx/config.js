@@ -35,6 +35,8 @@ vimfx.addKeyOverrides(
 		['<space>', 'r']]
 )
 
+let hookedOpenLink = false;
+
 const disableCtrlW = data => {
 	const window = data.vim?.window || data.event.originalTarget.ownerGlobal;
 
@@ -43,6 +45,32 @@ const disableCtrlW = data => {
 	// behind the cursor.
 	window.BrowserCommands.closeTabOrWindow = function() {
 		window.goDoCommand('cmd_deleteWordBackward')
+	}
+
+	// i don't know how to access gRemoteControl...
+	if (!hookedOpenLink && window.Marionette.running) {
+		hookedOpenLink = true;
+
+		const mcpContextId = 6;
+
+		const [firstTab] = window.gBrowser.tabs;
+		let newTab = window.gBrowser.addTab("about:blank", {
+			userContextId: mcpContextId,
+			index: 0,
+			triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal(),
+		});
+		window.gBrowser.selectedTab = newTab;
+		window.gBrowser.removeTab(firstTab);
+
+		const _openLinkIn = window.URILoadingHelper.openLinkIn;
+
+		// force opening tabs in the MCP container when
+		// the browser is being controlled remotely
+		window.URILoadingHelper.openLinkIn = function (win, url, where, params) {
+			params = params || {};
+			params.userContextId = mcpContextId;
+			return _openLinkIn.call(this, win, url, where, params);
+		};
 	}
 };
 

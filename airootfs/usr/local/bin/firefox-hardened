@@ -68,6 +68,22 @@ for dev in /dev/hidraw*; do
 	fi
 done
 
+bind_marionette_profile=()
+profile=
+if [[ "$*" =~ /tmp/rust_.* ]]; then
+	profile=${BASH_REMATCH[0]}
+	bind_marionette_profile+=( --bind "$profile" "$profile" )
+fi
+
+# selenium runs in a fresh profile, but we want our
+# own profile data
+if [ -n "$profile" ]; then
+	cp ~/.mozilla/firefox/default.profile/{\
+		bookmarks.html,extension-preferences.json,\
+		extensions.json,search.json.mozlz4,chrome/} "$profile"/
+	cat ~/.mozilla/firefox/default.profile/user.js >> "$profile"/user.js
+fi
+
 bwrap \
 	`# For dynamically linked executables` \
 	--ro-bind /usr/lib /usr/lib --symlink /usr/lib /lib \
@@ -118,6 +134,8 @@ bwrap \
 	--ro-bind /sys/devices/pci0000:00 /sys/devices/pci0000:00 \
 	`# WebAuthn` \
 	${bind_hidraw_devs[@]} \
+	`# MCP / Selenium` \
+	${bind_marionette_profile[@]} \
 	--ro-bind /sys/class/hidraw /sys/class/hidraw \
 	`# Firefox` \
 	--bind $HOME/.mozilla /firefox/.mozilla \

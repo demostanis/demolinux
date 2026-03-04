@@ -11,12 +11,12 @@
     }
   },
   "mcp": {
-    "chrome-devtools-mcp": {
+    "firefox": {
       "type": "local",
       "command": [
-        "npx", "-y",
-        "chrome-devtools-mcp@latest",
-        "-e", "/usr/bin/chromium"
+        "firefox-devtools-mcp", "--firefox-path",
+        "/usr/local/bin/firefox-hardened", "--profile-path",
+        "/home/demostanis/.mozilla/firefox/default.profile"
       ]
     }
   },

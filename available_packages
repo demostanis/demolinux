@@ -141,6 +141,7 @@ docker
 docker-compose
 python-virtualenv
 local opencode
+local firefox-devtools-mcp
 deno
 meson
 npm

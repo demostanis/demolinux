@@ -1,8 +1,8 @@
 # Maintainer: Carl Smedstad <carsme@archlinux.org>
 
 pkgname=opencode
-pkgver=1.2.10
-pkgrel=1
+pkgver=1.2.16
+pkgrel=5
 pkgdesc='The open source coding agent'
 arch=('x86_64')
 url='https://github.com/anomalyco/opencode'
@@ -33,13 +33,13 @@ source=(
   "opentui-$_opentui_ver.tar.gz::https://github.com/anomalyco/opentui/archive/refs/tags/v$_opentui_ver.tar.gz"
   "fix-motion-events.patch"
   "fix-tools-first-launch.patch"
+  "hide-migration-logs.patch"
 )
-b2sums=(
-  '1e198e441b363aa7e257f53fa5267b85647b8e9775865a8691446f8b0212e7d3d0b36e0b41a21efb738f4ce86b83303f19fecf6bd6f47874fafd08ab72eee6bc'
-  'a761bdad3ff9c67b6873596100b2db88a995c5bbd3459a89ed4714806b5ed5d2452a3e476c2a99f5750f56d08b353d1e68dbdf8d6151b8ffe747c5e291d03ad1'
-  'e0a1c97ff3f0e92030353ad492b86f1b6cae73da11afc229617ad321680c2f5eea9cd00aa0290c1abe56cb5077cc3492a6ee01d6427868c4f01cfa31f6995acd'
-  'fe4d75a6bc1d29b41608c98e3827e9b306b7ac0d4c3e4325ff63e5c948e6549032538c118d5253de7a7cc5f980f8612653fb0f3e1003ac1c49be8d1f7e6622ae'
-)
+b2sums=('7eca88925bfe903f9ca18b56f22d32196e3d28af5a9454896397bd8259d4fc7d2d41498872678bbf875fc6b6bf01a0ec148b0a322be531798920ba2f2da54321'
+        'a761bdad3ff9c67b6873596100b2db88a995c5bbd3459a89ed4714806b5ed5d2452a3e476c2a99f5750f56d08b353d1e68dbdf8d6151b8ffe747c5e291d03ad1'
+        'e0a1c97ff3f0e92030353ad492b86f1b6cae73da11afc229617ad321680c2f5eea9cd00aa0290c1abe56cb5077cc3492a6ee01d6427868c4f01cfa31f6995acd'
+        '98fc359d2e0902e7b7d9df561043000a37c57447c4c5ddbd3469103cd092190698afdf9adefe021eac55c20b6012974fb6a4573b0381d8dff265dd6fd6cfdd19'
+        '815310cf9d5c201a3196e8d0d4b101ef5f6afdcdc048246502f5909e5eda63b7a01d5b9465f410577aa6d57870b05446c312f4e72048fa3e45fd49fe5290013a')
 
 prepare() {
   cd "$srcdir/opentui-$_opentui_ver"
@@ -59,6 +59,9 @@ prepare() {
 
   cd "$srcdir/$pkgname-$pkgver"
   patch -p1 -i "$srcdir/fix-tools-first-launch.patch"
+  patch -p1 -i "$srcdir/hide-migration-logs.patch"
+
+  sed -i "s/\"packageManager\": \"bun@[^\"]*\"/\"packageManager\": \"bun@$(bun --version)\"/" package.json
 
   sed -i 's/"@opentui\/core": "[^"]*"/"@opentui\/core": "workspace:*"/' packages/opencode/package.json
   sed -i 's/"@opentui\/solid": "[^"]*"/"@opentui\/solid": "workspace:*"/' packages/opencode/package.json

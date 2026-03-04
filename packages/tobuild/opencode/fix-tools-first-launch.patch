@@ -1,5 +1,20 @@
---- opencode-1.2.10/packages/opencode/src/config/config.ts.orig	2026-02-22 14:39:32.163240858 +0100
-+++ opencode-1.2.10/packages/opencode/src/config/config.ts	2026-02-22 14:42:00.208392271 +0100
+diff -ur opencode-1.2.16/packages/opencode/package.json opencode-1.2.16/packages/opencode/package.json
+--- opencode-1.2.16/packages/opencode/package.json	2026-03-03 22:08:35.000000000 +0100
++++ opencode-1.2.16/packages/opencode/package.json	2026-03-04 01:02:49.289133351 +0100
+@@ -89,8 +89,8 @@
+     "@opencode-ai/sdk": "workspace:*",
+     "@opencode-ai/util": "workspace:*",
+     "@openrouter/ai-sdk-provider": "1.5.4",
+-    "@opentui/core": "0.1.86",
+-    "@opentui/solid": "0.1.86",
++    "@opentui/core": "workspace:*",
++    "@opentui/solid": "workspace:*",
+     "@parcel/watcher": "2.5.1",
+     "@pierre/diffs": "catalog:",
+     "@solid-primitives/event-bus": "1.1.2",
+diff -ur opencode-1.2.16/packages/opencode/src/config/config.ts opencode-1.2.16/packages/opencode/src/config/config.ts
+--- opencode-1.2.16/packages/opencode/src/config/config.ts	2026-03-03 22:08:35.000000000 +0100
++++ opencode-1.2.16/packages/opencode/src/config/config.ts	2026-03-04 01:02:49.290133379 +0100
 @@ -24,7 +24,7 @@
  import { BunProc } from "@/bun"
  import { Installation } from "@/installation"
@@ -9,7 +24,7 @@
  import { Bus } from "@/bus"
  import { GlobalBus } from "@/bus/global"
  import { Event } from "../server/event"
-@@ -260,13 +260,105 @@
+@@ -241,13 +241,78 @@
    })
  
    export async function waitForDependencies() {
@@ -63,38 +78,11 @@
 +                builder.onResolve({ filter: /.*/ }, (args) => {
 +                  if (args.path.startsWith(".") || args.path.startsWith("/")) return
 +                  for (const nm of nmPaths) {
-+                    const parts = args.path.startsWith("@")
-+                      ? args.path.split("/").slice(0, 2)
-+                      : [args.path.split("/")[0]]
-+                    const pkgDir = path.join(nm, ...parts)
-+                    if (!existsSync(pkgDir)) continue
-+                    const subpath = args.path.startsWith("@")
-+                      ? args.path.split("/").slice(2).join("/")
-+                      : args.path.split("/").slice(1).join("/")
-+                    const pkgJson = path.join(pkgDir, "package.json")
-+                    if (!existsSync(pkgJson)) continue
-+                    const pkg = JSON.parse(readFileSync(pkgJson, "utf8"))
-+                    if (subpath) {
-+                      const entry = pkg.exports?.["./" + subpath]
-+                      const resolved = entry
-+                        ? typeof entry === "string"
-+                          ? entry
-+                          : entry.import || entry.default || entry.require
-+                        : null
-+                      if (resolved) return { path: path.join(pkgDir, resolved) }
-+                      const direct = path.join(pkgDir, subpath)
-+                      for (const ext of ["", ".js", ".mjs", ".ts"]) {
-+                        if (existsSync(direct + ext)) return { path: direct + ext }
-+                      }
-+                      continue
-+                    }
-+                    const mainExport = pkg.exports?.["."]
-+                    const resolved = mainExport
-+                      ? typeof mainExport === "string"
-+                        ? mainExport
-+                        : mainExport.import || mainExport.default || mainExport.require
-+                      : pkg.module || pkg.main || "index.js"
-+                    if (resolved) return { path: path.join(pkgDir, resolved) }
++                    try {
++                      const req = createRequire(path.join(nm, "index.js"))
++                      const resolved = req.resolve(args.path)
++                      return { path: resolved }
++                    } catch {}
 +                  }
 +                })
 +              },
@@ -117,15 +105,7 @@
  
      const json = await Filesystem.readJson<{ dependencies?: Record<string, string> }>(pkg).catch(() => ({
        dependencies: {},
-@@ -276,7 +368,6 @@
-       "@opencode-ai/plugin": targetVersion,
-     }
-     await Filesystem.writeJson(pkg, json)
--    await new Promise((resolve) => setTimeout(resolve, 3000))
- 
-     const gitignore = path.join(dir, ".gitignore")
-     const hasGitIgnore = await Filesystem.exists(gitignore)
-@@ -325,8 +416,11 @@
+@@ -307,8 +372,11 @@
      const depVersion = dependencies["@opencode-ai/plugin"]
      if (!depVersion) return true
  
@@ -138,15 +118,16 @@
        const isOutdated = await PackageRegistry.isOutdated("@opencode-ai/plugin", depVersion, dir)
        if (!isOutdated) return false
        log.info("Cached version is outdated, proceeding with install", {
---- opencode-1.2.10/packages/opencode/src/tool/registry.ts.orig	2026-02-22 14:39:32.165240900 +0100
-+++ opencode-1.2.10/packages/opencode/src/tool/registry.ts	2026-02-22 14:42:39.998253230 +0100
-@@ -43,7 +43,8 @@
+diff -ur opencode-1.2.16/packages/opencode/src/tool/registry.ts opencode-1.2.16/packages/opencode/src/tool/registry.ts
+--- opencode-1.2.16/packages/opencode/src/tool/registry.ts	2026-03-03 22:08:35.000000000 +0100
++++ opencode-1.2.16/packages/opencode/src/tool/registry.ts	2026-03-04 01:02:49.291133407 +0100
+@@ -45,7 +45,8 @@
      if (matches.length) await Config.waitForDependencies()
      for (const match of matches) {
        const namespace = path.basename(match, path.extname(match))
--      const mod = await import(match)
+-      const mod = await import(pathToFileURL(match).href)
 +      const built = await Config.build(match)
-+      const mod = await import(built)
++      const mod = await import(pathToFileURL(built).href)
        for (const [id, def] of Object.entries<ToolDefinition>(mod)) {
          custom.push(fromPlugin(id === "default" ? namespace : `${namespace}_${id}`, def))
        }

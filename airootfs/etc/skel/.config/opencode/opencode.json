@@ -4,12 +4,6 @@
     "opencode-gemini-auth@latest",
     "opencode-pty"
   ],
-  "theme": "system",
-  "tui": {
-    "scroll_acceleration": {
-      "enabled": false
-    }
-  },
   "mcp": {
     "firefox": {
       "type": "local",

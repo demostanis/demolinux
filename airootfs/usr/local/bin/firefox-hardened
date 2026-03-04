@@ -21,15 +21,18 @@ echo "\$3" >> "$fifo"
 EOF
 chmod +x "$XDG_RUNTIME_DIR"/ffhardened-$pid/mpv-launcher
 
-while true; do
-	url="$(cat "$fifo")"
-	if [ -n "$url" ]; then
-		curl -H 'User-Agent: Firefox' \
-			-H 'Accept-Language: en-US' \
-			-Ls "$url" | \
-			/usr/local/bin/mpv-hardened /dev/stdin
-	fi
-done &
+(
+	exec 0<&- 1>&- 2>&-
+	while true; do
+		url="$(cat "$fifo")"
+		if [ -n "$url" ]; then
+			curl -H 'User-Agent: Firefox' \
+				-H 'Accept-Language: en-US' \
+				-Ls "$url" | \
+				/usr/local/bin/mpv-hardened /dev/stdin
+		fi
+	done &
+)
 
 cat <<EOF >"$XDG_RUNTIME_DIR/ffhardened-$pid/zathurarc"
 set recolor

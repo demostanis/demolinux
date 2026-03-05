@@ -83,7 +83,7 @@ linux_entry ()
   message="$(gettext_printf "Loading kernel %s..." ${version})"
   sed "s/^/$submenu_indentation/" << EOF
 	echo	'$(echo "$message" | grub_quote)'
-	linux	/system/airootfs/boot/${basename} ${args}
+	linux	"\$snapshot"/boot/${basename} ${args}
 EOF
   if test -n "${initrd}" ; then
     # TRANSLATORS: ramdisk isn't identifier. Should be translated.
@@ -94,9 +94,9 @@ EOF
     done
     sed "s/^/$submenu_indentation/" << EOF
 	echo	'$(echo "$message" | grub_quote)'
-        initrd  /system/airootfs/boot/intel-ucode.img
-        initrd  /system/airootfs/boot/amd-ucode.img
-	initrd	/system/airootfs/boot$(echo $initrd_path)
+        initrd  "\$snapshot"/boot/intel-ucode.img
+        initrd  "\$snapshot"/boot/amd-ucode.img
+	initrd	"\$snapshot"/boot$(echo $initrd_path)
 EOF
   fi
   sed "s/^/$submenu_indentation/" << EOF

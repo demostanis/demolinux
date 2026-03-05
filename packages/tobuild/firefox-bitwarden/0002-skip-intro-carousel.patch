@@ -1,0 +1,30 @@
+--- a/apps/browser/src/vault/popup/guards/intro-carousel.guard.ts
++++ b/apps/browser/src/vault/popup/guards/intro-carousel.guard.ts
+@@ -8,6 +8,9 @@ export const IntroCarouselGuard = async () => {
+   const router = inject(Router);
+   const introCarouselService = inject(IntroCarouselService);
+ 
++  // Skip intro carousel and go straight to login
++  return true;
++
+   const hasIntroCarouselDismissed = await firstValueFrom(introCarouselService.introCarouselState$);
+ 
+   if (hasIntroCarouselDismissed) {
+--- a/apps/browser/src/vault/popup/guards/intro-carousel.guard.spec.ts
++++ b/apps/browser/src/vault/popup/guards/intro-carousel.guard.spec.ts
+@@ -31,12 +31,12 @@ describe("IntroCarouselGuard", () => {
+     expect(result).toBe(true);
+   });
+ 
+-  it("should navigate to intro-carousel route when dismissed is false", async () => {
++  it("should always return true (skip intro carousel)", async () => {
+     TestBed.overrideProvider(IntroCarouselService, {
+       useValue: { introCarouselState$: of(false) },
+     });
+ 
+-    await TestBed.runInInjectionContext(async () => await IntroCarouselGuard());
+-    expect(createUrlTree).toHaveBeenCalledWith(["/intro-carousel"]);
++    const result = await TestBed.runInInjectionContext(async () => await IntroCarouselGuard());
++    expect(result).toBe(true);
+   });
+ });

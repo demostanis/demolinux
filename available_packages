@@ -44,6 +44,7 @@ rhythmbox
 python-pynitrokey
 aur python-usb_monitor # nitrokey-app2 dep
 aur nitrokey-app2
+aur electron40-bin # freetube dep (i hate electron)
 aur freetube
 dolphin-emu
 flatpak

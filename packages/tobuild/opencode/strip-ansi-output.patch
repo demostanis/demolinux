@@ -1,0 +1,74 @@
+--- a/packages/opencode/src/tool/truncation.ts
++++ b/packages/opencode/src/tool/truncation.ts
+@@ -1,4 +1,5 @@
+ import fs from "fs/promises"
++import stripAnsi from "strip-ansi"
+ import path from "path"
+ import { Global } from "../global"
+ import { Identifier } from "../id/id"
+@@ -50,13 +51,14 @@ export namespace Truncate {
+   }
+ 
+   export async function output(text: string, options: Options = {}, agent?: Agent.Info): Promise<Result> {
++    const clean = stripAnsi(text)
+     const maxLines = options.maxLines ?? MAX_LINES
+     const maxBytes = options.maxBytes ?? MAX_BYTES
+     const direction = options.direction ?? "head"
+-    const lines = text.split("\n")
+-    const totalBytes = Buffer.byteLength(text, "utf-8")
++    const lines = clean.split("\n")
++    const totalBytes = Buffer.byteLength(clean, "utf-8")
+ 
+     if (lines.length <= maxLines && totalBytes <= maxBytes) {
+-      return { content: text, truncated: false }
++      return { content: clean, truncated: false }
+     }
+ 
+     const out: string[] = []
+@@ -92,7 +94,7 @@ export namespace Truncate {
+ 
+     const id = Identifier.ascending("tool")
+     const filepath = path.join(DIR, id)
+-    await Filesystem.write(filepath, text)
++    await Filesystem.write(filepath, clean)
+ 
+     const hint = hasTaskTool(agent)
+       ? `The tool call succeeded but the output was truncated. Full output saved to: ${filepath}\nUse the Task tool to have explore agent process this file with Grep and Read (with offset/limit). Do NOT read the full file yourself - delegate to save context.`
+--- a/packages/opencode/src/session/processor.ts
++++ b/packages/opencode/src/session/processor.ts
+@@ -1,4 +1,5 @@
+ import { MessageV2 } from "./message-v2"
++import stripAnsi from "strip-ansi"
+ import { Log } from "@/util/log"
+ import { Identifier } from "@/id/id"
+ import { Session } from "."
+@@ -180,12 +181,13 @@ export namespace SessionProcessor {
+                 case "tool-result": {
+                   const match = toolcalls[value.toolCallId]
+                   if (match && match.state.status === "running") {
++                    const output = value.output?.output ? stripAnsi(value.output.output) : ""
+                     await Session.updatePart({
+                       ...match,
+                       state: {
+                         status: "completed",
+                         input: value.input ?? match.state.input,
+-                        output: value.output.output,
++                        output,
+                         metadata: value.output.metadata,
+                         title: value.output.title,
+                         time: {
+@@ -204,12 +206,13 @@ export namespace SessionProcessor {
+                 case "tool-error": {
+                   const match = toolcalls[value.toolCallId]
+                   if (match && match.state.status === "running") {
++                    const error = value.error ? stripAnsi(String(value.error)) : ""
+                     await Session.updatePart({
+                       ...match,
+                       state: {
+                         status: "error",
+                         input: value.input ?? match.state.input,
+-                        error: (value.error as any).toString(),
++                        error,
+                         time: {
+                           start: match.state.time.start,
+                           end: Date.now(),

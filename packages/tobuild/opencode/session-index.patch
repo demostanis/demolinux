@@ -1,0 +1,58 @@
+--- opencode-1.2.16/packages/opencode/src/cli/cmd/tui/component/spinner.tsx	2026-03-06 14:37:01.981342722 +0100
++++ opencode-1.2.16/packages/opencode/src/cli/cmd/tui/component/spinner.tsx	2026-03-06 14:51:36.035181775 +0100
+@@ -5,7 +5,7 @@
+ import type { RGBA } from "@opentui/core"
+ import "opentui-spinner/solid"
+ 
+-const frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
++const frames = ["❀", "✿", "❁", "✾", "❃", "✽", "❋", "✤", "❊", "✻"]
+ 
+ export function Spinner(props: { children?: JSX.Element; color?: RGBA }) {
+   const { theme } = useTheme()
+--- opencode-1.2.16/packages/opencode/src/cli/cmd/tui/routes/session/index.tsx	2026-03-06 14:37:01.981899112 +0100
++++ opencode-1.2.16/packages/opencode/src/cli/cmd/tui/routes/session/index.tsx	2026-03-06 14:52:20.383058431 +0100
+@@ -1312,8 +1312,25 @@
+   const local = useLocal()
+   const { theme } = useTheme()
+   const sync = useSync()
++  const kv = useKV()
++  const ctx = use()
+   const messages = createMemo(() => sync.data.message[props.message.sessionID] ?? [])
+ 
++  const thinkingPhrases = ['Installing demolinux...', 'Cooking pancakes...', 'Solving world issues...', 'Detonating...', 'Installing The Hurd...', 'Compiling Gentoo...', 'Hacking NASA...', 'Stealing cookies...', 'Landing a spaceship...', 'Selling drugs with your ID...', 'Delegating task to indians...', 'Thinking about life...', 'Philosophing...', 'Thinking...', 'Gooning...', 'Pspspsing at cats...', 'Meowing...', 'Meeting Polish girls...', 'Doing politics...', 'Vibecoding...']
++  const [currentPhrase, setCurrentPhrase] = createSignal(thinkingPhrases[Math.floor(Math.random() * thinkingPhrases.length)])
++  
++  const isThinking = createMemo(() => {
++    return props.parts.some((p) => p.type === "reasoning" && p.time && !p.time.end)
++  })
++
++  createEffect(() => {
++    if (!isThinking()) return
++    const interval = setInterval(() => {
++      setCurrentPhrase(thinkingPhrases[Math.floor(Math.random() * thinkingPhrases.length)])
++    }, 1000)
++    return () => clearInterval(interval)
++  })
++
+   const final = createMemo(() => {
+     return props.message.finish && !["tool-calls", "unknown"].includes(props.message.finish)
+   })
+@@ -1345,6 +1362,18 @@
+           )
+         }}
+       </For>
++      <Show when={props.last && isThinking() && !ctx.showThinking()}>
++        <box paddingLeft={3} marginTop={1} flexDirection="row" gap={1}>
++          <Show when={kv.get("animations_enabled", true)} fallback={<text fg={theme.textMuted}>❀ ...</text>}>
++            <spinner
++              frames={["❀", "✿", "❁", "✾", "❃", "✽", "❋", "✤", "❊", "✻"]}
++              interval={80}
++              color={theme.textMuted}
++            />
++            <text fg={theme.textMuted}>{currentPhrase()}</text>
++          </Show>
++        </box>
++      </Show>
+       <Show when={props.parts.some((x) => x.type === "tool" && x.tool === "task")}>
+         <box paddingTop={1} paddingLeft={3}>
+           <text fg={theme.text}>

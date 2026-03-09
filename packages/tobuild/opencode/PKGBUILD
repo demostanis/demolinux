@@ -34,7 +34,7 @@ source=(
   "fix-motion-events.patch"
   "fix-tools-first-launch.patch"
   "hide-migration-logs.patch"
-  "session-index.patch"
+  "loading-messages.patch"
   "strip-ansi-output.patch"
 )
 b2sums=('20ef4af4a71a70eb6725ba637fa555c76ca365c6db24f1918f6eb61449c0e96415a75ed508c6d445c42ea2dcb4ae9d6919b8f22fba3392c8f582cd3cbd248598'
@@ -42,7 +42,7 @@ b2sums=('20ef4af4a71a70eb6725ba637fa555c76ca365c6db24f1918f6eb61449c0e96415a75ed
         'e0a1c97ff3f0e92030353ad492b86f1b6cae73da11afc229617ad321680c2f5eea9cd00aa0290c1abe56cb5077cc3492a6ee01d6427868c4f01cfa31f6995acd'
         '98fc359d2e0902e7b7d9df561043000a37c57447c4c5ddbd3469103cd092190698afdf9adefe021eac55c20b6012974fb6a4573b0381d8dff265dd6fd6cfdd19'
         '815310cf9d5c201a3196e8d0d4b101ef5f6afdcdc048246502f5909e5eda63b7a01d5b9465f410577aa6d57870b05446c312f4e72048fa3e45fd49fe5290013a'
-        'e642388a1e9b826963a4945879a10e2fadc14d95f637c2c4c861f5f2d027f61f4f7ea34ee678f678032378dce2f9dcfdb06e92fede4bdfc26b0566bbc5870ff8'
+        '2f9b923c15ba5cc53012d8371deb6ff5bac7c8c74d065128a994c5adf1fb08808b4e0be7b9214d3596418b44985fee73d1a45bd6c45c32b1ed0fd5c493d10eb0'
         'daaf9e5366c2cf321a85d9d10e9627b327f8326cb75b0a05dc83ea1b4d859f89a393d5a9fdd130efb05bfd694a866cf63ce4697d2be46cfbae23923ae2698dd6')
 
 prepare() {
@@ -64,7 +64,7 @@ prepare() {
   cd "$srcdir/$pkgname-$pkgver"
   patch -p1 -i "$srcdir/fix-tools-first-launch.patch"
   patch -p1 -i "$srcdir/hide-migration-logs.patch"
-  patch -p1 -i "$srcdir/session-index.patch"
+  patch -p1 -i "$srcdir/loading-messages.patch"
   patch -p1 -i "$srcdir/strip-ansi-output.patch"
 
   sed -i "s/\"packageManager\": \"bun@[^\"]*\"/\"packageManager\": \"bun@$(bun --version)\"/" package.json

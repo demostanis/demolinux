@@ -1,17 +1,49 @@
---- opencode-1.2.20/packages/opencode/src/cli/cmd/tui/component/spinner.tsx	2026-03-06 14:37:01.981342722 +0100
-+++ opencode-1.2.20/packages/opencode/src/cli/cmd/tui/component/spinner.tsx	2026-03-06 14:51:36.035181775 +0100
-@@ -5,7 +5,7 @@
- import type { RGBA } from "@opentui/core"
- import "opentui-spinner/solid"
+--- opencode-1.2.20/packages/opencode/src/cli/cmd/tui/routes/session/index.tsx	2026-03-06 08:29:34.000000000 +0100
++++ opencode-1.2.20/packages/opencode/src/cli/cmd/tui/routes/session/index.tsx	2026-03-10 14:03:22.792994898 +0100
+@@ -5,6 +5,7 @@
+   createMemo,
+   createSignal,
+   For,
++  Index,
+   Match,
+   on,
+   onMount,
+@@ -27,6 +28,8 @@
+   type ScrollAcceleration,
+   TextAttributes,
+   RGBA,
++  hsvToRgb,
++  rgbToHex,
+ } from "@opentui/core"
+ import { Prompt, type PromptRef } from "@tui/component/prompt"
+ import type { AssistantMessage, Part, ToolPart, UserMessage, TextPart, ReasoningPart } from "@opencode-ai/sdk/v2"
+@@ -1308,12 +1311,64 @@
+   )
+ }
  
--const frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
-+const frames = ["❀", "✿", "❁", "✾", "❃", "✽", "❋", "✤", "❊", "✻"]
- 
- export function Spinner(props: { children?: JSX.Element; color?: RGBA }) {
-    const { theme } = useTheme()
---- opencode-1.2.20/packages/opencode/src/cli/cmd/tui/routes/session/index.tsx	2026-03-06 14:37:01.981899112 +0100
-+++ opencode-1.2.20/packages/opencode/src/cli/cmd/tui/routes/session/index.tsx	2026-03-06 14:52:20.383058431 +0100
-@@ -1311,9 +1311,26 @@
++function LoadingText(props: { text: string; offset: number }) {
++  const { theme } = useTheme()
++  const chars = createMemo(() => props.text.split(""))
++  return (
++    <text>
++      <Index each={chars()}>
++        {(char, i) => {
++          const color = createMemo(() => {
++            // Rolling sine wave gradient between textMuted and primary
++            const ratio = 0.5 + Math.sin(i * 0.3 - props.offset) * 0.5
++            return RGBA.fromInts(
++              Math.round((theme.textMuted.r + (theme.primary.r - theme.textMuted.r) * ratio) * 255),
++              Math.round((theme.textMuted.g + (theme.primary.g - theme.textMuted.g) * ratio) * 255),
++              Math.round((theme.textMuted.b + (theme.primary.b - theme.textMuted.b) * ratio) * 255),
++            )
++          })
++          return <span style={{ fg: color() }}>{char()}</span>
++        }}
++      </Index>
++    </text>
++  )
++}
++
  function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; last: boolean }) {
    const local = useLocal()
    const { theme } = useTheme()
@@ -20,11 +52,13 @@
 +  const ctx = use()
    const messages = createMemo(() => sync.data.message[props.message.sessionID] ?? [])
  
-+  const thinkingPhrases = ['Installing demolinux...', 'Cooking pancakes...', 'Solving world issues...', 'Detonating...', 'Installing The Hurd...', 'Compiling Gentoo...', 'Hacking NASA...', 'Stealing cookies...', 'Landing a spaceship...', 'Selling drugs with your ID...', 'Delegating task to indians...', 'Thinking about life...', 'Philosophing...', 'Thinking...', 'Gooning...', 'Pspspsing at cats...', 'Meowing...', 'Meeting Polish girls...', 'Doing politics...', 'Vibecoding...']
++  const thinkingPhrases = ['Installing demolinux', 'Cooking pancakes', 'Solving world issues', 'Detonating', 'Installing The Hurd', 'Compiling Gentoo', 'Hacking NASA', 'Stealing cookies', 'Landing a spaceship', 'Selling drugs with your ID', 'Delegating task to indians', 'Thinking about life', 'Philosophing', 'Thinking', 'Gooning', 'Pspspsing at cats', 'Meowing', 'Meeting Polish girls', 'Doing politics', 'Vibecoding']
 +  const [currentPhrase, setCurrentPhrase] = createSignal(thinkingPhrases[Math.floor(Math.random() * thinkingPhrases.length)])
++  const [dots, setDots] = createSignal(1)
++  const [waveOffset, setWaveOffset] = createSignal(0)
 +  
 +  const isThinking = createMemo(() => {
-+    return props.parts.some((p) => p.type === "reasoning" && p.time && !p.time.end) && !props.message.error
++    return props.parts.some((p) => p.type === "reasoning" && p.time && !p.time.end) && !props.message.error && !props.message.finish
 +  })
 +
 +  createEffect(() => {
@@ -32,23 +66,35 @@
 +    const interval = setInterval(() => {
 +      setCurrentPhrase(thinkingPhrases[Math.floor(Math.random() * thinkingPhrases.length)])
 +    }, 1000)
-+    return () => clearInterval(interval)
++    const dotsInterval = setInterval(() => {
++      setDots((d) => (d % 3) + 1)
++    }, 150)
++    const waveInterval = setInterval(() => {
++      setWaveOffset((o) => o + 0.3)
++    }, 30)
++    return () => {
++      clearInterval(interval)
++      clearInterval(dotsInterval)
++      clearInterval(waveInterval)
++    }
 +  })
 +
    const final = createMemo(() => {
      return props.message.finish && !["tool-calls", "unknown"].includes(props.message.finish)
    })
-@@ -1347,6 +1364,18 @@
+@@ -1345,6 +1400,18 @@
+           )
+         }}
        </For>
 +      <Show when={props.last && isThinking() && !ctx.showThinking()}>
 +        <box paddingLeft={3} marginTop={1} flexDirection="row" gap={1}>
-+          <Show when={kv.get("animations_enabled", true)} fallback={<text fg={theme.textMuted}>❀ ...</text>}>
++          <Show when={kv.get("animations_enabled", true)} fallback={<LoadingText text="· ..." offset={0} />}>
 +            <spinner
-+              frames={["❀", "✿", "❁", "✾", "❃", "✽", "❋", "✤", "❊", "✻"]}
++              frames={["◦", "○", "◎", "◉", "●", "◉", "◎", "○", "◦"]}
 +              interval={80}
 +              color={theme.textMuted}
 +            />
-+            <text fg={theme.textMuted}>{currentPhrase()}</text>
++            <LoadingText text={currentPhrase() + ".".repeat(dots())} offset={waveOffset()} />
 +          </Show>
 +        </box>
 +      </Show>

@@ -18,5 +18,18 @@
       "/tmp": "allow",
       "/tmp/*": "allow"
     }
+  },
+  "agent": {
+    "browser": {
+      "prompt": "You are a browser agent specialized in integration testing/QA and scraping. You must use Firefox MCP tools at your disposal for your task.",
+      "mode": "subagent",
+      "hidden": true,
+      "tools": {
+        "firefox*": true
+      }
+    }
+  },
+  "tools": {
+    "firefox*": false
   }
 }

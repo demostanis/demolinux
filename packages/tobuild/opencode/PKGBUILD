@@ -2,7 +2,7 @@
 
 pkgname=opencode
 pkgver=1.2.20
-pkgrel=7
+pkgrel=10
 pkgdesc='The open source coding agent'
 arch=('x86_64')
 url='https://github.com/anomalyco/opencode'
@@ -36,6 +36,7 @@ source=(
   "hide-migration-logs.patch"
   "loading-messages.patch"
   "strip-ansi-output.patch"
+  "add-background-process-spawning-tools-in-the-core.patch"
 )
 b2sums=('20ef4af4a71a70eb6725ba637fa555c76ca365c6db24f1918f6eb61449c0e96415a75ed508c6d445c42ea2dcb4ae9d6919b8f22fba3392c8f582cd3cbd248598'
         'a761bdad3ff9c67b6873596100b2db88a995c5bbd3459a89ed4714806b5ed5d2452a3e476c2a99f5750f56d08b353d1e68dbdf8d6151b8ffe747c5e291d03ad1'
@@ -43,7 +44,8 @@ b2sums=('20ef4af4a71a70eb6725ba637fa555c76ca365c6db24f1918f6eb61449c0e96415a75ed
         '98fc359d2e0902e7b7d9df561043000a37c57447c4c5ddbd3469103cd092190698afdf9adefe021eac55c20b6012974fb6a4573b0381d8dff265dd6fd6cfdd19'
         '815310cf9d5c201a3196e8d0d4b101ef5f6afdcdc048246502f5909e5eda63b7a01d5b9465f410577aa6d57870b05446c312f4e72048fa3e45fd49fe5290013a'
         'a1d19c5ab655a8c0faed291adb5ca732fce054818c2abc5385c6c4438b2258ecb45edb27bf75d5dbbfce54b972c55a9dccefa4908fe95cc34593fbdc3597516f'
-        'daaf9e5366c2cf321a85d9d10e9627b327f8326cb75b0a05dc83ea1b4d859f89a393d5a9fdd130efb05bfd694a866cf63ce4697d2be46cfbae23923ae2698dd6')
+        'daaf9e5366c2cf321a85d9d10e9627b327f8326cb75b0a05dc83ea1b4d859f89a393d5a9fdd130efb05bfd694a866cf63ce4697d2be46cfbae23923ae2698dd6'
+        '9f99f34bbe9e0bcfc5f7ed331e735b5f48c985c752d9dc88eb87fe1f138ebe419279f689af20c6f8f47bd2d2c2e42e510b08763acb1a3a92ef5afd9f6b53da42')
 
 prepare() {
   cd "$srcdir/opentui-$_opentui_ver"
@@ -66,6 +68,7 @@ prepare() {
   patch -p1 -i "$srcdir/hide-migration-logs.patch"
   patch -p1 -i "$srcdir/loading-messages.patch"
   patch -p1 -i "$srcdir/strip-ansi-output.patch"
+  patch -p1 -i "$srcdir/add-background-process-spawning-tools-in-the-core.patch"
 
   sed -i "s/\"packageManager\": \"bun@[^\"]*\"/\"packageManager\": \"bun@$(bun --version)\"/" package.json
 

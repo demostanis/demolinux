@@ -1,0 +1,55 @@
+--- src/firefox-devtools-mcp-0.7.4/src/index.ts	2026-02-27 11:19:45.000000000 +0100
++++ src/firefox-devtools-mcp-0.7.4/src/index.ts	2026-03-11 00:57:28.053610259 +0100
+@@ -110,8 +110,8 @@
+   ['select_page', tools.handleSelectPage],
+   ['close_page', tools.handleClosePage],
+ 
+-  // Script evaluation - DISABLED (see docs/future-features.md)
+-  // ['evaluate_script', tools.handleEvaluateScript],
++  // Script evaluation
++  ['evaluate_script', tools.handleEvaluateScript],
+ 
+   // Console
+   ['list_console_messages', tools.handleListConsoleMessages],
+@@ -154,8 +154,8 @@
+   tools.selectPageTool,
+   tools.closePageTool,
+ 
+-  // Script evaluation - DISABLED (see docs/future-features.md)
+-  // tools.evaluateScriptTool,
++  // Script evaluation
++  tools.evaluateScriptTool,
+ 
+   // Console
+   tools.listConsoleMessagesTool,
+--- src/firefox-devtools-mcp-0.7.4/src/tools/index.ts	2026-02-27 11:19:45.000000000 +0100
++++ src/firefox-devtools-mcp-0.7.4/src/tools/index.ts	2026-03-11 00:57:23.719465395 +0100
+@@ -16,8 +16,8 @@
+   handleClosePage,
+ } from './pages.js';
+ 
+-// Script evaluation tools - DISABLED (see docs/future-features.md)
+-// export { evaluateScriptTool, handleEvaluateScript } from './script.js';
++// Script evaluation tools
++export { evaluateScriptTool, handleEvaluateScript } from './script.js';
+ 
+ // Console tools
+ export {
+--- src/firefox-devtools-mcp-0.7.4/src/tools/script.ts	2026-02-27 11:19:45.000000000 +0100
++++ src/firefox-devtools-mcp-0.7.4/src/tools/script.ts	2026-03-11 00:57:31.378721260 +0100
+@@ -1,5 +1,5 @@
+ /**
+- * JavaScript evaluation tool (currently disabled - see docs/future-features.md)
++ * JavaScript evaluation tool
+  */
+ 
+ import { successResponse, errorResponse } from '../utils/response-helpers.js';
+@@ -7,7 +7,7 @@
+ 
+ export const evaluateScriptTool = {
+   name: 'evaluate_script',
+-  description: 'Execute JS function in page. Prefer UID tools for interactions.',
++  description: 'Execute JS function in page. DANGER: Arbitrary script execution. Prefer UID tools for interactions.',
+   inputSchema: {
+     type: 'object',
+     properties: {

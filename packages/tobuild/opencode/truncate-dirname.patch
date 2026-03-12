@@ -1,0 +1,25 @@
+--- a/packages/opencode/src/cli/cmd/tui/context/directory.ts
++++ b/packages/opencode/src/cli/cmd/tui/context/directory.ts
+@@ -1,13 +1,18 @@
+ import { createMemo } from "solid-js"
+ import { useSync } from "./sync"
+ import { Global } from "@/global"
++import { useTerminalDimensions } from "@opentui/solid"
++import { Locale } from "@/util/locale"
+ 
+ export function useDirectory() {
+   const sync = useSync()
++  const dimensions = useTerminalDimensions()
+   return createMemo(() => {
+-    const directory = sync.data.path.directory || process.cwd()
+-    const result = directory.replace(Global.Path.home, "~")
+-    if (sync.data.vcs?.branch) return result + ":" + sync.data.vcs.branch
+-    return result
++    let directory = sync.data.path.directory || process.cwd()
++    directory = directory.replace("/run/archiso", "")
++    let result = directory.replace(Global.Path.home, "~")
++    if (sync.data.vcs?.branch) result = result + ":" + sync.data.vcs.branch
++    const maxLen = Math.max(20, dimensions().width - 40)
++    return Locale.truncateMiddle(result, maxLen)
+   })
+ }

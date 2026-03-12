@@ -1,0 +1,19 @@
+{
+  "recent": [
+    {
+      "providerID": "google",
+      "modelID": "gemini-3-flash-preview"
+    }
+  ],
+  "favorite": [
+    {
+      "providerID": "chutes",
+      "modelID": "moonshotai/Kimi-K2.5-TEE"
+    },
+    {
+      "providerID": "google",
+      "modelID": "gemini-3-flash-preview"
+    }
+  ],
+  "variant": {}
+}

@@ -1,0 +1,12 @@
+{
+  "favorite": [
+    {
+      "providerID": "google",
+      "modelID": "gemini-3-flash-preview"
+    },
+    {
+      "providerID": "chutes",
+      "modelID": "moonshotai/Kimi-K2.5-TEE"
+    },
+  ]
+}

@@ -1,16 +1,15 @@
 # the worst pkgbuild ever written
 pkgname=agent-skills
-pkgver=1
+pkgver=2
 pkgrel=1
 pkgdesc="A collection of Agent Skills for OpenCode"
 arch=(any)
 license=(custom) # pretty sure im not allowed to actually distribute these
+source=(remote-notification-skill.md)
 makedepends=(git)
-options=(!strip)
+options=(!strip !debug)
 
-package() {
-	rm -rf anthropic-skills remotion-skills ui-ux-pro-max-skill
-
+prepare() {
 	git clone --filter=blob:none --sparse https://github.com/anthropics/skills anthropic-skills
 	( cd anthropic-skills && \
 		git sparse-checkout add skills/pdf && \
@@ -20,14 +19,20 @@ package() {
 		git sparse-checkout add skills/skill-creator )
 	git clone https://github.com/remotion-dev/skills remotion-skills
 	git clone https://github.com/nextlevelbuilder/ui-ux-pro-max-skill
+}
 
+package() {
 	install -m755 -d "$pkgdir"/etc/skel/.agents/skills
 
 	cp -a anthropic-skills/skills/{pdf,xlsx,docx,pptx,skill-creator} "$pkgdir"/etc/skel/.agents/skills
 
 	cp -a remotion-skills/skills/remotion "$pkgdir"/etc/skel/.agents/skills
 
+	mkdir -p "$pkgdir"/etc/skel/.agents/skills/remote-notification/
+	cp -a remote-notification-skill.md "$pkgdir"/etc/skel/.agents/skills/remote-notification/SKILL.md
+
 	cp -a ui-ux-pro-max-skill/.claude/skills/ui-ux-pro-max "$pkgdir"/etc/skel/.agents/skills
 	rm "$pkgdir"/etc/skel/.agents/skills/ui-ux-pro-max/{data,scripts}
 	cp -a ui-ux-pro-max-skill/src/ui-ux-pro-max/{data,scripts} "$pkgdir"/etc/skel/.agents/skills/ui-ux-pro-max
 }
+sha256sums=('491399cf453349c6de63f33e356774155a09b9ea82753fe19065a49c11e4e009')

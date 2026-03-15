@@ -1,0 +1,25 @@
+#!/bin/sh
+
+export DISPLAY=:0
+# ???????????
+export LANG=en_US.UTF-8
+
+prompt="$*"
+
+cd "$(mktemp -d)"
+
+w=$(xdotool search --name '^OC \|')
+if [ -n "$w" ]; then
+	if [ $(echo "$w" | wc -l) != 1 ]; then
+		echo ambiguous...
+		exit 1
+	fi
+	xdotool windowactivate "$w"
+	sleep 2
+else
+	urxvt -e opencode &
+	sleep 5
+fi
+
+xdotool type "$prompt. Notify my phone when done."
+xdotool key Enter

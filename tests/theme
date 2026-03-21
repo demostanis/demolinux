@@ -20,13 +20,11 @@ sleep 1
 expect_middle_color "srgb(26,9,45)"
 quitwin
 
-deferedinstall gimp >/dev/null 2>&1 &
-sleep 60
-xdotool key Escape
-sleep 1
+kdeconnect-app >/dev/null 2>&1 &
+sleep 3
 modkeypress w
-expectfocus "GNU Image Manipulation Program"
-expect_middle_color "srgb(26,9,45)"
+expectfocus "KDE Connect"
+expect_middle_color "srgb(38,14,65)"
 quitwin
 
 modkeypress Enter

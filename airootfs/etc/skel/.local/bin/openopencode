@@ -17,7 +17,7 @@ if [ -n "$w" ]; then
 	xdotool windowactivate "$w"
 	sleep 2
 else
-	urxvt -e opencode &
+	urxvt -e opencode --yolo &
 	sleep 5
 fi
 

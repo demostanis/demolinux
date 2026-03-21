@@ -5,28 +5,26 @@ local first_try_input = ""
 local second_try = false
 local grabber
 
-local function update_text()
+local function update_text(hide_password_prompt)
     local text = "Please set your temporary password:"
-    if invalid_password then
+
+    if hide_password_prompt then
+        text = "Locked. Use phone to unlock"
+    elseif invalid_password then
         if not password_set then
             text = "Password don't match. Try again:"
         else
             text = "Invalid password. Try again:"
         end
-    else
-        if password_set then
-            text = "Please type your password:"
-        else
-            if second_try then
-                text = "Please confirm your temporary password:"
-            end
-        end
+    elseif password_set then
+        text = "Please type your password:"
+    elseif second_try then
+        text = "Please confirm your temporary password:"
     end
     return text
 end
 
 local popup = nil
-local text = update_text()
 
 function hide_screenlock()
     if popup then
@@ -40,10 +38,12 @@ function hide_screenlock()
     naughty.resume()
 end
 
-return function(s)
+return function(s, hide_password_prompt)
     hide_screenlock()
 
     naughty.suspend()
+
+    local text = update_text(hide_password_prompt)
 
     -- TODO: maybe we should spawn the popup on every screen?
     s = s or mouse.screen
@@ -87,13 +87,13 @@ return function(s)
         popup.visible = true
         invalid_password = false
         popup.widget:get_children_by_id("prompt-text")[1].text =
-            update_text()
+            update_text(hide_password_prompt)
     end
 
     function read_input()
         local input = ""
         grabber = awful.keygrabber.run(function(mods, key, status)
-            if status == "release" then return end
+            if status == "release" or hide_password_prompt then return end
 
             if key == "BackSpace" then
                 input = input:sub(1, -2)

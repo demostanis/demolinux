@@ -1,2 +1,2 @@
 #!/bin/sh
-awesome-client 'require"screenlock"()'
+awesome-client 'require"screenlock"(mouse.screen, true)' # hide_password_prompt

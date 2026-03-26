@@ -260,7 +260,7 @@ end
 
 local function on_window_appearance_change(c)
 	if not global_x_restored
-		or (c and not c.floating and any_floatyfloaty())
+		or (c and any_floatyfloaty())
 		or controlling_tabs then return end
 
 	delayed(function()

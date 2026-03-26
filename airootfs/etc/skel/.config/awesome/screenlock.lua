@@ -26,11 +26,14 @@ end
 
 local popup = nil
 
+screen_locked = false
+
 function hide_screenlock()
     if popup then
         popup.visible = false
         popup.widget:get_children_by_id("hidden-password")[1].text =
             ""
+        screen_locked = false
     end
     if grabber then
         awful.keygrabber.stop(grabber)
@@ -89,6 +92,8 @@ return function(s, hide_password_prompt)
         popup.widget:get_children_by_id("prompt-text")[1].text =
             update_text(hide_password_prompt)
     end
+
+    screen_locked = true
 
     function read_input()
         local input = ""

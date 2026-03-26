@@ -8,6 +8,12 @@ prompt="$*"
 
 cd "$(mktemp -d)"
 
+was_locked=
+if awesome-client 'return screen_locked' | grep -q true; then
+	~/.local/bin/hide_screenlock
+	was_locked=y
+fi
+
 w=$(xdotool search --name '^OC \|')
 if [ -n "$w" ]; then
 	if [ $(echo "$w" | wc -l) != 1 ]; then
@@ -17,9 +23,13 @@ if [ -n "$w" ]; then
 	xdotool windowactivate "$w"
 	sleep 2
 else
-	urxvt -e opencode --yolo &
+	nohup urxvt -e opencode --yolo >/dev/null 2>&1 &
 	sleep 5
 fi
 
 xdotool type "$prompt. Notify my phone when done."
 xdotool key Enter
+
+if [ -n "$was_locked" ]; then
+	~/.local/bin/screenlock
+fi

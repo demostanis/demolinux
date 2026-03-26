@@ -187,6 +187,7 @@ local lsb-release
 ccid
 playerctl
 luarocks
+lua-luarocks
 rlwrap
 pv
 reflector

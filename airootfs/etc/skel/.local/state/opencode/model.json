@@ -1,11 +1,15 @@
 {
   "recent": [
     {
-      "providerID": "google",
-      "modelID": "gemini-3-flash-preview"
+      "providerID": "openai",
+      "modelID": "gpt-5.4"
     }
   ],
   "favorite": [
+    {
+      "providerID": "openai",
+      "modelID": "gpt-5.4"
+    },
     {
       "providerID": "chutes",
       "modelID": "moonshotai/Kimi-K2.5-TEE"

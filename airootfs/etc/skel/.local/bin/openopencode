@@ -4,7 +4,9 @@ export DISPLAY=:0
 # ???????????
 export LANG=en_US.UTF-8
 
-prompt="$*"
+prompt="$1"
+instance="$2"
+[ -n "$instance" ] && instance="$instance"$
 
 cd "$(mktemp -d)"
 
@@ -14,8 +16,8 @@ if awesome-client 'return screen_locked' | grep -q true; then
 	was_locked=y
 fi
 
-w=$(xdotool search --name '^OC \|')
-if [ -n "$w" ]; then
+w=$(xdotool search --name '^OC \| '"$instance")
+if [ "$instance" != "New session$" -a -n "$w" ]; then
 	if [ $(echo "$w" | wc -l) != 1 ]; then
 		echo ambiguous...
 		exit 1

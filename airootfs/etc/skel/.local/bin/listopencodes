@@ -1,0 +1,9 @@
+#!/bin/sh
+
+export DISPLAY=:0
+
+xdotool search --name '^OpenCode|OC \|' | \
+	xargs -rl xdotool getwindowname | \
+	cut -d '|' -f2 | cut -c2- | \
+	sed '/^penCode$/d' | \
+	jq -R -s '{instances: split("\n")[:-1] | if length == 0 then [] else . + ["New session"] end}'

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-out=$(opencode run -m opencode/big-pickle "write ONLY yes if you are working correctly" 2>&1)
+out=$(opencode run -m opencode/big-pickle "write ONLY yes if you are working correctly" 2>&1 </dev/null)
 
 if ! echo "$out" | grep -q yes; then
 	echo big pickle in opencode didn\'t run >&2

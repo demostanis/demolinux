@@ -115,9 +115,7 @@ export default tool({
         if (timedOut) result += `\n\n[timeout after ${timeout}ms]`;
         if (aborted) result += `\n\n[aborted by user]`;
 
-        const formattedOutput = `Code:\n${params.code}\n\nPackages: ${params.packages.length > 0 ? params.packages.join(", ") : "none"}\n\nCommand: ${displayCmd}\n\nOutput:\n${result}`;
-
-        resolve(formattedOutput);
+        resolve(result);
       });
 
       proc.once("error", reject);

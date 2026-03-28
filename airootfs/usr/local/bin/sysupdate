@@ -7,13 +7,6 @@ if [ $(id -u) != 0 ]; then
 	exit 1
 fi
 
-cd /data
-if [ -e ./sysupdate ]; then
-	echo warning: /data/sysupdate already exists
-fi
-mkdir -p sysupdate
-cd sysupdate
-
 nightly=no
 fetch=yes
 for arg in $@; do
@@ -23,6 +16,13 @@ for arg in $@; do
 		fetch=no
 	fi
 done
+
+cd /data
+if [ -e ./sysupdate -a $fetch = yes ]; then
+	echo warning: /data/sysupdate already exists
+fi
+mkdir -p sysupdate
+cd sysupdate
 
 REPO=demostanis/demolinux
 RELEASE=latest
@@ -52,6 +52,8 @@ else
 	fi
 fi
 
+chmod 644 demolinux.img
+chown root:root demolinux.img
 attr -qs createdbysysupdate -V yes demolinux.img
 
 echo rebooting...

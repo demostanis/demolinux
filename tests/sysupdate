@@ -1,0 +1,56 @@
+#!/bin/bash
+
+cc -static -xc - <<EOF
+#include <sys/reboot.h>
+#include <sys/mount.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <stddef.h>
+
+int main(void)
+{
+	mkdir("/dev", 0777);
+	mount("dev", "/dev", "devtmpfs", 0, "");
+	int fd = open("/dev/ttyS0", O_WRONLY);
+	// this message will actually be checked in tests/run
+	write(fd, "sysupdate test succeeded\n", 26);
+	reboot(0x4321fedc);
+}
+EOF
+
+echo testing system updates, creating fake demolinux update image and rebooting on it..
+
+imgpath=sysupdate.img
+
+truncate -s 330M "$imgpath"
+sgdisk \
+	-n 1:0:+1M -t 1:ef02 -c 1:legacyboot \
+	-n 2:0:+1M -t 2:ef00 -c 2:boot \
+	-n 3:0:+320M -t 3:8300 -c 3:system \
+	-p "$imgpath" >/dev/null
+
+sudo losetup -P /dev/loop0 "$imgpath"
+
+sudo mkfs.btrfs /dev/loop0p3 >/dev/null
+
+fake_sysupdate_root=/mnt/sysupdate
+
+sudo mkdir -p $fake_sysupdate_root
+sudo mount -o compress=zstd,noatime /dev/loop0p3 $fake_sysupdate_root
+sudo btrfs subvolume create $fake_sysupdate_root/system >/dev/null
+sudo btrfs subvolume create $fake_sysupdate_root/system/airootfs >/dev/null
+
+sudo mkdir -p $fake_sysupdate_root/system/airootfs/sbin
+sudo cp ./a.out $fake_sysupdate_root/system/airootfs/sbin/init
+sudo chmod +x $fake_sysupdate_root/system/airootfs/sbin/init
+sudo mkdir -p $fake_sysupdate_root/system/airootfs/boot/
+sudo cp /boot/vmlinuz-linux $fake_sysupdate_root/system/airootfs/boot/
+sudo cp /boot/initramfs-linux.img $fake_sysupdate_root/system/airootfs/boot/
+
+sudo umount /dev/loop0p3
+sudo mkdir -p /data/sysupdate
+sudo cp /dev/loop0 /data/sysupdate/demolinux.img
+sudo losetup -D
+
+sudo sysupdate --no-fetch # sadly

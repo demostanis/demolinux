@@ -3,6 +3,7 @@
 stop_vm() {
 	echo stopping demolinux...
 	pkill archiso_0 2>/dev/null
+	rm -f .demolinux_out.log
 }
 
 die() {
@@ -18,7 +19,8 @@ die() {
 cd "$(dirname "$(realpath "$0")")"/..
 
 run() {
-	./demolinux __headless || kill -USR1 $$
+	set +o pipefail
+	(./demolinux __headless | tee .demolinux_out.log) || kill -USR1 $$
 }
 
 trap 'die failed to run demolinux. did you run ./demolinux build first\?' USR1
@@ -77,7 +79,7 @@ sudo systemctl start pacman-init
 while true; do xrefresh; sleep 1; done >/dev/null 2>&1 &
 
 while read -r test; do
-	if [ "$test" != ./run -a "$test" != ./utils ]; then
+	if [ "$test" != ./run -a "$test" != ./utils -a "$test" != ./sysupdate ]; then
 		echo running $test...
 		(
 			set -e
@@ -92,6 +94,11 @@ while read -r test; do
 done < <(find . -type f -executable)
 
 EOC
+
+# will reboot the VM
+./dctrl shell "cd /tmp/tests && . ./sysupdate" 2>/dev/null
+
+grep -q 'sysupdate test succeeded' .demolinux_out.log || die sysupdate failed
 
 echo all tests succeeded
 stop_vm

@@ -37,3 +37,8 @@
 
 [commit]
         verbose = true
+
+[include]
+        # set user.name and user.email there, so that you don't
+        # need to store .gitconfig in pfs
+        path = ~/.gitidentity

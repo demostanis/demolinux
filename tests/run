@@ -63,7 +63,7 @@ echo changing display resolution...
 sleep 5
 
 ./dctrl shell "mkdir /tmp/tests"
-for t in tests/${1:-*}; do ./dctrl push "$t" /tmp/tests >/dev/null; done
+( cd tests; for t in ${*:-*}; do ../dctrl push "$t" /tmp/tests >/dev/null; done )
 ./dctrl push tests/utils /tmp/tests >/dev/null
 
 ./dctrl shell <<'EOC' || die
@@ -95,10 +95,12 @@ done < <(find . -type f -executable)
 
 EOC
 
-# will reboot the VM
-./dctrl shell "cd /tmp/tests && . ./sysupdate" 2>/dev/null
+if [[ $# == 0 || "$*" == *sysupdate* ]]; then
+	# will reboot the VM
+	./dctrl shell "cd /tmp/tests && . ./sysupdate" 2>/dev/null
 
-grep -q 'sysupdate test succeeded' .demolinux_out.log || die sysupdate failed
+	grep -q 'sysupdate test succeeded' .demolinux_out.log || die sysupdate failed
+fi
 
 echo all tests succeeded
 stop_vm

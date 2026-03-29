@@ -35,12 +35,10 @@ ffmpeg -f lavfi -y -i sine=frequency=440:duration=3 \
 
 rhythmbox >/dev/null 2>&1 &
 expectwin Rhythmbox
-# even if the window is created, it might not mean
-# it's visible..
-sleep 10
+sleep 5
 
 # play button
-xdotool mousemove 100 100
+xdotool mousemove 120 110
 xdotool click 1
 sleep 1
 

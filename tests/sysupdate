@@ -15,7 +15,7 @@ int main(void)
 	int fd = open("/dev/ttyS0", O_WRONLY);
 	// this message will actually be checked in tests/run
 	write(fd, "sysupdate test succeeded\n", 26);
-	reboot(0x4321fedc);
+	reboot(0x1234567);
 }
 EOF
 

@@ -121,10 +121,11 @@ run_image() {
         -display "${display}" \
         -vga virtio \
         -device virtio-net-pci,romfile=,netdev=net0 -netdev user,id=net0,hostfwd=tcp::60022-$bridge_ip:22 \
+        -qmp tcp:localhost:4444,server,nowait \
         -machine type=q35,smm=on,accel=kvm,usb=on \
         -cpu max -enable-kvm \
-        "${qemu_options[@]}" \
-        -no-reboot
+        -serial stdio \
+        "${qemu_options[@]}"
 }
 
 image=''

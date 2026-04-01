@@ -79,7 +79,8 @@ sudo systemctl start pacman-init
 while true; do xrefresh; sleep 1; done >/dev/null 2>&1 &
 
 while read -r test; do
-	if [ "$test" != ./run -a "$test" != ./utils -a "$test" != ./sysupdate ]; then
+	if [ "$test" != ./run -a "$test" != ./utils \
+		-a "$test" != ./sysupdate -a "$test" != ./sysupdate_snapshot ]; then
 		echo running $test...
 		(
 			set -e
@@ -97,9 +98,26 @@ EOC
 
 if [[ $# == 0 || "$*" == *sysupdate* ]]; then
 	# will reboot the VM
-	./dctrl shell "cd /tmp/tests && . ./sysupdate" 2>/dev/null
+	timeout 5 ./dctrl shell "cd /tmp/tests && . ./sysupdate" 2>/dev/null
 
-	grep -q 'sysupdate test succeeded' .demolinux_out.log || die sysupdate failed
+	tries=60
+	found=
+	for i in {1..$tries}; do
+		if grep -q 'sysupdate test succeeded' .demolinux_out.log; then
+			found=y
+			break
+		fi
+		sleep 1
+	done
+	[ -z "$found" ] && die sysupdate failed
+
+	# must not wait longer than GRUB_TIMEOUT
+	sleep 5
+	( . ./tests/sysupdate_snapshot )
+	ret=$?
+	if [ "$ret" != 0 ]; then
+		die sysupdate snapshot failed
+	fi
 fi
 
 echo all tests succeeded

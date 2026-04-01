@@ -1,0 +1,28 @@
+#!/bin/bash
+
+set -e
+
+echo rebooting to check created snapshot..
+
+qmp(){
+	nc -q0 localhost 4444 >/dev/null
+}
+cap(){
+	echo '{"execute":"qmp_capabilities"}'
+}
+key(){
+	echo '{"execute":"send-key","arguments":{"keys":[{"type":"qcode","data":"'"$1"'"}]}}'
+}
+
+(
+	cap
+	key down
+	key down
+	key down
+	key ret
+	key ret
+) | qmp
+
+echo connecting through ssh...
+./dctrl shell "grep -q demolinux /etc/os-release"
+./dctrl shell "sudo poweroff"

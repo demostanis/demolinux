@@ -196,6 +196,7 @@ aur python-vdf # sc-controller dep
 local sc-controller
 aur libcprime # corekeyboard dep
 aur corekeyboard
+tailscale
 xdotool
 rsync
 yad

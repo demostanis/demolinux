@@ -2,8 +2,8 @@
 
 pkgname=opencode
 pkgver=1.2.27
-_pkgver=1.2.27.3-demolinux
-pkgrel=4
+_pkgver=1.2.27.6-demolinux
+pkgrel=2
 pkgdesc='The open source coding agent'
 arch=('x86_64')
 url='https://github.com/anomalyco/opencode'
@@ -34,7 +34,7 @@ source=(
   "opentui-$_opentui_ver.tar.gz::https://github.com/anomalyco/opentui/archive/refs/tags/v$_opentui_ver.tar.gz"
   "fix-motion-events.patch"
 )
-sha256sums=('2fa9a9ab6d47c1ee667f739ed7a250a154d1a4a143ccfca70b9c52fc1aa62d6f'
+sha256sums=('ad67a5adfd56d65e86516503a766571efeb99f3814e5ec14b682848c42b9f49d'
             'fea07cc367e9f0ea8831d8908dc7378e59d4e5db5067a3dea28055dff2d166df'
             'b0c3199c7f00c1af06f2d402be5e2e352e10e1289460c968a47f714f4b355bc5')
 

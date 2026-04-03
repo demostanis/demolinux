@@ -146,11 +146,15 @@ if [[ ! -d ${COMP_CACHE_DIR} ]]; then
 	zstyle ':completion:*:complete:*' cache-path "${COMP_CACHE_DIR}"
 fi
 
-for plugin in ~/.zplugins/*/*.plugin.zsh; do source "$plugin"; done
-fast-theme sv-orple >/dev/null 2>&1
-# fast-syntax-highlighting shows
-# weird errors while typing `man`, workaround:
-FAST_HIGHLIGHT[chroma-man]=
+# zsh-syntax-highlighting tries to do network requests
+# to load themes (ew), causing .zlogin to hang for nothing
+if [ `tty` != /dev/tty1 ]; then
+	for plugin in ~/.zplugins/*/*.plugin.zsh; do source "$plugin"; done
+	fast-theme sv-orple >/dev/null 2>&1
+	# fast-syntax-highlighting shows
+	# weird errors while typing `man`, workaround:
+	FAST_HIGHLIGHT[chroma-man]=
+fi
 
 if [[ $(tty) == /dev/pts/* ]]; then
 	chpwd() {

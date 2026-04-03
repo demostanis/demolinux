@@ -8,9 +8,18 @@ quitwin
 modkeypress p
 orig=$(curl -s icanhazip.com)
 xdotool key v
-sleep 10
-new=$(curl -s icanhazip.com)
-if [ "$orig" = "$new" ]; then
+
+tries=10
+success=
+for i in {1..$tries}; do
+	sleep 5
+	new=$(curl -s icanhazip.com)
+	if [ "$orig" != "$new" ]; then
+		success=y
+		break
+	fi
+done
+if [ -z "$success" ]; then
 	echo RiseupVPN is broken, can\'t connect >&2
 	exit 1
 fi

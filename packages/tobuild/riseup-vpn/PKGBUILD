@@ -3,7 +3,7 @@
 pkgname=riseup-vpn
 _pkgname=riseup-vpn-configurator
 pkgver=1.2.0
-pkgrel=2
+pkgrel=3
 pkgdesc="a simple command line tool to get RiseupVPN up and running"
 arch=('any')
 url="https://github.com/kmille/riseup-vpn-configurator"
@@ -18,7 +18,7 @@ source=(https://github.com/kmille/riseup-vpn-configurator/archive/refs/tags/v$pk
 sha256sums=('69f12dd60ca8247553e4b0bbdb28b6f14a56aa8494cfe9eb89dd665c2ab3ae77'
             '712ee8fec0b8dbd9ce693c6950220186ad42019557982c1647443dfca1921842'
             '2bdf9fdb5af3a27107f4e1d7322f6d6521baca5775b49f7e8deaa384fb1b9530'
-            '0f04702f900982d980785a8954d535e9a053b5860403fa102a97d0fc5c42f08b')
+            'e41c8930ce3dbc78af2394c68db8b02367c177d775dfe73a4fb7ca4fefb9652c')
 
 prepare() {
   cd "$srcdir/$_pkgname-$pkgver"

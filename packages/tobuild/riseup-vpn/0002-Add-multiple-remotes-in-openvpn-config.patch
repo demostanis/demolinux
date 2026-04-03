@@ -1,17 +1,7 @@
-From 4c3252df7be94dbd5f026c34439cd06e5423ed6b Mon Sep 17 00:00:00 2001
-From: demostanis <demostanis@protonmail.com>
-Date: Sat, 1 Feb 2025 21:39:13 +0100
-Subject: [PATCH] multiple remotes
-
----
- riseup_vpn_configurator/__init__.py | 36 +++++++++++++----------------
- 1 file changed, 16 insertions(+), 20 deletions(-)
-
 diff --git a/riseup_vpn_configurator/__init__.py b/riseup_vpn_configurator/__init__.py
-index 3764f9d..d596870 100644
 --- a/riseup_vpn_configurator/__init__.py
 +++ b/riseup_vpn_configurator/__init__.py
-@@ -224,18 +224,11 @@ def check_config_file() -> None:
+@@ -224,18 +224,11 @@
          logging.error(f"Could not parse config file {config_file}")
          print_default_config(1)
  
@@ -31,7 +21,7 @@ index 3764f9d..d596870 100644
      for host in y.get('excluded_routes', []):
          try:
              _ = ip_network(host, strict=False)
-@@ -248,23 +241,24 @@ def check_config_file() -> None:
+@@ -248,23 +241,24 @@
      logging.info("Configuration file: OK")
  
  
@@ -64,7 +54,7 @@ index 3764f9d..d596870 100644
  
  
  def generate_configuration() -> None:
-@@ -281,9 +275,11 @@ def generate_configuration() -> None:
+@@ -281,14 +275,17 @@
  client
  dev tun
  
@@ -78,7 +68,13 @@ index 3764f9d..d596870 100644
  
  cipher AES-256-GCM
  tls-version-min 1.3
-@@ -309,10 +305,10 @@ ca {{ ca_cert_file }}
+ 
+ resolv-retry infinite
++server-poll-timeout 10
+ keepalive 10 60
+ nobind
+ verb 3
+@@ -309,10 +306,10 @@
  cert {{ cert_file }}
  key {{ key_file }}"""
  
@@ -91,6 +87,3 @@ index 3764f9d..d596870 100644
                        excluded_routes=excluded_routes,
                        ca_cert_file=ca_cert_file,
                        cert_file=cert_file,
--- 
-2.48.1
-

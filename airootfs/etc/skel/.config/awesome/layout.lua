@@ -31,7 +31,7 @@ end
 local function any_floatyfloaty(s)
 	s = s or mouse.screen
 	for _, client in ipairs(s.clients) do
-		if client.floating then
+		if client.floating or client.fullscreen then
 			return true
 		end
 	end

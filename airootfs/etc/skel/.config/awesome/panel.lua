@@ -5,6 +5,7 @@ local state = nil
 local screenrecorder_status = "Not recording"
 local mypanel = nil
 local panes = {}
+local caffeine_enabled = false
 
 local footerw = {
     {
@@ -149,6 +150,12 @@ function show_panel()
                     pane.has_hovering_in_previous_frame = false
                     table.insert(panes, pane)
                 end
+                for _, w in pairs(mypanel:get_children_by_id("caffeine-button")) do
+                    local pane = wgeometry(w, mypanel)
+                    pane.widget = w
+                    pane.has_hovering_in_previous_frame = false
+                    table.insert(panes, pane)
+                end
                 return true
             end
             for _, pane in pairs(panes) do
@@ -207,6 +214,9 @@ function show_panel()
                 end},
                 {{ "Shift", }, "H", function()
                     awful.spawn("systemctl hibernate")
+                end},
+                {{ "Shift", }, "U", function()
+                    awful.spawn("systemctl suspend")
                 end}
             }
         }
@@ -452,6 +462,47 @@ return function(s)
         },
         nil,
         {
+            layout = wibox.layout.align.horizontal,
+            {
+                {
+                    {
+                        {
+                            widget = wibox.widget.textbox,
+                            font = beautiful.base_icon_font .. " 25",
+                            forced_width = 45,
+                            halign = "center",
+                            text = "\u{e2fa}",
+                            id = "caffeine-icon"
+                        },
+                        widget = wibox.container.margin,
+                        top = 3, bottom = 3,
+                        left = 8, right = 8,
+                    },
+                    widget = wibox.container.background,
+                    id = "caffeine-button",
+                    bg = beautiful.bg_normal,
+                    shape = rrect(),
+                    command = function()
+                        caffeine_enabled = not caffeine_enabled
+                        local icon = mypanel:get_children_by_id("caffeine-icon")[1]
+                        local tooltip = mypanel.caffeine_tooltip
+                        if caffeine_enabled then
+                            awful.spawn("xset -dpms", false)
+                            awful.spawn("xset s off", false)
+                            icon.text = "\u{e163}"
+                            if tooltip then tooltip.text = "Screen will stay on" end
+                        else
+                            awful.spawn("xset +dpms", false)
+                            awful.spawn("xset s on", false)
+                            icon.text = "\u{e2fa}"
+                            if tooltip then tooltip.text = "Screen will turn off" end
+                        end
+                    end
+                },
+                widget = wibox.container.margin,
+                top = 1, left = 5, bottom = 8
+            },
+            nil,
             {
                 {
                     {
@@ -485,6 +536,18 @@ return function(s)
                                 {
                                     widget = wibox.widget.textbox,
                                     font = beautiful.base_icon_font .. " 25",
+                                    text = "\u{23FE}"
+                                },
+                                widget = wibox.container.background,
+                                id = "system",
+                                command = function()
+                                    awful.spawn("systemctl suspend")
+                                end
+                            },
+                            {
+                                {
+                                    widget = wibox.widget.textbox,
+                                    font = beautiful.base_icon_font .. " 25",
                                     text = "\u{f880}"
                                 },
                                 widget = wibox.container.background,
@@ -505,13 +568,9 @@ return function(s)
                     bg = beautiful.bg_normal,
                 },
                 widget = wibox.container.margin,
-                top = 1, right = 5,
+                top = 1, right = 5, bottom = 8
             },
-            widget = wibox.container.place,
-            fill_vertical = true,
-            halign = "right",
         },
-        --footerw,
         layout = wibox.layout.align.vertical
     }
 
@@ -582,6 +641,35 @@ return function(s)
             if system_action.opts and system_action.opts.hide_system_action_on_click then
                 mypanel:hide()
             end
+        end)
+    end
+
+    mypanel.caffeine_tooltip = awful.tooltip {
+        objects = { mypanel:get_children_by_id("caffeine-button")[1] },
+        text = "Screen will turn off",
+        delay_show = 0.5,
+    }
+
+    for _, caffeine_button in ipairs(mypanel:get_children_by_id("caffeine-button")) do
+        caffeine_button:connect_signal("mouse::enter", function()
+            for _, child in ipairs(caffeine_button:get_all_children()) do
+                local textboxtype = "wibox.widget.textbox"
+                if string.sub(tostring(child), 1, string.len(textboxtype)) == textboxtype then
+                    child.oldtext = child.text
+                    child.markup = string.format([[<span foreground="%s">%s</span>]], beautiful.wibar_widget_hover_color, child.text)
+                end
+            end
+        end)
+        caffeine_button:connect_signal("mouse::leave", function()
+            for _, child in ipairs(caffeine_button:get_all_children()) do
+                local textboxtype = "wibox.widget.textbox"
+                if string.sub(tostring(child), 1, string.len(textboxtype)) == textboxtype and child.oldtext then
+                    child.markup = child.oldtext
+                end
+            end
+        end)
+        caffeine_button:connect_signal("mouse::click", function()
+            caffeine_button.command()
         end)
     end
 

@@ -6,7 +6,36 @@ if [ ! -d "$gitdir" ]; then
   exit 1
 fi
 
+decode_path() {
+  local input=$1
+  local output=
+  local i next
+
+  for (( i=0; i<${#input}; i++ )); do
+    if [ "${input:i:1}" = "\\" ] && [ $(( i + 1 )) -lt ${#input} ]; then
+      next=${input:i+1:1}
+      case $next in
+        n)
+          output+=$'\n'
+          ((i++))
+          continue
+          ;;
+        \\)
+          output+="\\"
+          ((i++))
+          continue
+          ;;
+      esac
+    fi
+
+    output+="${input:i:1}"
+  done
+
+  printf '%s' "$output"
+}
+
 sudo persistfs list | while read -r path; do
+  path=$(decode_path "$path")
   # bigger than 10M
   size=$(du -s "$path" 2>/dev/null | awk '{print $1}')
   if [ -z "$size" ]; then continue; fi

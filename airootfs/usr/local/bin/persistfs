@@ -1,148 +1,438 @@
-#!/bin/sh
-
-export IFS=$'\n';
+#!/usr/bin/env bash
 
 pfs_dir=/run/archiso/persistfs
 airfs_dir=/run/archiso/airootfs
 pacmandb_dir=/var/lib/pacman/local
+cowspace_dir=/run/archiso/cowspace/upperdir
+index_file=$pfs_dir/upperdir/index
 
-if [ $(id -u) -ne 0 ]; then
+if [ "$(id -u)" -ne 0 ]; then
 	echo You need root >&2
 	exit 1
 fi
 
 is_adding_pkg=0
 
-absolute_path() {
-	if [[ "$1" = /* ]]; then
-		echo "$1"
+path_exists() {
+	[ -e "$1" ] || [ -L "$1" ]
+}
+
+decode_path() {
+	local input=$1
+	local output=
+	local i next
+
+	for (( i=0; i<${#input}; i++ )); do
+		if [ "${input:i:1}" = "\\" ] && [ $(( i + 1 )) -lt ${#input} ]; then
+			next=${input:i+1:1}
+			case $next in
+				n)
+					output+=$'\n'
+					((i++))
+					continue
+					;;
+				\\)
+					output+="\\"
+					((i++))
+					continue
+					;;
+			esac
+		fi
+
+		output+="${input:i:1}"
+	done
+
+	printf '%s' "$output"
+}
+
+escape_index_entry() {
+	local escaped=$1
+	escaped=${escaped//\\/\\\\}
+	escaped=${escaped//$'\n'/\\n}
+	printf '%s' "$escaped"
+}
+
+canonical_path() {
+	local path dir base
+
+	path=$(decode_path "$1")
+	if [[ $path != /* ]]; then
+		path="$PWD/$path"
+	fi
+
+	while [[ $path != / && $path == */ ]]; do
+		path=${path%/}
+	done
+
+	if [[ -z $path || $path == / ]]; then
+		printf '/'
+		return 0
+	fi
+
+	dir=$(realpath -ms -- "$(dirname -- "$path")") || return 1
+	base=$(basename -- "$path")
+	if [ "$dir" = / ]; then
+		printf '/%s' "$base"
 	else
-		echo "$(realpath -s "$(dirname "$1")")/"$(basename "$1")""
+		printf '%s/%s' "$dir" "$base"
 	fi
 }
 
-add_files() {
-	files=()
+cli_path_has_trailing_slash() {
+	local path
 
-	for file in "$@"; do
-		export file=$(absolute_path "$file")
-		files+=( "$file" )
-	done
+	path=$(decode_path "$1")
+	[[ $path != / && $path == */ ]]
+}
 
-	done=
-	for file in "${files[@]}"; do
-		if [ -n "$done" ]; then
-			echo
-			break
-		fi
+ensure_index() {
+	mkdir -p -- "$(dirname -- "$index_file")"
+	touch -- "$index_file"
+}
 
-		# e.g. files removed by localepurge
-		if [ ! -e "$file" ]; then
+index_has_path() {
+	local escaped
+
+	ensure_index
+	escaped=$(escape_index_entry "$1")
+	grep -Fxq -- "$escaped" "$index_file"
+}
+
+index_add_path() {
+	local escaped
+
+	ensure_index
+	escaped=$(escape_index_entry "$1")
+	if ! grep -Fxq -- "$escaped" "$index_file"; then
+		printf '%s\n' "$escaped" >> "$index_file"
+	fi
+}
+
+index_remove_path_tree() {
+	local path=$1
+	local escaped prefix tmp
+
+	ensure_index
+	escaped=$(escape_index_entry "$path")
+	prefix="$escaped/"
+	tmp="$index_file.tmp"
+
+	while IFS= read -r line || [ -n "$line" ]; do
+		if [ "$line" = "$escaped" ] || [[ $line == "$prefix"* ]]; then
 			continue
 		fi
 
-		if ! grep -q "$file" $pfs_dir/upperdir/index 2>/dev/null; then
-			printf "%s\n" "$file" >> $pfs_dir/upperdir/index
-		fi
+		printf '%s\n' "$line"
+	done < "$index_file" > "$tmp"
+	mv -- "$tmp" "$index_file"
+}
 
-		if [ "$is_adding_pkg" = 1 ]; then
-			echo -e "\033[2A"
-			echo -ne "\033[2K"
-		fi
-		maxsize=$(tput cols)
+print_adding_file() {
+	local file=$1
+	local maxsize
+
+	if [ "$is_adding_pkg" = 1 ]; then
+		echo -e "\033[2A"
+		echo -ne "\033[2K"
+	fi
+
+	maxsize=$(tput cols 2>/dev/null || printf 0)
+	if [ "$maxsize" -gt 0 ] 2>/dev/null; then
 		printf "%.${maxsize}s\n" "Adding file $file to persistfs..."
+	else
+		printf 'Adding file %s to persistfs...\n' "$file"
+	fi
+}
 
-		files+=( "$file" )
-	done &
+copy_one_path_into_persistfs() {
+	local source_root=$1
+	local file=$2
+	local follow_dir_target=$3
+	local rel source parent persisted
+
+	rel=${file#/}
+	source=$source_root$rel
+	persisted=$pfs_dir/upperdir/$rel
+	parent=$(dirname -- "$persisted")
+	mkdir -p -- "$parent"
+	if [ "$follow_dir_target" = 1 ]; then
+		source=$(realpath -- "$source") || return 1
+	fi
 
 	(
-		exec 3> >( awk '
-			{if(/File exists/){print"\033[2A"}else{print$0}}
-		' ) # --ignore-existing doesn't work...
-		for f in "${files[@]}"; do printf "%s\n" "$f"; done | \
-			rsync -arq --mkpath --files-from=- / $pfs_dir/upperdir 2>&3
+		exec 3> >(awk '{if(/File exists/){print"\033[2A"}else{print$0}}')
+		if [ "$follow_dir_target" = 1 ]; then
+			mkdir -p -- "$persisted"
+			rsync -arq --mkpath -- "$source/" "$persisted/" 2>&3
+		else
+			rsync -arq --mkpath -- "$source" "$parent/" 2>&3
+		fi
 	)
-	done=1
-	wait
+}
+
+copy_paths_into_persistfs() {
+	local source_root=$1
+	shift
+
+	local file follow_dir_target
+
+	while [ $# -gt 0 ]; do
+		file=$1
+		follow_dir_target=$2
+		shift 2
+
+		index_add_path "$file"
+		print_adding_file "$file"
+		copy_one_path_into_persistfs "$source_root" "$file" "$follow_dir_target"
+	done
+}
+
+ensure_cowspace_path() {
+	local file=$1
+	local mount_target source
+
+	if [ "$file" = / ]; then
+		echo / found in arguments, skipping >&2
+		return 1
+	fi
+
+	mount_target=$file
+	if [ -L "$file" ]; then
+		mount_target=$(dirname -- "$file")
+	fi
+
+	if [ "$(findmnt -n -o TARGET --target "$mount_target" 2>/dev/null)" != / ]; then
+		echo File is not on the root overlay mount: $file >&2
+		return 1
+	fi
+
+	source=$cowspace_dir/${file#/}
+	if ! path_exists "$source"; then
+		echo File is not present in cowspace: $file >&2
+		return 1
+	fi
+
+	return 0
+}
+
+remove_persisted_path_tree() {
+	local file=$1
+	local require_present=${2:-1}
+	local persisted=$pfs_dir/upperdir${file}
+
+	if [ "$file" = / ]; then
+		echo / found in arguments, skipping >&2
+		return 1
+	fi
+
+	if [ "$require_present" = 1 ] && ! path_exists "$persisted"; then
+		echo File does not exist in persistfs: $file >&2
+		return 1
+	fi
+
+	if path_exists "$persisted"; then
+		rm -rf -- "$persisted"
+	fi
+
+	index_remove_path_tree "$file"
+	return 0
+}
+
+pkg_desc_field() {
+	awk -v key="%$2%" '$0 == key { getline; print; exit }' "$1"
+}
+
+pkg_files_owned_paths() {
+	awk '
+		/^%/ { next }
+		NF == 0 { next }
+		/\/$/ { next }
+		{ print "/" $0 }
+	' "$1"
+}
+
+selector_matches_pkg() {
+	local selector=$1
+	local name=$2
+	local version=$3
+	local combined=${name}-${version}
+
+	[[ $selector == "$name" || $combined == "$selector"* ]]
+}
+
+persisted_pkg_dirs() {
+	local -a dirs=()
+
+	shopt -s nullglob
+	dirs=("$pfs_dir/upperdir$pacmandb_dir"/*)
+	shopt -u nullglob
+	printf '%s\n' "${dirs[@]}"
 }
 
 actual_pkg() {
-	pkg="${1%%=*}"
-	# if the provided package name is not the actual name of the
-	# package to be installed (e.g. installing xorriso actually
-	# installs libisoburn since libisoburn provides xorriso),
-	# find the actual name...
+	local pkg=${1%%=*}
+
 	pacman -Qi "$pkg" | awk -F': ' '{if(NR==1)print$2}'
+}
+
+add_pkg_files() {
+	local requested_pkg=$1
+	local pkg dep db_dir meta
+	local -a pkg_files=()
+	local -a copy_args=()
+
+	pkg=$(actual_pkg "$requested_pkg")
+	if [ -z "$pkg" ]; then
+		return 1
+	fi
+
+	echo -e "Adding \033[1;31m$pkg\033[0m to persistfs..."
+	echo Computing file list...
+
+	while IFS= read -r file; do
+		[[ $file == */ ]] && continue
+		pkg_files+=("$file")
+	done < <(pacman -Ql "$pkg" | cut -d' ' -f2-)
+
+	shopt -s nullglob
+	for db_dir in "$pacmandb_dir"/"$pkg"-*; do
+		for meta in desc files mtree; do
+			[ -e "$db_dir/$meta" ] && pkg_files+=("$db_dir/$meta")
+		done
+	done
+	shopt -u nullglob
+
+	for file in "${pkg_files[@]}"; do
+		copy_args+=("$file" 0)
+	done
+	copy_paths_into_persistfs / "${copy_args[@]}"
+
+	while IFS= read -r dep; do
+		local actual_dep
+		local -a persisted_matches=()
+		local -a airfs_matches=()
+
+		actual_dep=$(actual_pkg "$dep")
+		[ -z "$actual_dep" ] && continue
+
+		shopt -s nullglob
+		persisted_matches=("$pfs_dir/upperdir$pacmandb_dir"/"$actual_dep"-*)
+		airfs_matches=("$airfs_dir$pacmandb_dir"/"$actual_dep"-*)
+		shopt -u nullglob
+
+		if [ ${#persisted_matches[@]} -eq 0 ] && [ ${#airfs_matches[@]} -eq 0 ]; then
+			add_pkg_files "$actual_dep" || return 1
+		fi
+	done < <(expac %D "$pkg")
+}
+
+remove_persisted_package() {
+	local selector=$1
+	local dir name version owned meta
+	local status=0
+	local -a matches=()
+	local -A matched_dirs=()
+	local -A protected_paths=()
+	local -A remove_paths=()
+
+	while IFS= read -r dir; do
+		[ -d "$dir" ] || continue
+		[ -e "$dir/desc" ] || continue
+
+		name=$(pkg_desc_field "$dir/desc" NAME)
+		version=$(pkg_desc_field "$dir/desc" VERSION)
+		if selector_matches_pkg "$selector" "$name" "$version"; then
+			matches+=("$dir")
+			matched_dirs["$dir"]=1
+		fi
+	done < <(persisted_pkg_dirs)
+
+	if [ ${#matches[@]} -eq 0 ]; then
+		echo No persisted package matches: $selector >&2
+		return 1
+	fi
+
+	while IFS= read -r dir; do
+		[ -d "$dir" ] || continue
+		[ -n "${matched_dirs["$dir"]}" ] && continue
+		[ -e "$dir/files" ] || continue
+
+		while IFS= read -r owned; do
+			protected_paths["$owned"]=1
+		done < <(pkg_files_owned_paths "$dir/files")
+	done < <(persisted_pkg_dirs)
+
+	for dir in "${matches[@]}"; do
+		remove_paths["${dir#$pfs_dir/upperdir}"]=1
+
+		if [ -e "$dir/files" ]; then
+			while IFS= read -r owned; do
+				[ -n "${protected_paths["$owned"]}" ] && continue
+				remove_paths["$owned"]=1
+			done < <(pkg_files_owned_paths "$dir/files")
+		fi
+	done
+
+	for owned in "${!remove_paths[@]}"; do
+		if ! owned=$(canonical_path "$owned"); then
+			status=1
+			continue
+		fi
+		remove_persisted_path_tree "$owned" 0 || status=1
+	done
+
+	return "$status"
 }
 
 case $1 in
 	add)
 		(( $# < 2 )) && echo Missing files to add >&2 && exit 1
 
-		for file in "${@:2}"; do
-			if [ ! -e "$file" ]; then
+		paths=()
+		for raw_file in "${@:2}"; do
+			follow_dir_target=0
+			if cli_path_has_trailing_slash "$raw_file"; then
+				follow_dir_target=1
+			fi
+
+			file=$(canonical_path "$raw_file") || exit 1
+			if ! path_exists "$file"; then
 				echo File does not exist: $file >&2
 				exit 1
 			fi
+			ensure_cowspace_path "$file" || exit 1
+			paths+=("$file" "$follow_dir_target")
 		done
 
-		add_files "${@:2}"
+		copy_paths_into_persistfs "$cowspace_dir/" "${paths[@]}"
 		;;
 	remove)
 		(( $# < 2 )) && echo Missing files to remove >&2 && exit 1
 		statuscode=0
 
 		for file in "${@:2}"; do
-			if [ ! "${file:0:1}" = / ]; then
-				file="$(pwd)/$file"
-			fi
-
-			export file=$(absolute_path "$file")
-			if [ ! -L $pfs_dir/upperdir/"$file" -a ! -e $pfs_dir/upperdir/"$file" ]; then
-				echo File does not exist: $file >&2
-				statuscode=1
-				continue
-			fi
-
-			rm -rf $pfs_dir/upperdir/"$file"
-			grep -Fv "$file" $pfs_dir/upperdir/index > $pfs_dir/upperdir/index.tmp
-			mv $pfs_dir/upperdir/index.tmp $pfs_dir/upperdir/index
+			file=$(canonical_path "$file") || exit 1
+			remove_persisted_path_tree "$file" 1 || statuscode=1
 		done
 
 		exit $statuscode
 		;;
 	pkg)
-		[ -z "$2" ] && echo Missing package to install && exit 1
+		[ -z "$2" ] && echo Missing package to install >&2 && exit 1
 
 		is_adding_pkg=1
-		add_pkg_files() {
-			pkg=$(actual_pkg "$1")
-			if [ -z "$pkg" ]; then
-				exit 1
-			fi
-			echo -e Adding "\033[1;31m$pkg\033[0m" to persistfs...
-			echo Computing file list...
-
-			add_files $(pacman -Ql "$pkg" | \
-				cut -d\  -f2 | \
-				grep -v /$) $pacmandb_dir/$pkg-[0-9]*/{desc,files,mtree}
-
-			unset IFS
-			for dep in $(expac %D "$pkg"); do
-				dep=$(actual_pkg "$dep")
-
-				# if it's neither already in the persistfs nor in the airootfs...
-				if ! compgen -G $pfs_dir/upperdir$pacmandb_dir/$dep-[0-9]* >/dev/null && \
-					! compgen -G $airfs_dir$pacmandb_dir/$dep-[0-9]* >/dev/null; then
-					add_pkg_files "$dep"
-				fi
-			done
-			export IFS=$'\n'
-		}
-
 		for pkg in "${@:2}"; do
-			add_pkg_files "$pkg"
+			add_pkg_files "$pkg" || exit 1
 		done
+		;;
+	rpkg)
+		[ -z "$2" ] && echo Missing package to remove >&2 && exit 1
+
+		statuscode=0
+		for pkg in "${@:2}"; do
+			remove_persisted_package "$pkg" || statuscode=1
+		done
+		exit $statuscode
 		;;
 	ipkg)
 		[ -z "$2" ] && echo Missing package to install >&2 && exit 1
@@ -154,31 +444,43 @@ case $1 in
 	diff)
 		[ -z "$2" ] && echo Missing file to diff >&2 && exit 1
 
-		file="$2"
-		if [ ! "${file:0:1}" = / ]; then
-			file="$(pwd)/$file"
+		file=$(canonical_path "$2") || exit 1
+
+		if ! path_exists "$airfs_dir/$file"; then
+			echo File does not exist >&2
+			exit 1
+		fi
+		if ! path_exists "$pfs_dir/upperdir/$file"; then
+			echo File not in persistfs >&2
+			exit 1
 		fi
 
-		[ ! -e $airfs_dir/"$file" ] && echo File does not exist >&2 && exit 1
-		[ ! -e $pfs_dir/upperdir/"$file" ] && echo File not in persistfs >&2 && exit 1
-
-		diff -u $airfs_dir/"$file" $pfs_dir/upperdir/"$file" | bat --file-name "$file"
+		diff -u -- "$airfs_dir/$file" "$pfs_dir/upperdir/$file" | bat --file-name "$file"
 		;;
 	list)
+		ensure_index
 		if [ "$2" = --all ]; then
-			cat $pfs_dir/upperdir/index
+			cat -- "$index_file"
 		else
-			cat $pfs_dir/upperdir/index | xargs pacman -Qo 2>&1 | grep -v $pacmandb_dir | grep 'error: No package owns' | sed 's/.*No package owns \(.*\)/\1/' | sort -u
+			while IFS= read -r escaped || [ -n "$escaped" ]; do
+				file=$(decode_path "$escaped")
+				[[ $file == "$pacmandb_dir"/* ]] && continue
+				if ! pacman -Qo -- "$file" >/dev/null 2>&1; then
+					printf '%s\n' "$escaped"
+				fi
+			done < "$index_file"
 		fi
 		;;
 	*)
-		echo usage: "$0 [add|remove|pkg|ipkg|list] [--all]" >&2
+		echo usage: "$0 [add|remove|pkg|rpkg|ipkg|list] [--all]" >&2
 		echo
 		echo \ add: add a file to persistfs.
 		echo
 		echo \ remove: remove a file from persistfs.
 		echo
 		echo \ pkg: copy an existing pacman package to persistfs.
+		echo
+		echo \ rpkg: remove a persisted package from persistfs.
 		echo
 		echo \ ipkg: install a package with pacman -S and copy it to persistfs.
 		echo
@@ -188,4 +490,3 @@ case $1 in
 		exit 1
 		;;
 esac
-

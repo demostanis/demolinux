@@ -3,61 +3,207 @@
 # pfs is very noisy
 exec > >(cat >/dev/null) || :
 
-# TODO: check index?
-
 # pfs uses tput lol
 export TERM=xterm-256color
 
 alias pfs='sudo persistfs'
 pfsdir=/run/archiso/persistfs/upperdir
-index=/run/archiso/persistfs/index
+index=$pfsdir/index
+pacmandb=/var/lib/pacman/local
 
-rm -rf $pfsdir/home/demostanis/tests
+escaped_path() {
+	local path=$1
+	path=${path//\\/\\\\}
+	path=${path//$'\n'/\\n}
+	printf '%s' "$path"
+}
+
+index_has() {
+	grep -Fx -- "$1" "$index" >/dev/null
+}
+
+index_lacks() {
+	! index_has "$1"
+}
+
+write_pkg_desc() {
+	cat <<EOF > "$1/desc"
+%NAME%
+$2
+
+%VERSION%
+$3
+EOF
+}
+
+write_pkg_files() {
+	cat <<EOF > "$1/files"
+%FILES%
+$2
+EOF
+}
+
+track_persisted_path() {
+	printf '%s\n' "$(escaped_path "$1")" >> "$index"
+}
+
+rm -rf "$pfsdir/home/demostanis/tests"
 rm -rf ~/tests
 mkdir ~/tests
 cd ~/tests
 
+if [ -e "$index" ]; then
+	grep -Ev '^/home/demostanis/tests(/|$)' "$index" > "$index.tmp" || :
+	mv "$index.tmp" "$index"
+fi
+
 # adding a file
 touch a
 pfs add a
-[ -e $pfsdir/home/demostanis/tests/a ]
+[ -e "$pfsdir/home/demostanis/tests/a" ]
+index_has /home/demostanis/tests/a
 # twice shouldn't error out
 pfs add a
-[ -e $pfsdir/home/demostanis/tests/a ]
+[ -e "$pfsdir/home/demostanis/tests/a" ]
 
 # removing a file
 pfs remove a
-[ ! -e $pfsdir/home/demostanis/tests/a ]
+[ ! -e "$pfsdir/home/demostanis/tests/a" ]
 [ -e a ]
 rm a
 [ ! -e a ]
+index_lacks /home/demostanis/tests/a
 
 # adding a directory
 mkdir -p a/b/c
 pfs add a
-[ -d $pfsdir/home/demostanis/tests/a ]
-[ -d $pfsdir/home/demostanis/tests/a/b/c ]
+[ -d "$pfsdir/home/demostanis/tests/a" ]
+[ -d "$pfsdir/home/demostanis/tests/a/b/c" ]
+index_has /home/demostanis/tests/a
 
 # removing an item from a directory
 pfs remove a/b/c
-[ ! -e $pfsdir/home/demostanis/tests/a/b/c ]
+[ ! -e "$pfsdir/home/demostanis/tests/a/b/c" ]
 # TODO: we should delete all empty parent directories
-[ -e $pfsdir/home/demostanis/tests/a/b ]
+[ -e "$pfsdir/home/demostanis/tests/a/b" ]
 
-# adding a symlink should add the symlink itself, no deferencing
+# adding a symlink should add the symlink itself, no dereferencing
 ln -s a symlink
 pfs add symlink
-[ -L $pfsdir/home/demostanis/tests/symlink ]
+[ -L "$pfsdir/home/demostanis/tests/symlink" ]
 pfs remove symlink
-[ ! -e $pfsdir/home/demostanis/tests/symlink ]
+[ ! -e "$pfsdir/home/demostanis/tests/symlink" ]
+
+# a trailing slash on a directory symlink should still follow the directory
+mkdir -p dirtarget/inner
+touch dirtarget/inner/file
+ln -s dirtarget dirsymlink
+pfs add dirsymlink/
+[ -d "$pfsdir/home/demostanis/tests/dirsymlink" ]
+[ ! -L "$pfsdir/home/demostanis/tests/dirsymlink" ]
+[ -e "$pfsdir/home/demostanis/tests/dirsymlink/inner/file" ]
+pfs remove dirsymlink/
+[ ! -e "$pfsdir/home/demostanis/tests/dirsymlink" ]
 
 # pfs checks all files beforehand
 pfs add nonexistent symlink 2>/dev/null && exit 1
-[ ! -e $pfsdir/home/demostanis/tests/symlink ]
-[ ! -e $pfsdir/home/demostanis/tests/nonexistent ]
+[ ! -e "$pfsdir/home/demostanis/tests/symlink" ]
+[ ! -e "$pfsdir/home/demostanis/tests/nonexistent" ]
+
+# removing a path should not collide with similarly named siblings
+mkdir -p lib/subdir var/lib
+touch lib/subdir/file var/lib/file
+pfs add lib var/lib
+[ -d "$pfsdir/home/demostanis/tests/lib" ]
+[ -d "$pfsdir/home/demostanis/tests/var/lib" ]
+index_has /home/demostanis/tests/lib
+index_has /home/demostanis/tests/var/lib
+pfs remove lib/
+[ ! -e "$pfsdir/home/demostanis/tests/lib" ]
+[ -e "$pfsdir/home/demostanis/tests/var/lib" ]
+index_lacks /home/demostanis/tests/lib
+index_has /home/demostanis/tests/var/lib
+
+# removing a parent should also drop descendant index entries
+mkdir -p tree/sub
+touch tree/sub/file
+pfs add tree
+pfs add tree/sub
+index_has /home/demostanis/tests/tree
+index_has /home/demostanis/tests/tree/sub
+pfs remove tree/
+[ ! -e "$pfsdir/home/demostanis/tests/tree" ]
+index_lacks /home/demostanis/tests/tree
+index_lacks /home/demostanis/tests/tree/sub
+
+# unchanged lower-layer files should not be added from outside cowspace
+pfs add /etc/passwd 2>/dev/null && exit 1
+[ ! -e "$pfsdir/etc/passwd" ]
+
+# files on other mountpoints should be rejected
+printf x > /data/persistfs-mount-test
+pfs add /data/persistfs-mount-test 2>/dev/null && exit 1
+[ ! -e "$pfsdir/data/persistfs-mount-test" ]
+rm -f /data/persistfs-mount-test
+
+# newline-containing paths should be addressed via \n on the CLI
+newline_name=$'line\nbreak'
+touch "$newline_name"
+pfs add 'line\nbreak'
+[ -e "$pfsdir/home/demostanis/tests/$newline_name" ]
+newline_path=$'/home/demostanis/tests/line\nbreak'
+newline_escaped=$(escaped_path "$newline_path")
+index_has "$newline_escaped"
+pfs remove 'line\nbreak'
+[ ! -e "$pfsdir/home/demostanis/tests/$newline_name" ]
+index_lacks "$newline_escaped"
 
 # installing a package
 yes | pfs ipkg wildcard 2>/dev/null
 # permissions should be kept
-[ -x $pfsdir/usr/bin/wildcard ]
-[ ! -w $pfsdir/usr/bin/wildcard ]
+[ -x "$pfsdir/usr/bin/wildcard" ]
+[ ! -w "$pfsdir/usr/bin/wildcard" ]
+wildcard_db=($pfsdir$pacmandb/wildcard-*(N))
+[ ${#wildcard_db[@]} -gt 0 ]
+[ -e "${wildcard_db[0]}/desc" ]
+[ -e "${wildcard_db[0]}/files" ]
+
+# rpkg should remove persisted package files and metadata
+pfs rpkg wildcard
+[ ! -e "$pfsdir/usr/bin/wildcard" ]
+wildcard_db=($pfsdir$pacmandb/wildcard-*(N))
+[ ${#wildcard_db[@]} -eq 0 ]
+
+# rpkg version-prefix matching should only remove selected versions
+mkdir -p "$pfsdir$pacmandb/sharedpkg-1.0-1" "$pfsdir$pacmandb/sharedpkg-2.0-1" "$pfsdir/usr/bin"
+write_pkg_desc "$pfsdir$pacmandb/sharedpkg-1.0-1" sharedpkg 1.0-1
+write_pkg_desc "$pfsdir$pacmandb/sharedpkg-2.0-1" sharedpkg 2.0-1
+write_pkg_files "$pfsdir$pacmandb/sharedpkg-1.0-1" $'usr/bin/shared\nusr/bin/one'
+write_pkg_files "$pfsdir$pacmandb/sharedpkg-2.0-1" $'usr/bin/shared\nusr/bin/two'
+touch "$pfsdir$pacmandb/sharedpkg-1.0-1/mtree" "$pfsdir$pacmandb/sharedpkg-2.0-1/mtree"
+touch "$pfsdir/usr/bin/shared" "$pfsdir/usr/bin/one" "$pfsdir/usr/bin/two"
+track_persisted_path /usr/bin/shared
+track_persisted_path /usr/bin/one
+track_persisted_path /usr/bin/two
+track_persisted_path /var/lib/pacman/local/sharedpkg-1.0-1/desc
+track_persisted_path /var/lib/pacman/local/sharedpkg-1.0-1/files
+track_persisted_path /var/lib/pacman/local/sharedpkg-1.0-1/mtree
+track_persisted_path /var/lib/pacman/local/sharedpkg-2.0-1/desc
+track_persisted_path /var/lib/pacman/local/sharedpkg-2.0-1/files
+track_persisted_path /var/lib/pacman/local/sharedpkg-2.0-1/mtree
+
+pfs rpkg sharedpkg-1.0
+[ ! -e "$pfsdir$pacmandb/sharedpkg-1.0-1" ]
+[ -e "$pfsdir$pacmandb/sharedpkg-2.0-1" ]
+[ ! -e "$pfsdir/usr/bin/one" ]
+[ -e "$pfsdir/usr/bin/shared" ]
+[ -e "$pfsdir/usr/bin/two" ]
+index_lacks /var/lib/pacman/local/sharedpkg-1.0-1/desc
+index_has /var/lib/pacman/local/sharedpkg-2.0-1/desc
+
+pfs rpkg sharedpkg-2.0
+[ ! -e "$pfsdir$pacmandb/sharedpkg-2.0-1" ]
+[ ! -e "$pfsdir/usr/bin/shared" ]
+[ ! -e "$pfsdir/usr/bin/two" ]
+index_lacks /usr/bin/shared
+index_lacks /var/lib/pacman/local/sharedpkg-2.0-1/desc

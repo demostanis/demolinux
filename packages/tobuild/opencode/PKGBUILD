@@ -33,14 +33,17 @@ source=(
   "https://github.com/demostanis/opencode/archive/refs/tags/$_pkgver.tar.gz"
   "opentui-$_opentui_ver.tar.gz::https://github.com/anomalyco/opentui/archive/refs/tags/v$_opentui_ver.tar.gz"
   "fix-motion-events.patch"
+  "scrollbar-fix.patch"
 )
 sha256sums=('ad67a5adfd56d65e86516503a766571efeb99f3814e5ec14b682848c42b9f49d'
             'fea07cc367e9f0ea8831d8908dc7378e59d4e5db5067a3dea28055dff2d166df'
-            'b0c3199c7f00c1af06f2d402be5e2e352e10e1289460c968a47f714f4b355bc5')
+            'b0c3199c7f00c1af06f2d402be5e2e352e10e1289460c968a47f714f4b355bc5'
+            'e0c8f07ddd963043f33e1a41ec465a4facd93798f5b92f817bf381c64ac8d187')
 
 prepare() {
   cd "$srcdir/opentui-$_opentui_ver"
   patch -p1 -i "$srcdir/fix-motion-events.patch"
+  patch -p1 -i "$srcdir/scrollbar-fix.patch"
 
   # build opentui/core lib to get parser.worker.js
   cd packages/core

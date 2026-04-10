@@ -10,7 +10,7 @@ die() {
 	[ $# != 0 ] && echo "$*" >&2
 	echo awesome log:
 	timeout 2 ./dctrl shell "cat ~/.awesome.log"
-	timeout 3 ./dctrl shell "DISPLAY=:0 import -window root png:-" > screenshot.png
+	timeout 3 ./dctrl pull /data/screenshot.png
 	stop_vm
 	echo tests failed
 	exit 1
@@ -20,7 +20,7 @@ cd "$(dirname "$(realpath "$0")")"/..
 
 run() {
 	set +o pipefail
-	(./demolinux __headless | tee .demolinux_out.log) || kill -USR1 $$
+	(./demolinux __headless | cat -v | tee .demolinux_out.log) || kill -USR1 $$
 }
 
 trap 'die failed to run demolinux. did you run ./demolinux build first\?' USR1
@@ -84,7 +84,10 @@ while read -r test; do
 		echo running $test...
 		(
 			set -e
-			trap 'kill ${${(v)jobstates##*:*:}%=*} 2>/dev/null || :' EXIT
+			trap '
+				import -window root png:- > /data/screenshot.png
+				kill ${${(v)jobstates##*:*:}%=*} 2>/dev/null || :
+			' EXIT
 			. "$test"
 		)
 		if [ $? != 0 ]; then
@@ -92,7 +95,7 @@ while read -r test; do
 			exit 1
 		fi
 	fi
-done < <(find . -type f -executable)
+done < <(find . -type f -executable | sort)
 
 EOC
 

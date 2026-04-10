@@ -2,6 +2,7 @@
 
 # term
 modkeypress Enter
+expectwin Untitled
 xdotool type 'sleep 5 && '
 
 # emoji picker

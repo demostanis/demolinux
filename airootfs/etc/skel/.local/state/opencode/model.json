@@ -11,8 +11,8 @@
       "modelID": "gpt-5.4"
     },
     {
-      "providerID": "chutes",
-      "modelID": "moonshotai/Kimi-K2.5-TEE"
+      "providerID": "opencode-go",
+      "modelID": "kimi-k2.6"
     },
     {
       "providerID": "google",

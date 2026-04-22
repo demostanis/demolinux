@@ -116,6 +116,7 @@ qemu-desktop
 kdeconnect
 ripgrep
 ripgrep-all
+pandoc
 syncthing
 strace
 websocat
@@ -138,6 +139,7 @@ github-cli
 gopls
 go-tools # goimports
 docker
+docker-buildx
 docker-compose
 python-virtualenv
 local opencode

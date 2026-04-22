@@ -93,6 +93,7 @@ fd
 fzf
 git
 git-absorb
+meld
 tree
 local jargon
 local git-mv-changes

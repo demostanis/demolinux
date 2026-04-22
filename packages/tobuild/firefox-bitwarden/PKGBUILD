@@ -4,7 +4,7 @@
 
 pkgname=firefox-bitwarden
 pkgver=2026.1.1
-pkgrel=3
+pkgrel=13
 pkgdesc='Bitwarden browser extension for Firefox'
 arch=('any')
 url='https://github.com/bitwarden/clients'
@@ -13,17 +13,21 @@ optdepends=('firefox')
 groups=('firefox-addons')
 pkgdesc='Bitwarden browser extension for Firefox'
 makedepends=('nodejs' 'npm' 'unzip' 'zip')
-source=("${pkgname}-${pkgver}.tar.gz::https://github.com/bitwarden/clients/archive/refs/tags/browser-v${pkgver}.tar.gz" 0001-personal-nitpicks.patch 0002-skip-intro-carousel.patch 0003-remove-premium-spotlight.patch)
+source=("${pkgname}-${pkgver}.tar.gz::https://github.com/bitwarden/clients/archive/refs/tags/browser-v${pkgver}.tar.gz" 0001-personal-nitpicks.patch 0002-skip-intro-carousel.patch 0003-remove-premium-spotlight.patch 0004-correctly-load-passkeys-on-first-extension-start.patch 0005-skip-single-passkey-prompts.patch)
 b2sums=('e081f2eda91bf6b0757d8a96fb264a5a099d6d3fbd05140e2d838b41b331a52728219a82782e6f9ef4cb636c5eaa5f7d3259107807fc16a01f91198cc88093e0'
         '712f298d65730a1161cb371a836d7ae0cc2bd21a6682b72fdd667679727852af028bd7c2646fa9f15dbe8096cd51cd0788dc038f4cecfb16abf7db91c1c832a2'
         'b784776514dc30c2ffdaf2d815be1b9f326be4fc81dd9fa9840448b3dc4c1c4fa4480573b4ea86f429db7b273d473f6703fdb1ca1e49a9a559b2f46b4c234847'
-        '19dc5b637a86a6b28b7887a5772e81627ecf48e07be3a31930286cace18f722559cf78c89493e5b4917b2e6b7d47876c42de79d87fc1c99ea366e47d2a16b074')
+        '19dc5b637a86a6b28b7887a5772e81627ecf48e07be3a31930286cace18f722559cf78c89493e5b4917b2e6b7d47876c42de79d87fc1c99ea366e47d2a16b074'
+        '8b71d4a2f6fbd9ebb04f706cb7a186933df4d5fabb3259daf13c5057e9d54a1604ec44e9269325c4b22461d45b19ca363f18cf202c1754de3fcca0c8424c19b1'
+        '043c4cef516088f3221c81e1f05120560350f8ede83b7e5af429822121d40238cf2ffe9e34101f1d9f5ba52292876cdb57295e019380a92541beabed766d6a59')
 
 prepare() {
   cd "${srcdir}/clients-browser-v${pkgver}" || exit
   patch -p1 < ../0001-personal-nitpicks.patch
   patch -p1 < ../0002-skip-intro-carousel.patch
   patch -p1 < ../0003-remove-premium-spotlight.patch
+  patch -p1 < ../0004-correctly-load-passkeys-on-first-extension-start.patch
+  patch -p1 < ../0005-skip-single-passkey-prompts.patch
   npm ci
 }
 

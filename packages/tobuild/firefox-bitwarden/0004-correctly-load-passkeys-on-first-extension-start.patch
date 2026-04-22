@@ -1,0 +1,275 @@
+From 27219670381ebf52ac7c3798a06f7de3be9caac5 Mon Sep 17 00:00:00 2001
+From: demostanis <demostanis@protonmail.com>
+Date: Thu, 23 Apr 2026 04:42:32 +0200
+Subject: [PATCH] correctly load passkeys on first extension start
+
+---
+ .../background/overlay.background.spec.ts     |  6 +-
+ .../autofill/background/overlay.background.ts | 98 +++++++++++++++++--
+ .../fido2/background/fido2.background.spec.ts |  2 +-
+ .../fido2/background/fido2.background.ts      |  2 +-
+ .../src/platform/browser/browser-api.ts       | 32 +++++-
+ 5 files changed, 128 insertions(+), 12 deletions(-)
+
+diff --git a/apps/browser/src/autofill/background/overlay.background.spec.ts b/apps/browser/src/autofill/background/overlay.background.spec.ts
+index 50fb291..0c295bb 100644
+--- a/apps/browser/src/autofill/background/overlay.background.spec.ts
++++ b/apps/browser/src/autofill/background/overlay.background.spec.ts
+@@ -3346,8 +3346,8 @@ describe("OverlayBackground", () => {
+           autofillService.isPasswordRepromptRequired.mockResolvedValue(false);
+         });
+ 
+-        it("logs an error if the authentication could not complete due to a missing FIDO2 request", async () => {
+-          jest.spyOn(logService, "error");
++        it("reloads the tab to re-inject the FIDO2 scripts when no active FIDO2 request exists", async () => {
++          const reloadTabSpy = jest.spyOn(BrowserApi, "reloadTab").mockResolvedValue();
+ 
+           sendPortMessage(listMessageConnectorSpy, {
+             command: "fillAutofillInlineMenuCipher",
+@@ -3357,7 +3357,7 @@ describe("OverlayBackground", () => {
+           });
+           await flushPromises();
+ 
+-          expect(logService.error).toHaveBeenCalled();
++          expect(reloadTabSpy).toHaveBeenCalledWith(sender.tab.id);
+         });
+ 
+         describe("when the FIDO2 request is present", () => {
+diff --git a/apps/browser/src/autofill/background/overlay.background.ts b/apps/browser/src/autofill/background/overlay.background.ts
+index 04a5339..c7b1f40 100644
+--- a/apps/browser/src/autofill/background/overlay.background.ts
++++ b/apps/browser/src/autofill/background/overlay.background.ts
+@@ -2,6 +2,7 @@
+ // @ts-strict-ignore
+ import {
+   debounceTime,
++  filter,
+   firstValueFrom,
+   map,
+   merge,
+@@ -9,7 +10,10 @@ import {
+   ReplaySubject,
+   Subject,
+   switchMap,
++  take,
++  takeUntil,
+   throttleTime,
++  timer,
+ } from "rxjs";
+ import { parse } from "tldts";
+ 
+@@ -132,6 +136,13 @@ export class OverlayBackground implements OverlayBackgroundInterface {
+   private inlineMenuListMessageConnectorPort: chrome.runtime.Port;
+   private inlineMenuCiphers: Map<string, CipherView> = new Map();
+   private inlineMenuFido2Credentials: Set<string> = new Set();
++  /**
++   * Tracks passkey clicks made before a Fido2 active request could be established for the tab
++   * (e.g., the page already called `navigator.credentials.get` natively before our content script
++   * was injected). On tab reload, once a new active request appears, the pending credential id is
++   * auto-continued so the user does not have to click the passkey twice.
++   */
++  private pendingFido2PasskeyByTabId: Map<number, string> = new Map();
+   private inlineMenuPageTranslations: Record<string, string>;
+   private inlineMenuPosition: InlineMenuPosition = {};
+   private cardAndIdentityCiphers: Set<CipherView> | null = null;
+@@ -663,7 +674,15 @@ export class OverlayBackground implements OverlayBackgroundInterface {
+       return false;
+     }
+ 
+-    return this.inlineMenuFido2Credentials.has(credentialId);
++    if (credentialId === null || credentialId === undefined) {
++      return false;
++    }
++
++    if (this.inlineMenuFido2Credentials.size > 0) {
++      return this.inlineMenuFido2Credentials.has(credentialId);
++    }
++
++    return true;
+   }
+ 
+   /**
+@@ -844,13 +863,20 @@ export class OverlayBackground implements OverlayBackgroundInterface {
+    *
+    * @param credentials - The FIDO2 credentials to store
+    */
+-  private storeInlineMenuFido2Credentials(credentials: Fido2CredentialView[]) {
++  private async storeInlineMenuFido2Credentials(credentials: Fido2CredentialView[]) {
+     this.inlineMenuFido2Credentials.clear();
+ 
+     credentials.forEach(
+       (credential) =>
+         credential?.credentialId && this.inlineMenuFido2Credentials.add(credential.credentialId),
+     );
++
++    if (this.inlineMenuCiphers.size > 0 && credentials.length > 0) {
++      const currentTab = await BrowserApi.getTabFromCurrentWindowId();
++      if (currentTab) {
++        await this.updateInlineMenuListCiphers(currentTab);
++      }
++    }
+   }
+ 
+   /**
+@@ -1218,11 +1244,10 @@ export class OverlayBackground implements OverlayBackgroundInterface {
+    * @param credentialId - The credential ID to authenticate
+    */
+   async authenticatePasskeyCredential(sender: chrome.runtime.MessageSender, credentialId: string) {
+-    const request = this.fido2ActiveRequestManager.getActiveRequest(sender.tab.id);
++    const tabId = sender.tab.id;
++    const request = this.fido2ActiveRequestManager.getActiveRequest(tabId);
+     if (!request) {
+-      this.logService.error(
+-        "Could not complete passkey autofill due to missing active Fido2 request",
+-      );
++      this.schedulePendingPasskeyAuthentication(sender, credentialId);
+       return;
+     }
+ 
+@@ -1232,6 +1257,67 @@ export class OverlayBackground implements OverlayBackgroundInterface {
+     request.subject.next({ type: Fido2ActiveRequestEvents.Continue, credentialId });
+   }
+ 
++  /**
++   * Handles the case where the user clicks a passkey in the inline menu but no active FIDO2
++   * request exists for the tab. This can happen on a fresh extension load (e.g., Firefox startup
++   * with restored tabs) because the page's `navigator.credentials.get()` call happened before
++   * our FIDO2 page script could be injected and override it.
++   *
++   * We recover by silently reloading the tab (at which point our scripts are guaranteed to be
++   * injected in time) and auto-continuing with the chosen credential once a new active request
++   * is registered, so the user experiences a single-click passkey auth.
++   *
++   * @param sender - The sender of the port message
++   * @param credentialId - The credential ID the user selected
++   */
++  private schedulePendingPasskeyAuthentication(
++    sender: chrome.runtime.MessageSender,
++    credentialId: string,
++  ) {
++    const tabId = sender.tab.id;
++    const tabUrl = sender.tab.url;
++    this.pendingFido2PasskeyByTabId.set(tabId, credentialId);
++
++    // Give the page a reasonable window to re-request credentials after reload before giving up.
++    const pendingTimeoutMs = 15000;
++    this.fido2ActiveRequestManager
++      .getActiveRequest$(tabId)
++      .pipe(
++        filter((activeRequest) => activeRequest !== undefined),
++        take(1),
++        takeUntil(timer(pendingTimeoutMs)),
++      )
++      .subscribe({
++        next: (activeRequest) => {
++          const pendingCredentialId = this.pendingFido2PasskeyByTabId.get(tabId);
++          this.pendingFido2PasskeyByTabId.delete(tabId);
++          if (!pendingCredentialId) {
++            return;
++          }
++          chrome.webRequest.onCompleted.addListener(this.handlePasskeyAuthenticationOnCompleted, {
++            urls: generateDomainMatchPatterns(tabUrl),
++          });
++          // Defer to the next microtask so that `newActiveRequest` in
++          // `Fido2ActiveRequestManager` has a chance to subscribe to `activeRequest.subject`
++          // via `firstValueFrom` before we emit. Subjects don't replay, so emitting synchronously
++          // here (while we are still inside the `activeRequests$.next(...)` call that triggered
++          // this subscription) would drop the event and leave `firstValueFrom` hanging forever.
++          queueMicrotask(() => {
++            activeRequest.subject.next({
++              type: Fido2ActiveRequestEvents.Continue,
++              credentialId: pendingCredentialId,
++            });
++          });
++        },
++        complete: () => {
++          this.pendingFido2PasskeyByTabId.delete(tabId);
++        },
++      });
++
++    this.closeInlineMenu(sender, { forceCloseInlineMenu: true });
++    BrowserApi.reloadTab(tabId).catch((error) => this.logService.error(error));
++  }
++
+   /**
+    * Handles the next web request that occurs after a passkey authentication has been completed.
+    * Ensures that the inline menu closes after the request, and that the FIDO2 request is aborted
+diff --git a/apps/browser/src/autofill/fido2/background/fido2.background.spec.ts b/apps/browser/src/autofill/fido2/background/fido2.background.spec.ts
+index 752851b..ee8247d 100644
+--- a/apps/browser/src/autofill/fido2/background/fido2.background.spec.ts
++++ b/apps/browser/src/autofill/fido2/background/fido2.background.spec.ts
+@@ -183,7 +183,7 @@ describe("Fido2Background", () => {
+         tabId: tabMock.id,
+         injectDetails: sharedScriptInjectionDetails,
+         mv2Details: { file: Fido2ContentScript.PageScriptDelayAppend },
+-        mv3Details: { file: Fido2ContentScript.PageScript, world: "MAIN" },
++        mv3Details: { file: Fido2ContentScript.PageScript, world: undefined },
+       });
+       expect(scriptInjectorServiceMock.inject).toHaveBeenCalledWith({
+         tabId: tabMock.id,
+diff --git a/apps/browser/src/autofill/fido2/background/fido2.background.ts b/apps/browser/src/autofill/fido2/background/fido2.background.ts
+index 22ee4a1..927455a 100644
+--- a/apps/browser/src/autofill/fido2/background/fido2.background.ts
++++ b/apps/browser/src/autofill/fido2/background/fido2.background.ts
+@@ -220,7 +220,7 @@ export class Fido2Background implements Fido2BackgroundInterface {
+       mv2Details: { file: await this.getFido2PageScriptAppendFileName() },
+       mv3Details: {
+         file: Fido2ContentScript.PageScript,
+-        world: chrome.scripting.ExecutionWorld.MAIN,
++        world: BrowserApi.isManifestVersion(3) ? chrome.scripting.ExecutionWorld.MAIN : undefined,
+       },
+     });
+ 
+diff --git a/apps/browser/src/platform/browser/browser-api.ts b/apps/browser/src/platform/browser/browser-api.ts
+index cfc39fa..c33231e 100644
+--- a/apps/browser/src/platform/browser/browser-api.ts
++++ b/apps/browser/src/platform/browser/browser-api.ts
+@@ -279,6 +279,30 @@ export class BrowserApi {
+     }
+   }
+ 
++  /**
++   * Reloads the given tab.
++   *
++   * @param tabId The id of the tab to reload
++   */
++  static async reloadTab(tabId: number): Promise<void> {
++    if (!tabId) {
++      return;
++    }
++
++    if (BrowserApi.isWebExtensionsApi) {
++      await browser.tabs.reload(tabId).catch((error) => {
++        throw new Error("[BrowserApi] Failed to reload tab: " + error.message);
++      });
++      return;
++    }
++
++    if (BrowserApi.isChromeApi) {
++      await chrome.tabs.reload(tabId).catch((error) => {
++        throw new Error("[BrowserApi] Failed to reload tab: " + error.message);
++      });
++    }
++  }
++
+   /**
+    * Navigates a browser tab to the given URL
+    *
+@@ -815,7 +839,13 @@ export class BrowserApi {
+   static async registerContentScriptsMv2(
+     contentScriptOptions: browser.contentScripts.RegisteredContentScriptOptions,
+   ): Promise<browser.contentScripts.RegisteredContentScript> {
+-    if (typeof browser !== "undefined" && !!browser.contentScripts?.register) {
++    // Firefox's native browser.contentScripts.register() does not inject into tabs
++    // that are already open when the extension loads (e.g., restored session tabs).
++    // The polyfill handles this by listening to chrome.tabs.onUpdated and
++    // chrome.webNavigation.onCommitted, ensuring FIDO2 scripts are injected into
++    // all matching pages including restored tabs.
++    const isFirefox = navigator.userAgent.indexOf("Firefox/") !== -1;
++    if (!isFirefox && typeof browser !== "undefined" && !!browser.contentScripts?.register) {
+       return await browser.contentScripts.register(contentScriptOptions);
+     }
+ 
+-- 
+2.53.0
+

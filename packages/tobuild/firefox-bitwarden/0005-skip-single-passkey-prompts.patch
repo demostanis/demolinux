@@ -1,0 +1,30 @@
+From 44f9e54031578a0d5f88c57aa96a9fe72dfbdd62 Mon Sep 17 00:00:00 2001
+From: demostanis <demostanis@protonmail.com>
+Date: Thu, 23 Apr 2026 08:51:56 +0200
+Subject: [PATCH] do not show passkey window when theres only one passkey
+
+---
+ .../fido2/services/browser-fido2-user-interface.service.ts | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/apps/browser/src/autofill/fido2/services/browser-fido2-user-interface.service.ts b/apps/browser/src/autofill/fido2/services/browser-fido2-user-interface.service.ts
+index e0ab45e..69c3e3e 100644
+--- a/apps/browser/src/autofill/fido2/services/browser-fido2-user-interface.service.ts
++++ b/apps/browser/src/autofill/fido2/services/browser-fido2-user-interface.service.ts
+@@ -243,7 +243,12 @@ export class BrowserFido2UserInterfaceSession implements Fido2UserInterfaceSessi
+     // is for a conditionally mediated authentication. This will allow for mediated conditional
+     // authentication to function without requiring user interaction. This is a product
+     // decision, rather than a decision based on the expected technical specifications.
+-    if (assumeUserPresence && cipherIds.length === 1 && !masterPasswordRepromptRequired) {
++    //
++    // We also short-circuit non-mediated requests when there is exactly one candidate cipher
++    // and no master-password reprompt is required: the user already expressed intent by
++    // triggering the passkey flow on the site, so there is no value in forcing them to
++    // confirm a single obvious choice in an additional popup.
++    if (cipherIds.length === 1 && !masterPasswordRepromptRequired) {
+       return { cipherId: cipherIds[0], userVerified: userVerification };
+     }
+ 
+-- 
+2.53.0
+

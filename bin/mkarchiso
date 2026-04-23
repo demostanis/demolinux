@@ -180,7 +180,7 @@ _make_pacman_conf() {
     fi
 
     # Arch Linux archive so we don't have to -y all the time
-    mirror=https://archive.archlinux.org/repos/$(date -d yesterday -u +%Y/%m/%d)/'$repo'/os/'$arch'
+    mirror=https://archive.archlinux.org/repos/$(cat archive_date)/'$repo'/os/'$arch'
     echo Server = $mirror >> "${work_dir}/mirrorlist"
     echo '[options]' >> "${work_dir}/chroot.pacman.conf"
     echo 'Architecture = auto' >> "${work_dir}/chroot.pacman.conf"

@@ -101,9 +101,9 @@ EOC
 
 if [[ $# == 0 || "$*" == *sysupdate* ]]; then
 	# will reboot the VM
-	timeout 5 ./dctrl shell "cd /tmp/tests && . ./sysupdate" 2>/dev/null
+	timeout 5 ./dctrl shell "cd /tmp/tests && . ./sysupdate &!" 2>/dev/null
 
-	tries=60
+	tries=120
 	found=
 	for i in {1..$tries}; do
 		if grep -q 'sysupdate test succeeded' .demolinux_out.log; then

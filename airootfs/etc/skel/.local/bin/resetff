@@ -1,0 +1,11 @@
+#!/bin/bash
+
+die() {
+	echo "$*" >&2
+	exit 1
+}
+
+pkill firefox || die couldnt kill firefox
+rm -rf ~/.mozilla/firefox || die couldnt delete firefox data directory
+cp -r /run/archiso/airootfs/etc/skel/.mozilla/firefox -r ~/.mozilla || die couldnt copy original firefox profile
+firefox-hardened &!

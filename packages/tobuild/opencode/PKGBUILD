@@ -2,8 +2,8 @@
 
 pkgname=opencode
 pkgver=1.2.27
-_pkgver=1.2.27.13-demolinux
-pkgrel=5
+_pkgver=1.2.27.15-demolinux
+pkgrel=8
 pkgdesc='The open source coding agent'
 arch=('x86_64')
 url='https://github.com/anomalyco/opencode'
@@ -31,39 +31,13 @@ options=(
 _opentui_ver=0.1.79
 source=(
   "https://github.com/demostanis/opencode/archive/refs/tags/$_pkgver.tar.gz"
-  "opentui-$_opentui_ver.tar.gz::https://github.com/anomalyco/opentui/archive/refs/tags/v$_opentui_ver.tar.gz"
-  "fix-motion-events.patch"
-  "scrollbar-fix.patch"
 )
-sha256sums=('e9c4a3db292f01061dd3caf7ed5eb94e1d2f214d11f84128a421f4b276126908'
-            'fea07cc367e9f0ea8831d8908dc7378e59d4e5db5067a3dea28055dff2d166df'
-            'b0c3199c7f00c1af06f2d402be5e2e352e10e1289460c968a47f714f4b355bc5'
-            'e0c8f07ddd963043f33e1a41ec465a4facd93798f5b92f817bf381c64ac8d187')
+sha256sums=('b7a60a492c8fe308bc3f075d4c4456beb36fc984ab78b774f688fec8268fcfa0')
 
 prepare() {
-  cd "$srcdir/opentui-$_opentui_ver"
-  patch -p1 -i "$srcdir/fix-motion-events.patch"
-  patch -p1 -i "$srcdir/scrollbar-fix.patch"
-
-  # build opentui/core lib to get parser.worker.js
-  cd packages/core
-  bun install
-  bun run build:lib
-  # opencode build script expects parser.worker.js in the package root
-  cp dist/parser.worker.js .
-  cp dist/parser.worker.js.map .
-
-  cd "$srcdir/opentui-$_opentui_ver"
-  cp -ra "packages/core" "$srcdir/$pkgname-$_pkgver/packages/"
-  cp -ra "packages/solid" "$srcdir/$pkgname-$_pkgver/packages/"
-
   cd "$srcdir/$pkgname-$_pkgver"
 
   sed -i "s/\"packageManager\": \"bun@[^\"]*\"/\"packageManager\": \"bun@$(bun --version)\"/" package.json
-
-  sed -i 's/"@opentui\/core": "[^"]*"/"@opentui\/core": "workspace:*"/' packages/opencode/package.json
-  sed -i 's/"@opentui\/solid": "[^"]*"/"@opentui\/solid": "workspace:*"/' packages/opencode/package.json
-  sed -i 's/"@opentui\/core": "[^"]*"/"@opentui\/core": "workspace:*"/' packages/solid/package.json
 
   bun install
 }

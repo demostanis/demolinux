@@ -1,0 +1,45 @@
+From 2e6f368cb59ddbfc70fc41a1b78e6fa23cf522a1 Mon Sep 17 00:00:00 2001
+From: OpenCode <opencode@example.invalid>
+Date: Mon, 27 Apr 2026 03:05:30 +0200
+Subject: [PATCH] Refresh FIDO2 scripts after unlock
+
+---
+ .../fido2/background/fido2.background.ts      | 20 +++++++++++++++++++
+ 1 file changed, 20 insertions(+)
+
+diff --git a/apps/browser/src/autofill/fido2/background/fido2.background.ts b/apps/browser/src/autofill/fido2/background/fido2.background.ts
+index 22ee4a1..9ea67f1 100644
+--- a/apps/browser/src/autofill/fido2/background/fido2.background.ts
++++ b/apps/browser/src/autofill/fido2/background/fido2.background.ts
+@@ -91,9 +91,29 @@ export class Fido2Background implements Fido2BackgroundInterface {
+ 
+     const enablePasskeys = await this.isPasskeySettingEnabled();
+     await this.handleEnablePasskeysUpdate(enablePasskeys, enablePasskeys);
++    if (enablePasskeys) {
++      void this.refreshFido2ContentScriptsInExistingTabs();
++    }
+     this.currentAuthStatus$.unsubscribe();
+   }
+ 
++  /**
++   * Re-injects FIDO2 scripts into already-open pages and refreshes them once.
++   * This lets restored tabs re-run page startup code after the WebAuthn patch is ready.
++   */
++  private async refreshFido2ContentScriptsInExistingTabs() {
++    await this.injectFido2ContentScriptsInAllTabs();
++
++    const tabs = await BrowserApi.tabsQuery({});
++    for (const tab of tabs) {
++      if (!tab.id || !tab.url?.startsWith("https")) {
++        continue;
++      }
++
++      void chrome.tabs.reload(tab.id, { bypassCache: false });
++    }
++  }
++
+   /**
+    * Injects the FIDO2 content and page script into all existing browser tabs.
+    */
+-- 
+2.53.0

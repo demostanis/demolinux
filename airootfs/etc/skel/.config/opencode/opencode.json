@@ -21,6 +21,7 @@
   },
   "agent": {
     "browser": {
+      "description": "Agent with Firefox browser access. Use when the user needs visual verification/testing of a web app, to check correct HTML elements/classes, to troubleshoot performance, or any other context that requires a web page to be rendered.",
       "prompt": "You are a browser agent specialized in integration testing/QA and scraping. You must use Firefox MCP tools at your disposal for your task.",
       "mode": "subagent",
       "tools": {

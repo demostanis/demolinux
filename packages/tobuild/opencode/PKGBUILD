@@ -2,8 +2,8 @@
 
 pkgname=opencode
 pkgver=1.2.27
-_pkgver=1.2.27.15-demolinux
-pkgrel=8
+_pkgver=1.2.27.19-demolinux
+pkgrel=12
 pkgdesc='The open source coding agent'
 arch=('x86_64')
 url='https://github.com/anomalyco/opencode'
@@ -32,7 +32,7 @@ _opentui_ver=0.1.79
 source=(
   "https://github.com/demostanis/opencode/archive/refs/tags/$_pkgver.tar.gz"
 )
-sha256sums=('b7a60a492c8fe308bc3f075d4c4456beb36fc984ab78b774f688fec8268fcfa0')
+sha256sums=('5b781c0950907fa7d509c6facba030d3d19e072ad09619fa24fa82c8bfb99cb2')
 
 prepare() {
   cd "$srcdir/$pkgname-$_pkgver"

@@ -1,11 +1,10 @@
 # the worst pkgbuild ever written
 pkgname=agent-skills
 pkgver=2
-pkgrel=2
+pkgrel=3
 pkgdesc="A collection of Agent Skills for OpenCode"
 arch=(any)
 license=(custom) # pretty sure im not allowed to actually distribute these
-source=(remote-notification-skill.md)
 makedepends=(git)
 options=(!strip !debug)
 
@@ -28,11 +27,7 @@ package() {
 
 	cp -a remotion-skills/skills/remotion "$pkgdir"/etc/skel/.agents/skills
 
-	mkdir -p "$pkgdir"/etc/skel/.agents/skills/remote-notification/
-	cp remote-notification-skill.md "$pkgdir"/etc/skel/.agents/skills/remote-notification/SKILL.md
-
 	cp -a ui-ux-pro-max-skill/.claude/skills/ui-ux-pro-max "$pkgdir"/etc/skel/.agents/skills
 	rm "$pkgdir"/etc/skel/.agents/skills/ui-ux-pro-max/{data,scripts}
 	cp -a ui-ux-pro-max-skill/src/ui-ux-pro-max/{data,scripts} "$pkgdir"/etc/skel/.agents/skills/ui-ux-pro-max
 }
-sha256sums=('491399cf453349c6de63f33e356774155a09b9ea82753fe19065a49c11e4e009')

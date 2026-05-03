@@ -5,7 +5,7 @@ local app_whitelist = {
     "FreeTube", "Bottles", "Chromium",
     "Bitwarden", "Dolphin Emulator",
     "Nitrokey App 2", "KDE Connect",
-    "Volume Control"
+    "Volume Control", "AgentGraph"
 }
 
 return function()

@@ -45,6 +45,7 @@ python-pynitrokey
 aur python-usb_monitor # nitrokey-app2 dep
 aur nitrokey-app2
 local freetube
+local agentgraph
 dolphin-emu
 flatpak
 

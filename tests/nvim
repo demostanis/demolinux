@@ -8,7 +8,7 @@ if [ -n "$errors" ]; then
 fi
 
 pushd `mktemp -d`>/dev/null
-echo '{}' > deno.json # required by the deno LSP which we're testing against
+echo '{}' > test.json
 
 nvim --listen /tmp/nvim-tests.sock --headless >/dev/null 2>&1 & pid=$!
 trap 'kill $pid; rm -f /tmp/nvim-tests.sock' EXIT
@@ -37,13 +37,13 @@ expectvim() {
 
 expectvim "ihello world<esc>" "hello world"
 expectvim "dd" ""
-expectvim "<space>fde" "> de" # telescope prompt
+expectvim "<space>fte" "> te" # telescope prompt
 sleep 1
-expectvim "<cr>" "{}" # pick deno.json
+expectvim "<cr>" "{}" # pick test.json
 expectvim ":e main.ts<cr>:w<cr>" ""
 sleep 5 # wait for LSP to start (else K will show a man page)
 expectvim "iconsole.log<esc>K" "console.log"
-expectvim "K" '*Outputs a message to the console*'
+expectvim "K" '*outputs a message to the console*'
 expectvim ":q<cr>dd" ""
 
 expectvim "<c-t>" "*demostanis on demolinux*"
@@ -57,7 +57,7 @@ expectvim "<tab><cr>" "func main()*"
 expectvim 'fmt.Println<esc>:w<cr>' "package main*import*main*" # goimports
 expectvim "Lo" "󰊕  main" # outline
 expectvim "<esc>ggdGia<esc>" "a" # remapped esc in outline to close it
-expectvim "-" "deno.json*main.go*main.ts" # vinegar opens netrw
+expectvim "-" "main.go*main.ts*test.json" # vinegar opens netrw
 expectvim "<c-o>" "a"
 
 popd>/dev/null

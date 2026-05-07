@@ -146,7 +146,7 @@ docker-compose
 python-virtualenv
 local opencode
 local firefox-devtools-mcp
-deno
+typescript-language-server
 bun
 meson
 npm

@@ -54,7 +54,7 @@ enable_ls("lua_ls", {Lua = {
     completion = {callSnippet = "Replace"},
     workspace = {checkThirdParty = false}}})
 enable_ls("gopls")
-enable_ls("denols")
+enable_ls("ts_ls")
 
 vim.api.nvim_create_autocmd("LspAttach", {
     group = vim.api.nvim_create_augroup("LspConfig", {}),

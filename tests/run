@@ -83,7 +83,7 @@ while read -r test; do
 		-a "$test" != ./sysupdate -a "$test" != ./sysupdate_snapshot ]; then
 		echo running $test...
 		(
-			set -e
+			set -ex
 			trap '
 				import -window root png:- > /data/screenshot.png
 				kill ${${(v)jobstates##*:*:}%=*} 2>/dev/null || :

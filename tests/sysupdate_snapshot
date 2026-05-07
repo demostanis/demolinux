@@ -24,5 +24,11 @@ key(){
 ) | qmp
 
 echo connecting through ssh...
-./dctrl shell "grep -q demolinux /etc/os-release"
+for _ in {1..120}; do
+	if timeout 5 ./dctrl shell "grep -q demolinux /etc/os-release" 2>/dev/null; then
+		break
+	fi
+	sleep 1
+done
+./dctrl shell "cat /version >/dev/null"
 ./dctrl shell "sudo poweroff"

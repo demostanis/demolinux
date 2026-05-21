@@ -13,10 +13,6 @@
     {
       "providerID": "opencode-go",
       "modelID": "kimi-k2.6"
-    },
-    {
-      "providerID": "google",
-      "modelID": "gemini-3-flash-preview"
     }
   ],
   "variant": {}

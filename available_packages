@@ -13,6 +13,7 @@ aur boomer-git
 qt5ct
 qt6ct
 xorg
+xf86-video-amdgpu
 xorg-xinit
 
 # Theming

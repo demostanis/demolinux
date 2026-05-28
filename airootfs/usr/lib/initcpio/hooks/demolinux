@@ -78,6 +78,7 @@ run_hook() {
     [ -z "${archisobasedir}" ] && archisobasedir="arch"
     [ -z "${archisodevice}" ] && archisodevice="/dev/disk/by-label/${archisolabel}"
     [ -z "${cow_spacesize}" ] && cow_spacesize=$(free | awk '{if(NR==2)print int($2/2/10000)"G"}')
+    [ -z "${debuguser}" ] && debuguser="no"
 
     # set mount handler for archiso
     export mount_handler="archiso_mount_handler"
@@ -214,6 +215,15 @@ archiso_mount_handler() {
     mkdir -p $rundir/persistfs/upperdir
     mkdir -p $rundir/persistfs/workdir
     mkdir -p $rundir/cowspace/lowerdir
+
+    if [ "${debuguser}" != no ]; then
+        mkdir -p $rundir/cowspace/upperdir/etc
+        cp $rundir/airootfs/etc/shadow $rundir/cowspace/upperdir/etc/shadow
+        sed -i /demostanis/d $rundir/cowspace/upperdir/etc/shadow
+        cat >>$rundir/cowspace/upperdir/etc/shadow<<'EOF'
+demostanis:$6$tFc6gtsNvhS8aOd0$b4QvOFQHdqeYIhqxFO1Cw02o40T16PwgRivX2dWIWSDn/uLjlES6QAlwIOOs3BQq8lF0XJNfGI1rb/ERGYcne0:20599::::::
+EOF
+    fi
 
     lowerdir=$rundir/airootfs
     if [ "$copytoram" = y ]; then

@@ -1,6 +1,6 @@
 pkgname=firefox-devtools-mcp
 pkgver=0.7.4
-pkgrel=2
+pkgrel=3
 pkgdesc="Model Context Protocol (MCP) server for Firefox DevTools automation"
 arch=('any')
 url="https://github.com/freema/firefox-devtools-mcp"
@@ -9,16 +9,19 @@ depends=('nodejs' 'firefox' 'geckodriver')
 makedepends=('npm')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/$pkgver.tar.gz"
         "do-not-copy-lock-file-when-launching-selenium.patch"
-        "enable-evaluate-script.patch")
+        "enable-evaluate-script.patch"
+        "reopen-firefox-on-disconnect.patch")
 sha256sums=('50507454043ee1c214aea7adb084915dbbd6d675c93c03f53adccc2531f52fc7'
             '1f9591626c7d0fbce296f7b58693c41c2f960e0dc8dbdd8ded008b67520600a1'
-            'ce84db60c3da781f958ae0d446d4986a401384b79de83311875c7ab144a8bc95')
+            'ce84db60c3da781f958ae0d446d4986a401384b79de83311875c7ab144a8bc95'
+            '0c2e584b0d2e91db84ac077b55d5b4a14eaaea4dae294ef05952d7c3695f797d')
 
 prepare() {
   cd "$pkgname-$pkgver"
   npm install
   patch -p2 -i "$srcdir/do-not-copy-lock-file-when-launching-selenium.patch"
   patch -p2 -i "$srcdir/enable-evaluate-script.patch"
+  patch -p2 -i "$srcdir/reopen-firefox-on-disconnect.patch"
 }
 
 build() {

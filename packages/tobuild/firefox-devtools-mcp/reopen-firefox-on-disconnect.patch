@@ -1,0 +1,45 @@
+--- src/firefox-devtools-mcp-0.7.4/src/index.ts	2026-02-27 11:19:45.000000000 +0100
++++ src/firefox-devtools-mcp-0.7.4/src/index.ts	2026-05-29 00:00:00.000000000 +0200
+@@ -39,8 +39,6 @@
+ import type { FirefoxLaunchOptions } from './firefox/types.js';
+ import * as tools from './tools/index.js';
+ import type { McpToolResponse } from './types/common.js';
+-import { FirefoxDisconnectedError } from './utils/errors.js';
+-
+ // Export for direct usage in scripts
+ export { FirefoxDevTools } from './firefox/index.js';
+ export { FirefoxDisconnectedError, isDisconnectionError } from './utils/errors.js';
+@@ -72,13 +70,13 @@
+ export async function getFirefox(): Promise<FirefoxDevTools> {
+   // If we have an existing instance, verify it's still connected
+   if (firefox) {
+-    const isConnected = await firefox.isConnected();
+-    if (!isConnected) {
+-      log('Firefox connection lost - browser was closed or disconnected');
+-      resetFirefox();
+-      throw new FirefoxDisconnectedError('Browser was closed');
++    const connected = await firefox.isConnected();
++    if (connected) {
++      return firefox;
+     }
+-    return firefox;
++
++    log('Firefox connection lost - browser was closed or disconnected; reconnecting');
++    resetFirefox();
+   }
+ 
+   // No existing instance - create new connection
+--- src/firefox-devtools-mcp-0.7.4/src/utils/errors.ts	2026-02-27 11:19:45.000000000 +0100
++++ src/firefox-devtools-mcp-0.7.4/src/utils/errors.ts	2026-05-29 00:00:00.000000000 +0200
+@@ -12,9 +12,8 @@
+     const baseMessage = 'Firefox browser is not connected';
+     const instruction =
+       'The Firefox browser window was closed by the user. ' +
+-      'To continue browser automation, ask the user to restart the firefox-devtools-mcp server ' +
+-      '(they need to restart Claude Code or the MCP connection). ' +
+-      'This will launch a new Firefox instance.';
++      'Retry the same MCP request to continue browser automation. ' +
++      'The server will launch a new Firefox instance.';
+ 
+     const fullMessage = reason
+       ? `${baseMessage}: ${reason}. ${instruction}`

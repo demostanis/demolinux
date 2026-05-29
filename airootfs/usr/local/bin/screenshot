@@ -2,6 +2,9 @@
 
 # https://github.com/flameshot-org/flameshot/issues/784#issuecomment-1642261718
 focusedwindow_before=$(xdotool getactivewindow)
-flameshot gui
+if [ "$1" = full ]; then
+    flameshot gui --region "$(xdotool getdisplaygeometry | tr ' ' x)+0+0"
+else
+    flameshot gui
+fi
 [ "$focusedwindow_before" = "$(xdotool getactivewindow)" ] && xdotool windowfocus $focusedwindow_before
-

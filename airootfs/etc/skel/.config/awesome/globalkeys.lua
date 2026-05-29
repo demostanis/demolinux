@@ -44,6 +44,7 @@ local globalkeys = gears.table.join(
     awful.key({ modkey, "Shift" }, "r", awesome.restart),
 
     awful.key({ modkey }, "p", function() show_panel() end, nil),
+    awful.key({ }, "XF86Tools", function() show_panel() end, nil),
     awful.key({ modkey, "Shift" }, "k", require"screenlock", nil),
     awful.key({ modkey }, "o", require"overview", nil),
     awful.key({ modkey }, "space", require"applauncher", nil),
@@ -66,6 +67,30 @@ local globalkeys = gears.table.join(
     end),
     awful.key({ }, "XF86AudioLowerVolume", function()
         awful.spawn("amixer -q sset Master 3%-", false)
+    end),
+    awful.key({ }, "XF86AudioMute", function()
+        awful.spawn("amixer -q sset Master toggle", false)
+    end),
+    awful.key({ }, "XF86AudioPrev", function()
+        awful.spawn("playerctl previous", false)
+    end),
+    awful.key({ }, "XF86AudioPlay", function()
+        awful.spawn("playerctl play-pause", false)
+    end),
+    awful.key({ }, "XF86AudioNext", function()
+        awful.spawn("playerctl next", false)
+    end),
+    awful.key({ }, "XF86MonBrightnessDown", function()
+        awful.spawn("brightnessctl s 5%-", false)
+    end),
+    awful.key({ }, "XF86MonBrightnessUp", function()
+        awful.spawn("brightnessctl s 5%+", false)
+    end),
+    awful.key({ }, "Print", function()
+        awful.spawn("screenshot", false)
+    end),
+    awful.key({ "Shift" }, "Print", function()
+        awful.spawn("screenshot full", false)
     end),
 
     awful.key({ modkey }, "h", layout.move_left_window),

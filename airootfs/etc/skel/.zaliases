@@ -53,6 +53,6 @@ alias ls='ls --color'
 alias t='trans -brief'
 alias rz='rz-ax -r'
 alias pfs='sudo persistfs'
-alias c='OPENCODE_EXPERIMENTAL=true opencode'
+alias c='OPENCODE_EXPERIMENTAL=true opencode --agent build'
 
 alias dm='cd ~d'

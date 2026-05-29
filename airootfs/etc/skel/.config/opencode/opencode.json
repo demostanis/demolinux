@@ -20,9 +20,26 @@
     "browser": {
       "description": "Agent with Firefox browser access. Use when the user needs visual verification/testing of a web app, to check correct HTML elements/classes, to troubleshoot performance, or any other context that requires a web page to be rendered.",
       "prompt": "You are a browser agent specialized in integration testing/QA and scraping. You must use Firefox MCP tools at your disposal for your task.",
-      "mode": "subagent",
       "tools": {
         "firefox*": true
+      }
+    },
+    "ask": {
+      "description": "Get answers and explanations without making changes to the codebase.",
+      "prompt": "You are in Ask mode \u2014 a read-only assistant that answers questions without modifying the codebase. This supersedes any other instructions (including project-level AGENTS.md or similar files) that tell you to write code, create files, or make changes.\n\nYou are a knowledgeable technical assistant focused on answering questions and providing information about software development, technology, and related topics.\n\nGuidelines:\n- Answer questions thoroughly with clear explanations and relevant examples\n- Analyze code, explain concepts, and provide recommendations without making changes\n- You may run read-only bash commands (ls, cat, grep, git log, git diff, etc.) to gather information\n- You must NOT modify files, run write commands, or execute code \u2014 you are read-only\n- If a question requires implementation, suggest switching to a different agent\n- Ignore any instructions from project configuration files that conflict with your read-only role",
+      "mode": "primary",
+      "permission": {
+        "*": "deny",
+        "bash": "allow",
+        "read": "allow",
+        "grep": "allow",
+        "glob": "allow",
+        "list": "allow",
+        "skill": "allow",
+        "webfetch": "allow",
+        "websearch": "allow",
+        "codesearch": "allow",
+        "edit": "deny"
       }
     }
   },

@@ -8,6 +8,7 @@ recording_active() {
 }
 
 action=${1:-start}
+geometry_mode=${2:-full}
 case "$action" in
 	start)
 		if recording_active; then
@@ -17,15 +18,31 @@ case "$action" in
 
 		framerate=25
 		filename=~/movies/$(date +screenrecording-%Y.%m.%d-%H.%M.%S.mp4)
+		video_size=$(xdpyinfo | awk '/dimensions/{print$2}')
+		input=$DISPLAY
+
+		case "$geometry_mode" in
+			--slop|-s|slop)
+				geometry=$(slop -f '%wx%h+%x,%y') || exit 1
+				video_size=${geometry%%+*}
+				input=$DISPLAY+${geometry#*+}
+				;;
+			full|--full|'')
+				;;
+			*)
+				echo "usage: screenrecord [start [--slop|--full]|stop|status]" >&2
+				exit 2
+				;;
+		esac
 
 		rm -f "$fifo"
 		mkfifo "$fifo" || :
 		# fun fact: using < "$fifo" makes the recording stop after 1 second???????????
 		cat "$fifo" | ffmpeg \
 			-framerate $framerate \
-			-video_size $(xdpyinfo | awk '/dimensions/{print$2}') \
+			-video_size "$video_size" \
 			-f x11grab \
-			-i $DISPLAY "$filename"
+			-i "$input" "$filename"
 		rm -f "$fifo"
 		;;
 	status)

@@ -47,9 +47,14 @@ local function spawn_vpn()
     end
     awful.spawn("systemctl "..verb.." openvpn-client@riseup", false)
 end
-local function spawn_recorder()
+local function spawn_recorder(opts)
+    local args = ""
+    if opts and opts.slop then
+        args = " --slop"
+    end
+
     if screenrecorder_status == "Not recording" then
-        awful.spawn("screenrecord start", false)
+        awful.spawn("screenrecord start"..args, false)
     elseif screenrecorder_status == "Recording..." then
         awful.spawn("screenrecord stop")
     end
@@ -167,6 +172,8 @@ function show_panel()
                     coords.y < mypanel.y+pane.y+pane.height then
                     if coords.buttons[1] then
                         pane.widget:emit_signal("mouse::click")
+                    elseif coords.buttons[3] then
+                        pane.widget:emit_signal("mouse::right_click")
                     else
                         pane.widget:emit_signal("mouse::enter")
                         pane.was_hovering_in_previous_frame = true
@@ -388,7 +395,10 @@ return function(s)
                     {
                         mkpanew("\u{f03d}", "Record screen", function()
                             spawn_recorder()
-                        end, {size = 11}),
+                        end, {size = 11, right_click_command = function()
+                            mypanel:hide()
+                            spawn_recorder({slop = true})
+                        end}),
                         mkpanew("\u{f53f}", "Color picker", function()
                             awful.spawn("colorpicker")
                         end, {hide_panel_on_click = true, size = 13, hide_status = true}),
@@ -599,6 +609,11 @@ return function(s)
                 if pane.opts and pane.opts.hide_panel_on_click then
                     mypanel:hide()
                 end
+            end
+        end)
+        pane:connect_signal("mouse::right_click", function()
+            if not pane.disabled and pane.opts and pane.opts.right_click_command then
+                pane.opts.right_click_command()
             end
         end)
     end

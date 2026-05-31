@@ -31,4 +31,4 @@ for _ in {1..120}; do
 	sleep 1
 done
 ./dctrl shell "cat /version >/dev/null"
-./dctrl shell "sudo poweroff"
+./dctrl shell "sudo poweroff" || :

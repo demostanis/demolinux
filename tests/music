@@ -43,7 +43,6 @@ xdotool click 1
 sleep 1
 
 expectmusic 'demostanis - demolinux song'
-sleep 4
 expectmusic 'demostanus - demolinoox song'
 
 quitwin

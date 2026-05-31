@@ -11,6 +11,7 @@ xdg-dbus-proxy "$DBUS_SESSION_BUS_ADDRESS" \
 	`# For reference: https://hg.mozilla.org/mozilla-central/file/tip/taskcluster/docker/firefox-flatpak/runme.sh#l156` \
 	--{own,talk}="org.mozilla.firefox.*" \
 	--talk=org.freedesktop.Notifications &
+dbus_proxy_pid=$!
 
 mkdir -p "$XDG_RUNTIME_DIR"/ffhardened-$pid
 fifo="$XDG_RUNTIME_DIR"/ffhardened-$pid/fifo
@@ -21,18 +22,15 @@ echo "\$3" >> "$fifo"
 EOF
 chmod +x "$XDG_RUNTIME_DIR"/ffhardened-$pid/mpv-launcher
 
-(
-	exec 0<&- 1>&- 2>&-
-	while true; do
-		url="$(cat "$fifo")"
-		if [ -n "$url" ]; then
-			curl -H 'User-Agent: Firefox' \
-				-H 'Accept-Language: en-US' \
-				-Ls "$url" | \
-				/usr/local/bin/mpv-hardened /dev/stdin
-		fi
-	done &
-)
+while true; do
+	if IFS= read -r url <"$fifo" && [ -n "$url" ]; then
+		curl -H 'User-Agent: Firefox' \
+			-H 'Accept-Language: en-US' \
+			-Ls "$url" | \
+			/usr/local/bin/mpv-hardened /dev/stdin
+	fi
+done >/dev/null 2>&1 &
+mpv_worker_pid=$!
 
 cat <<EOF >"$XDG_RUNTIME_DIR/ffhardened-$pid/zathurarc"
 set recolor
@@ -50,7 +48,7 @@ export XAUTHORITY="$cookie"
 while [ ! -e "$XDG_RUNTIME_DIR"/dbus-proxy/firefox ]; do sleep 0.1; done
 
 trap '
-	kill $(jobs -p)
+	kill "$dbus_proxy_pid" "$mpv_worker_pid" 2>/dev/null || true
 	rm -rf "$XDG_RUNTIME_DIR"/ffhardened-$pid
 	# For some reason, two firefox-hardened instances
 	# exist. Kill the remaining ones if no browser is

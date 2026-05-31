@@ -104,7 +104,7 @@ if [[ $# == 0 || "$*" == *sysupdate* ]]; then
 	./dctrl shell "sudo sed -i s/timeout=5/timeout=-1/ /run/archiso/bootmnt/grub/grub.cfg"
 
 	# will reboot the VM
-	timeout 5 ./dctrl shell "cd /tmp/tests && . ./sysupdate &!" 2>/dev/null
+	timeout 15 ./dctrl shell "cd /tmp/tests && . ./sysupdate &!"
 
 	tries=120
 	found=

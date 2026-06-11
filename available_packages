@@ -73,6 +73,8 @@ noto-fonts-emoji
 
 # Boot
 linux-firmware
+sof-firmware
+alsa-firmware
 linux
 local plymouth
 edk2-shell

@@ -192,6 +192,7 @@ inotify-tools
 local lsb-release
 ccid
 playerctl
+power-profiles-daemon
 luarocks
 lua-luarocks
 rlwrap

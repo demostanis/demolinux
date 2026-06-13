@@ -42,7 +42,13 @@ case "$action" in
 			-framerate $framerate \
 			-video_size "$video_size" \
 			-f x11grab \
-			-i "$input" "$filename"
+			-i "$input" \
+			-c:v libx264 \
+			-preset veryfast \
+			-crf 23 \
+			-vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2,format=yuv420p' \
+			-movflags +faststart \
+			"$filename"
 		rm -f "$fifo"
 		;;
 	status)

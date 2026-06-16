@@ -18,13 +18,14 @@ diff -u b/Xext/security.c b/Xext/security.c
  
      /* additional permissions for specific resource types */
      if (rec->rtype == RT_WINDOW)
-@@ -864,6 +866,11 @@
+@@ -864,6 +866,12 @@
      subj = dixLookupPrivate(&rec->client->devPrivates, stateKey);
      obj = dixLookupPrivate(&wClient(rec->pWin)->devPrivates, stateKey);
  
 +    const char *atom_name = NameForAtom(name);
 +    if (atom_name && (strstr(atom_name, "SELECTION") != 0 ||
-+                      strcmp(atom_name, "XSEL_DATA") == 0))
++                      strcmp(atom_name, "XSEL_DATA") == 0 ||
++                      strcmp(atom_name, "XCLIP_OUT") == 0))
 +      return;
 +
      if (SecurityDoCheck(subj, obj, requested, allowed) != Success) {

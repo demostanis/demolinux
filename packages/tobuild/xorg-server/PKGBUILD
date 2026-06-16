@@ -5,7 +5,7 @@ pkgbase=xorg-server
 pkgname=('xorg-server' 'xorg-server-xephyr' 'xorg-server-xvfb' 'xorg-server-xnest'
          'xorg-server-common' 'xorg-server-devel')
 pkgver=21.1.16
-pkgrel=22
+pkgrel=23
 arch=('x86_64')
 license=('custom')
 groups=('xorg')
@@ -173,4 +173,4 @@ sha256sums=('b14a116d2d805debc5b5b2aac505a279e69b217dae2fae2dfcb62400471a9970'
             '27ce50f4432e5549e662db857118761fa9cd74c6900aac52c4db768c956838db'
             '2460adccd3362fefd4cdc5f1c70f332d7b578091fb9167bf88b5f91265bbd776'
             'fb2a9181e0b468f3c0dbd0e6ae65af0829b0bfa1dc9f4ef57c923f4b9459ef93'
-            'ba26744d5ee8b46f29abeb03cf1f8a3747bb6f52295359d22604a056da71ea47')
+            'ed303da877bbdea99fa34a5eb743d38f02f1f292733afc1664a9aa044deddb19')

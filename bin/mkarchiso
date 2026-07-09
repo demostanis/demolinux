@@ -240,7 +240,17 @@ _make_custom_airootfs() {
 
 # https://bugs.archlinux.org/task/64265
 correct_makechrootpkg=`mktemp`
-sed 's/yes y/yes ""/' "$(which makechrootpkg)" > "$correct_makechrootpkg"
+sed '
+    s/yes y/yes ""/
+    /lib\/util\/machine.sh/a\
+machine_name() {\
+    local name=$1 machine="makechrootpkg-${name}" max_hostname=64 max_pid_digits=7\
+    machine="$(tr "[:upper:]" "[:lower:]" <<< "${machine}" | tr --squeeze-repeats --complement "a-z0-9." - | tr --squeeze-repeats . | head --bytes=$(( max_hostname - max_pid_digits - 1 )))"\
+    machine=${machine%%.}\
+    machine=${machine%%-}\
+    printf "%s.%s" "${machine}" "$$"\
+}
+' "$(which makechrootpkg)" > "$correct_makechrootpkg"
 chmod +x "$correct_makechrootpkg"
 trap 'rm "$correct_makechrootpkg"' EXIT
 

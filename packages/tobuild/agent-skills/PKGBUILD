@@ -1,7 +1,7 @@
 # the worst pkgbuild ever written
 pkgname=agent-skills
-pkgver=2
-pkgrel=3
+pkgver=3
+pkgrel=1
 pkgdesc="A collection of Agent Skills for OpenCode"
 arch=(any)
 license=(custom) # pretty sure im not allowed to actually distribute these
@@ -17,7 +17,7 @@ prepare() {
 		git sparse-checkout add skills/pptx && \
 		git sparse-checkout add skills/skill-creator )
 	git clone https://github.com/remotion-dev/skills remotion-skills
-	git clone https://github.com/nextlevelbuilder/ui-ux-pro-max-skill
+	git clone https://github.com/Leonxlnx/taste-skill/
 }
 
 package() {
@@ -27,7 +27,5 @@ package() {
 
 	cp -a remotion-skills/skills/remotion "$pkgdir"/etc/skel/.agents/skills
 
-	cp -a ui-ux-pro-max-skill/.claude/skills/ui-ux-pro-max "$pkgdir"/etc/skel/.agents/skills
-	rm "$pkgdir"/etc/skel/.agents/skills/ui-ux-pro-max/{data,scripts}
-	cp -a ui-ux-pro-max-skill/src/ui-ux-pro-max/{data,scripts} "$pkgdir"/etc/skel/.agents/skills/ui-ux-pro-max
+	cp -a taste-skill/skills/taste-skill "$pkgdir"/etc/skel/.agents/skills
 }

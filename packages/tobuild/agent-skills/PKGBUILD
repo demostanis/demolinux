@@ -1,7 +1,7 @@
 # the worst pkgbuild ever written
 pkgname=agent-skills
 pkgver=3
-pkgrel=1
+pkgrel=2
 pkgdesc="A collection of Agent Skills for OpenCode"
 arch=(any)
 license=(custom) # pretty sure im not allowed to actually distribute these
@@ -11,13 +11,16 @@ options=(!strip !debug)
 prepare() {
 	git clone --filter=blob:none --sparse https://github.com/anthropics/skills anthropic-skills
 	( cd anthropic-skills && \
+		git checkout 9d2f1ae187231d8199c64b5b762e1bdf2244733d &&
 		git sparse-checkout add skills/pdf && \
 		git sparse-checkout add skills/xlsx && \
 		git sparse-checkout add skills/docx && \
 		git sparse-checkout add skills/pptx && \
 		git sparse-checkout add skills/skill-creator )
 	git clone https://github.com/remotion-dev/skills remotion-skills
+	(cd remotion-skills && git checkout 6726bf2d4bcce0359806749b3656b0c886d74aaa)
 	git clone https://github.com/Leonxlnx/taste-skill/
+	(cd taste-skill && git checkout b17742737e796305d829b3ad39eda3add0d79060)
 }
 
 package() {

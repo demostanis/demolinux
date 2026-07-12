@@ -47,5 +47,5 @@
   "tools": {
     "firefox*": false
   },
-  "lightweight_model": "openai/gpt-5.4-mini"
+  "lightweight_model": "openai/gpt-5.6-luna"
 }

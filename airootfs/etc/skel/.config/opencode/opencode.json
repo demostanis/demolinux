@@ -1,5 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "shell": "/bin/bash",
   "mcp": {
     "firefox": {
       "type": "local",

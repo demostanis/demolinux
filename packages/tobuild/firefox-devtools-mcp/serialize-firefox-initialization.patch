@@ -1,0 +1,99 @@
+--- src/firefox-devtools-mcp-0.7.4/src/index.ts	2026-07-27 00:00:00.000000000 +0200
++++ src/firefox-devtools-mcp-0.7.4/src/index.ts	2026-07-27 00:00:00.000000000 +0200
+@@ -55,6 +55,7 @@
+ 
+ // Global context (lazy initialized on first tool call)
+ let firefox: FirefoxDevTools | null = null;
++let firefoxInitialization: Promise<FirefoxDevTools> | null = null;
+ 
+ /**
+  * Reset Firefox instance (used when disconnection is detected)
+@@ -67,7 +68,7 @@
+   log('Firefox instance reset - will reconnect on next tool call');
+ }
+ 
+-export async function getFirefox(): Promise<FirefoxDevTools> {
++async function initializeFirefox(): Promise<FirefoxDevTools> {
+   // If we have an existing instance, verify it's still connected
+   if (firefox) {
+     const connected = await firefox.isConnected();
+@@ -92,11 +93,22 @@
+     acceptInsecureCerts: args.acceptInsecureCerts,
+   };
+ 
+-  firefox = new FirefoxDevTools(options);
+-  await firefox.connect();
++  const instance = new FirefoxDevTools(options);
++  await instance.connect();
++  firefox = instance;
+   log('Firefox DevTools connection established');
+ 
+-  return firefox;
++  return instance;
++}
++
++export function getFirefox(): Promise<FirefoxDevTools> {
++  if (!firefoxInitialization) {
++    firefoxInitialization = initializeFirefox().finally(() => {
++      firefoxInitialization = null;
++    });
++  }
++
++  return firefoxInitialization;
+ }
+ 
+ // Tool handler mapping
+--- /dev/null	2026-07-27 00:00:00.000000000 +0200
++++ src/firefox-devtools-mcp-0.7.4/tests/index.test.ts	2026-07-27 00:00:00.000000000 +0200
+@@ -0,0 +1,51 @@
++import { afterEach, describe, expect, it, vi } from 'vitest';
++
++const connection = vi.hoisted(() => {
++  let resolveConnection: () => void;
++  const pendingConnection = new Promise<void>((resolve) => {
++    resolveConnection = resolve;
++  });
++
++  return {
++    connect: vi.fn(() => pendingConnection),
++    isConnected: vi.fn().mockResolvedValue(false),
++    reset: vi.fn(),
++    resolve: () => resolveConnection(),
++  };
++});
++
++vi.mock('../src/cli.js', () => ({
++  parseArguments: () => ({
++    headless: true,
++    acceptInsecureCerts: false,
++  }),
++}));
++
++vi.mock('../src/firefox/index.js', () => ({
++  FirefoxDevTools: class {
++    connect = connection.connect;
++    isConnected = connection.isConnected;
++    reset = connection.reset;
++  },
++}));
++
++import { getFirefox, resetFirefox } from '../src/index.js';
++
++describe('Firefox initialization', () => {
++  afterEach(() => {
++    resetFirefox();
++  });
++
++  it('shares one launch between concurrent tool requests', async () => {
++    const first = getFirefox();
++    const second = getFirefox();
++
++    expect(connection.connect).toHaveBeenCalledTimes(1);
++
++    connection.resolve();
++    const [firstClient, secondClient] = await Promise.all([first, second]);
++
++    expect(firstClient).toBe(secondClient);
++    expect(connection.connect).toHaveBeenCalledTimes(1);
++  });
++});

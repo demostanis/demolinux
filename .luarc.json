@@ -1,0 +1,23 @@
+{
+  "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
+  "diagnostics.ignoredFiles": "Disable",
+  "workspace.checkThirdParty": "Disable",
+  "workspace.ignoreDir": [
+    "/.git/",
+    "/airootfs/data/",
+    "/out/",
+    "/work/",
+    "/packages/chroot/",
+    "/packages/aurcache/",
+    "/packages/nvimcache/",
+    "/packages/zshcache/",
+    "/packages/db/",
+    "/packages/tobuild/*/src/",
+    "/packages/tobuild/*/pkg/",
+    "/qmk_firmware/"
+  ],
+  "workspace.ignoreSubmodules": true,
+  "workspace.maxPreload": 1000,
+  "workspace.preloadFileSize": 200,
+  "workspace.useGitIgnore": true
+}

@@ -166,7 +166,7 @@ archiso_mount_handler() {
             # it should be ro by default, but while developping this the current
             # image on github doesn't have its airootfs as read-only...
             btrfs property set $rundir/sysupdate ro true
-            btrfs subvolume snapshot $btrfs_root/airootfs $btrfs_root/snapshots/snapshot-$(date +%d-%m-%Y)
+            btrfs subvolume snapshot $btrfs_root/airootfs $btrfs_root/snapshots/snapshot-$(date +%Y%m%d-%H%M%S)
             btrfs subvol delete $btrfs_root/airootfs
             btrfs send $rundir/sysupdate | pv | btrfs receive $btrfs_root
 

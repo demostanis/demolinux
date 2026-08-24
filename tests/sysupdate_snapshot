@@ -31,4 +31,5 @@ for _ in {1..120}; do
 	sleep 1
 done
 ./dctrl shell "cat /version >/dev/null"
+./dctrl shell "grep -Eq '(^| )btrfs_snapshot=[^ ]*/snapshot-[0-9]{8}-[0-9]{6}( |$)' /proc/cmdline"
 ./dctrl shell "sudo poweroff" || :

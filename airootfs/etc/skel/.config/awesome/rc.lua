@@ -27,6 +27,11 @@ require"globalkeys"
 require"notifications"
 require"tagpopup"
 
+local function is_opencode_sidewindow_host(c)
+    return c.opencode_sidecar_hosted
+        or c.instance == "opencode-sidewindow-urxvt"
+end
+
 local function hide_splash()
     awful.spawn.with_shell([[
         if [ -e ~/.feh.pid ]; then
@@ -55,7 +60,7 @@ awful.screen.connect_for_each_screen(function(s)
 
     s:connect_signal("arrange", function(s)
         for _, client in ipairs(s.clients) do
-            if client.floating then
+            if client.floating and not is_opencode_sidewindow_host(client) then
                 awful.placement.centered(client, {parent = client.transient_for})
             end
         end
@@ -81,7 +86,10 @@ client.connect_signal("manage", function(c)
         c.icon = icon
     end
 
-    if c.transient_for or awful.rules.match_any(c, beautiful.standalone_floating_windows) then
+    if is_opencode_sidewindow_host(c) then
+        c.floating = true
+        c.skip_taskbar = true
+    elseif c.transient_for or awful.rules.match_any(c, beautiful.standalone_floating_windows) then
         awful.placement.centered(c, {parent = c.transient_for})
         awful.placement.no_offscreen(c)
         c.ontop = true
@@ -98,7 +106,7 @@ client.connect_signal("manage", function(c)
         c.screen.mydock.visible = true
     end)
 
-    if tabs.wants_tabs(c) then
+    if tabs.wants_tabs(c) and not is_opencode_sidewindow_host(c) then
         c.keys = gears.table.join(
             require"clientkeys",
             awful.key({ "Control" }, "Tab", function()
@@ -124,6 +132,15 @@ awful.rules.rules = {{
     rule_any = {type = {"normal", "dialog"}},
     properties = {
         titlebars_enabled = true
+    }
+},
+{
+    rule = {instance = "opencode-sidewindow-urxvt"},
+    properties = {
+        floating = true,
+        skip_taskbar = true,
+        titlebars_enabled = false,
+        size_hints_honor = false,
     }
 },
 {

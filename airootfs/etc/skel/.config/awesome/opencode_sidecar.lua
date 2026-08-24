@@ -15,6 +15,7 @@ local arrow_icons = {
 local sidecar = {}
 local states = setmetatable({}, {__mode = "k"})
 local active_state
+local hosted_terminal_instance = "opencode-sidewindow-urxvt"
 
 local animation_frames = 11
 local animation_interval = 1 / 60
@@ -32,6 +33,16 @@ end
 function sidecar.is_opencode(c)
     local name = c and c.name or ""
     return c and c.class == "URxvt" and name:match("^OC%s*|") ~= nil
+end
+
+function sidecar.is_hosted(c)
+    return is_valid(c) and (c.opencode_sidecar_hosted
+        or c.instance == hosted_terminal_instance)
+end
+
+function sidecar.is_firefox(c)
+    return is_valid(c) and type(c.class) == "string"
+        and c.class:lower() == "firefox"
 end
 
 local function clamp_panel_width(c, width)
@@ -83,6 +94,40 @@ local function place_panel(state)
     })
 end
 
+local function place_hosted(state)
+    local hosted = state.hosted_client
+    if not is_valid(hosted) then
+        state.hosted_client = nil
+        return false
+    end
+
+    local owner = state.client
+    local visible = (state.expanded or state.animating)
+        and owner_is_visible(owner)
+    if not visible then
+        hosted.hidden = true
+        return true
+    end
+
+    hosted.screen = owner.screen
+    hosted:tags(owner:tags())
+    hosted.hidden = false
+    hosted.minimized = false
+
+    local geometry = {
+        x = owner.x + owner.width,
+        y = owner.y,
+        width = math.max(1, math.floor(state.current_width)),
+        height = math.max(1, owner.height),
+    }
+    if hosted.x ~= geometry.x or hosted.y ~= geometry.y
+        or hosted.width ~= geometry.width or hosted.height ~= geometry.height then
+        hosted:geometry(geometry)
+    end
+    hosted:raise()
+    return true
+end
+
 local function refresh(state)
     if not is_valid(state.client) then
         state.panel.visible = false
@@ -90,7 +135,9 @@ local function refresh(state)
     end
 
     place_panel(state)
-    state.panel.visible = (state.expanded or state.animating)
+    local has_hosted = place_hosted(state)
+    state.panel.visible = not has_hosted
+        and (state.expanded or state.animating)
         and owner_is_visible(state.client)
     redraw_button(state)
 end
@@ -196,23 +243,38 @@ local function resize_state(state, width)
     return width
 end
 
+local function begin_resize(state)
+    if not state.expanded then
+        return
+    end
+
+    stop_animation(state)
+    local initial_x = mouse.coords().x
+    local initial_width = state.current_width
+    mousegrabber.run(function(coords)
+        resize_state(state, initial_width + coords.x - initial_x)
+        return coords.buttons[3]
+    end, "sb_h_double_arrow")
+end
+
 local function bind_resize_controls(state)
     state.panel:buttons(gears.table.join(
         awful.button({modkey}, 3, function()
-            if not state.expanded then
-                return
-            end
-
-            stop_animation(state)
-            local initial_x = mouse.coords().x
-            local initial_width = state.current_width
-            mousegrabber.run(function(coords)
-                resize_state(state,
-                    initial_width + coords.x - initial_x)
-                return coords.buttons[3]
-            end, "sb_h_double_arrow")
+            begin_resize(state)
         end)
     ))
+end
+
+local function hosted_buttons(state)
+    return gears.table.join(
+        awful.button({}, 1, function(c)
+            client.focus = c
+            c:activate({context = "mouse_click", raise = false})
+        end),
+        awful.button({modkey}, 3, function()
+            begin_resize(state)
+        end)
+    )
 end
 
 local function make_button(state)
@@ -263,6 +325,17 @@ local function make_button(state)
     return button
 end
 
+local function clear_launch_watch(state)
+    if state.launch_handler then
+        client.disconnect_signal("manage", state.launch_handler)
+        state.launch_handler = nil
+    end
+    if state.launch_timer then
+        state.launch_timer:stop()
+        state.launch_timer = nil
+    end
+end
+
 local function make_state(c)
     local border_width = 0
     local panel = wibox({
@@ -286,6 +359,12 @@ local function make_state(c)
         client = c,
         panel = panel,
         imagebox = imagebox,
+        hosted_client = nil,
+        hosted_kind = nil,
+        hosted_pid = nil,
+        launching = false,
+        launch_handler = nil,
+        launch_timer = nil,
         side = "right",
         border_width = border_width,
         expanded = false,
@@ -324,6 +403,13 @@ local function make_state(c)
         stop_animation(state)
         state.expanded = false
         state.panel.visible = false
+        if is_valid(state.hosted_client) then
+            state.hosted_client:kill()
+        end
+        clear_launch_watch(state)
+        state.hosted_client = nil
+        state.hosted_kind = nil
+        state.launching = false
         if active_state == state then
             active_state = nil
         end
@@ -335,6 +421,113 @@ end
 
 local function get_state(c)
     return states[c] or make_state(c)
+end
+
+local function close_hosted(state)
+    local hosted = state.hosted_client
+    clear_launch_watch(state)
+    state.hosted_client = nil
+    state.hosted_kind = nil
+    state.hosted_pid = nil
+    state.launching = false
+    if is_valid(hosted) then
+        hosted:kill()
+    end
+end
+
+local function attach_hosted(state, hosted, kind)
+    if not is_valid(state.client) then
+        hosted:kill()
+        return
+    end
+
+    if is_valid(state.hosted_client) and state.hosted_client ~= hosted then
+        state.hosted_client:kill()
+    end
+
+    clear_launch_watch(state)
+    state.hosted_client = hosted
+    state.hosted_kind = kind
+    state.hosted_pid = hosted.pid
+    state.launching = false
+    hosted.opencode_sidecar_hosted = true
+    hosted.opencode_sidecar_owner = state.client
+    hosted.floating = true
+    hosted.skip_taskbar = true
+    hosted.size_hints_honor = false
+    hosted.maximized = false
+    hosted.fullscreen = false
+    hosted.buttons = hosted_buttons(state)
+
+    for _, position in ipairs({"top", "bottom", "left", "right"}) do
+        awful.titlebar.hide(hosted, position)
+    end
+
+    hosted:connect_signal("property::fullscreen", function(c)
+        if state.hosted_client == c and c.fullscreen then
+            c.fullscreen = false
+        end
+    end)
+    hosted:connect_signal("unmanage", function(c)
+        if state.hosted_client == c then
+            state.hosted_client = nil
+            state.hosted_kind = nil
+            state.hosted_pid = nil
+            state.launching = false
+            refresh(state)
+        end
+    end)
+    for _, signal in ipairs({
+        "property::x", "property::y", "property::width", "property::height",
+        "property::screen", "property::minimized", "tagged", "untagged",
+    }) do
+        hosted:connect_signal(signal, function(c)
+            if state.hosted_client == c then
+                gears.timer.delayed_call(function()
+                    if state.hosted_client == c then
+                        refresh(state)
+                    end
+                end)
+            end
+        end)
+    end
+
+    set_expanded(state, true)
+    refresh(state)
+end
+
+
+local function watch_for_hosted(state, matcher, kind)
+    local known = {}
+    for _, candidate in ipairs(client.get()) do
+        known[candidate] = true
+    end
+
+    local function consider(candidate)
+        if not state.launching or state.hosted_kind ~= kind
+            or known[candidate] or not matcher(candidate) then
+            return false
+        end
+        attach_hosted(state, candidate, kind)
+        return true
+    end
+
+    state.launch_handler = function(candidate)
+        gears.timer.delayed_call(function()
+            consider(candidate)
+        end)
+    end
+    client.connect_signal("manage", state.launch_handler)
+    state.launch_timer = gears.timer.start_new(20, function()
+        clear_launch_watch(state)
+        if state.launching and state.hosted_kind == kind then
+            state.launching = false
+            state.hosted_kind = nil
+            state.hosted_pid = nil
+            refresh(state)
+        end
+        return false
+    end)
 end
 
 function sidecar.button(c)
@@ -377,6 +570,118 @@ function sidecar.resize(c, width)
     return resize_state(get_state(c), width)
 end
 
+function sidecar.open_terminal(c)
+    if not sidecar.is_opencode(c) then
+        return "error: target is not an OpenCode window"
+    end
+
+    local state = get_state(c)
+    if is_valid(state.hosted_client) then
+        if state.hosted_kind == "terminal" then
+            set_expanded(state, true)
+            return sidecar.status(c)
+        end
+        close_hosted(state)
+    end
+    if state.launching then
+        if state.hosted_kind == "terminal" then
+            return sidecar.status(c)
+        end
+        close_hosted(state)
+    end
+
+    state.imagebox:set_image(nil)
+    state.image_path = nil
+    state.launching = true
+    state.hosted_kind = "terminal"
+    set_expanded(state, true)
+
+    local pid = awful.spawn({
+        "urxvt",
+        "-name", hosted_terminal_instance,
+        "-title", "OpenCode sidewindow terminal",
+    }, {
+        floating = true,
+        skip_taskbar = true,
+        titlebars_enabled = false,
+        size_hints_honor = false,
+        screen = c.screen,
+        tag = c.first_tag,
+    }, function(hosted)
+        if state.launching and state.hosted_kind == "terminal" then
+            attach_hosted(state, hosted, "terminal")
+        else
+            hosted:kill()
+        end
+    end)
+    if not pid then
+        state.launching = false
+        state.hosted_kind = nil
+        return "error: unable to launch urxvt"
+    end
+    state.hosted_pid = pid
+    return sidecar.status(c)
+end
+
+function sidecar.open_firefox(c, url)
+    if not sidecar.is_opencode(c) then
+        return "error: target is not an OpenCode window"
+    end
+    if url == nil or url == "" then
+        url = "about:blank"
+    elseif type(url) ~= "string" then
+        return "error: Firefox URL must be a string"
+    end
+
+    local state = get_state(c)
+    if is_valid(state.hosted_client) then
+        if state.hosted_kind == "firefox" then
+            set_expanded(state, true)
+            return sidecar.status(c)
+        end
+        close_hosted(state)
+    end
+    if state.launching then
+        if state.hosted_kind == "firefox" then
+            return sidecar.status(c)
+        end
+        close_hosted(state)
+    end
+
+    state.imagebox:set_image(nil)
+    state.image_path = nil
+    state.launching = true
+    state.hosted_kind = "firefox"
+    set_expanded(state, true)
+    watch_for_hosted(state, sidecar.is_firefox, "firefox")
+
+    local pid = awful.spawn({
+        "/usr/local/bin/firefox-hardened",
+        "--new-window", url,
+    })
+    if not pid then
+        clear_launch_watch(state)
+        state.launching = false
+        state.hosted_kind = nil
+        return "error: unable to launch firefox-hardened"
+    end
+    state.hosted_pid = pid
+    return sidecar.status(c)
+end
+
+function sidecar.close_terminal(c)
+    if not sidecar.is_opencode(c) then
+        return "error: target is not an OpenCode window"
+    end
+
+    local state = get_state(c)
+    close_hosted(state)
+    refresh(state)
+    return sidecar.status(c)
+end
+
+sidecar.close_firefox = sidecar.close_terminal
+
 function sidecar.set_image(c, path)
     if not sidecar.is_opencode(c) then
         return "error: target is not an OpenCode window"
@@ -386,6 +691,7 @@ function sidecar.set_image(c, path)
     end
 
     local state = get_state(c)
+    close_hosted(state)
     if not state.imagebox:set_image(path) then
         return "error: unable to load image "..path
     end
@@ -414,11 +720,19 @@ function sidecar.status(c)
     local geometry = state.panel:geometry()
     local image = state.image_path and " image="..state.image_path
         or " image=none"
+    local app = "none"
+    if is_valid(state.hosted_client) then
+        app = string.format("%s:0x%x",
+            state.hosted_client.class or "unknown",
+            state.hosted_client.window or 0)
+    elseif state.launching then
+        app = "launching:"..(state.hosted_kind or "unknown")
+    end
     return string.format("%s %s %d,%d %dx%d reserved=%d",
         state.expanded and "expanded" or "collapsed",
         state.side, geometry.x, geometry.y,
         geometry.width, geometry.height,
-        state.client.opencode_sidecar_width or 0)..image
+        state.client.opencode_sidecar_width or 0)..image.." app="..app
 end
 
 tag.connect_signal("property::selected", function()

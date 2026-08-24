@@ -7,6 +7,18 @@ local runtime = os.getenv("XDG_RUNTIME_DIR")
 if not runtime then runtime = "/run/user/1000" end
 local global_x_filename = runtime.."/.awesome.x"
 
+local function is_sidewindow_host(c)
+	return c and (c.opencode_sidecar_hosted
+		or c.instance == "opencode-sidewindow-urxvt")
+end
+
+local function layout_client(c)
+	if is_sidewindow_host(c) then
+		return c.opencode_sidecar_owner
+	end
+	return c
+end
+
 local scroll = {name = "scroll"}
 function scroll.arrange(p)
 	local t = p.tag
@@ -32,7 +44,8 @@ end
 local function any_floatyfloaty(s)
 	s = s or mouse.screen
 	for _, client in ipairs(s.clients) do
-		if client.floating or client.fullscreen then
+		if not is_sidewindow_host(client)
+			and (client.floating or client.fullscreen) then
 			return true
 		end
 	end
@@ -60,7 +73,8 @@ end
 local function leftmost_window()
 	local leftmost = nil
 	for _, c in ipairs(mouse.screen.clients) do
-		if not leftmost or leftmost.x < 0 or (c.x > 0 and c.x < leftmost.x) then
+		if not is_sidewindow_host(c) and (not leftmost or leftmost.x < 0
+			or (c.x > 0 and c.x < leftmost.x)) then
 			leftmost = c
 		end
 	end
@@ -69,11 +83,12 @@ end
 
 local function lefthand_window(c)
 	local lefthand = nil
-	local leftmost = c or leftmost_window()
+	local leftmost = layout_client(c) or leftmost_window()
+	if not leftmost then return nil end
 	for _, c in ipairs(mouse.screen.clients) do
-		if not lefthand or (
+		if not is_sidewindow_host(c) and (not lefthand or (
 			math.abs(c.x+c.width-leftmost.x) <
-			math.abs(lefthand.x+lefthand.width-leftmost.x)) then
+			math.abs(lefthand.x+lefthand.width-leftmost.x))) then
 			lefthand = c
 		end
 	end
@@ -82,11 +97,12 @@ end
 
 local function righthand_window(c)
 	local righthand = nil
-	local leftmost = c or leftmost_window()
+	local leftmost = layout_client(c) or leftmost_window()
+	if not leftmost then return nil end
 	for _, c in ipairs(mouse.screen.clients) do
-		if not righthand or (
+		if not is_sidewindow_host(c) and (not righthand or (
 			math.abs(c.x-(leftmost.x+leftmost.width)) <
-			math.abs(righthand.x-(leftmost.x+leftmost.width))) then
+			math.abs(righthand.x-(leftmost.x+leftmost.width)))) then
 			righthand = c
 		end
 	end
@@ -96,7 +112,7 @@ end
 local function farthest_window()
 	local farthest = nil
 	for _, c in ipairs(mouse.screen.clients) do
-		if not farthest or c.x > farthest.x then
+		if not is_sidewindow_host(c) and (not farthest or c.x > farthest.x) then
 			farthest = c
 		end
 	end
@@ -106,7 +122,7 @@ end
 local function first_window()
 	local nearest = nil
 	for _, c in ipairs(mouse.screen.clients) do
-		if not nearest or c.x < nearest.x then
+		if not is_sidewindow_host(c) and (not nearest or c.x < nearest.x) then
 			nearest = c
 		end
 	end
@@ -197,6 +213,8 @@ local function move_left()
 end
 
 local function global_x_of_client(c)
+	c = layout_client(c)
+	if not c then return global_x end
 	while c.transient_for do
 		c = c.transient_for
 	end
@@ -234,7 +252,8 @@ local function cycle_window_focus()
 
 	local windows_in_viewport = {}
 	for _, c in ipairs(mouse.screen.clients) do
-		if c.x+c.width > margin_before_window_on_focus and
+		if not is_sidewindow_host(c)
+			and c.x+c.width > margin_before_window_on_focus and
 			c.x < c.screen.geometry.width-margin_before_window_on_focus then
 			table.insert(windows_in_viewport, c)
 		end
@@ -245,8 +264,9 @@ local function cycle_window_focus()
 	if #windows_in_viewport < 2 then
 		return
 	end
+	local focused = layout_client(client.focus)
 	for i, c in ipairs(windows_in_viewport) do
-		if c == client.focus then
+		if c == focused then
 			if i == #windows_in_viewport then
 				i = 1
 			else
@@ -260,7 +280,8 @@ local function cycle_window_focus()
 end
 
 local function on_window_appearance_change(c)
-	if not global_x_restored
+	if is_sidewindow_host(c)
+		or not global_x_restored
 		or (c and any_floatyfloaty())
 		or controlling_tabs then return end
 
@@ -336,6 +357,8 @@ function scroll.move_handler(c, context, hints)
 end
 
 local function maximize(c)
+	c = layout_client(c)
+	if not c then return end
 	if any_floatyfloaty() then return end
 
 	if c.kinda_maximized then
@@ -417,7 +440,7 @@ end
 local function swap_left()
 	if any_floatyfloaty() then return end
 
-	local c = client.focus
+	local c = layout_client(client.focus)
 	if c then
 		local lefthand = lefthand_window(c)
 		if lefthand and lefthand ~= c then
@@ -433,7 +456,7 @@ end
 local function swap_right()
 	if any_floatyfloaty() then return end
 
-	local c = client.focus
+	local c = layout_client(client.focus)
 	if c then
 		local righthand = righthand_window(c)
 		if righthand and righthand ~= c then
@@ -447,6 +470,7 @@ local function swap_right()
 end
 
 client.connect_signal("manage", function(c)
+	if is_sidewindow_host(c) then return end
 	delayed(function()
 		local is_valid = pcall(function() return c.valid end) and c.valid
 		if not is_valid then return end

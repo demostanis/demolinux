@@ -1,0 +1,157 @@
+#!/usr/bin/env python3
+
+import argparse
+import ast
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+
+
+def ancestor_pids():
+    ancestors = []
+    pid = os.getppid()
+    while pid > 1 and pid not in ancestors:
+        ancestors.append(pid)
+        try:
+            status = Path(f"/proc/{pid}/status").read_text()
+        except OSError:
+            break
+        match = re.search(r"^PPid:\s+(\d+)$", status, re.MULTILINE)
+        if not match:
+            break
+        pid = int(match.group(1))
+    return ancestors
+
+
+def lua_string(value):
+    for level in range(16):
+        equals = "=" * level
+        closing = f"]{equals}]"
+        if closing not in value:
+            return f"[{equals}[{value}]{equals}]"
+    raise ValueError("value cannot be represented as a Lua string")
+
+
+def target_code():
+    ancestors = ", ".join(f"[{pid}] = true" for pid in ancestor_pids())
+    return f"""
+local sidewindow = require"opencode_sidecar"
+local ancestors = {{{ancestors}}}
+local target
+
+for _, candidate in ipairs(client.get()) do
+    if sidewindow.is_opencode(candidate)
+        and ancestors[tonumber(candidate.pid)] then
+        target = candidate
+        break
+    end
+end
+
+if not target and sidewindow.is_opencode(client.focus) then
+    target = client.focus
+end
+
+if not target then
+    for _, candidate in ipairs(client.get()) do
+        local ok, visible = pcall(function()
+            return candidate:isvisible() and not candidate.minimized
+        end)
+        if ok and visible and sidewindow.is_opencode(candidate) then
+            target = candidate
+            break
+        end
+    end
+end
+
+if not target then
+    return "error: no OpenCode window found"
+end
+"""
+
+
+def action_code(args):
+    if args.command == "image":
+        path = Path(args.path).expanduser().resolve(strict=True)
+        if not path.is_file():
+            raise ValueError(f"not a file: {path}")
+        return f"return sidewindow.set_image(target, {lua_string(str(path))})"
+    if args.command == "clear":
+        return "return sidewindow.clear_image(target)"
+    if args.command == "show":
+        return "sidewindow.show(target); return sidewindow.status(target)"
+    if args.command == "hide":
+        return "sidewindow.hide(target); return sidewindow.status(target)"
+    if args.command == "toggle":
+        return "sidewindow.toggle(target); return sidewindow.status(target)"
+    if args.command == "resize":
+        return (
+            f"sidewindow.resize(target, {args.width}); "
+            "return sidewindow.status(target)"
+        )
+    return "return sidewindow.status(target)"
+
+
+def decode_output(output):
+    match = re.fullmatch(r'\s*string\s+(".*")\s*', output, re.DOTALL)
+    if not match:
+        return output.strip()
+    try:
+        return ast.literal_eval(match.group(1))
+    except (SyntaxError, ValueError):
+        return output.strip()
+
+
+def parser():
+    result = argparse.ArgumentParser(
+        prog="opencode-sidewindow",
+        description="Control the AwesomeWM sidewindow attached to this OpenCode window.",
+    )
+    commands = result.add_subparsers(dest="command", required=True)
+    image = commands.add_parser("image", help="display a local image and open the sidewindow")
+    image.add_argument("path", help="path to a PNG, JPEG, WebP, GIF, or SVG image")
+    commands.add_parser("clear", help="remove the current image")
+    commands.add_parser("show", help="open the sidewindow")
+    commands.add_parser("hide", help="close the sidewindow")
+    commands.add_parser("toggle", help="toggle the sidewindow")
+    resize = commands.add_parser("resize", help="set the sidewindow width in pixels")
+    resize.add_argument("width", type=int)
+    commands.add_parser("status", help="print sidewindow state and image path")
+    return result
+
+
+def main():
+    args = parser().parse_args()
+    if not shutil.which("awesome-client"):
+        print("error: awesome-client is not installed", file=sys.stderr)
+        return 1
+
+    try:
+        lua = target_code() + action_code(args)
+    except (OSError, ValueError) as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 1
+
+    env = os.environ.copy()
+    env.setdefault("DISPLAY", ":0")
+    completed = subprocess.run(
+        ["awesome-client", lua],
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    if completed.returncode != 0:
+        message = completed.stderr.strip() or completed.stdout.strip()
+        print(message or "error: awesome-client failed", file=sys.stderr)
+        return completed.returncode
+
+    output = decode_output(completed.stdout)
+    stream = sys.stderr if output.startswith("error:") else sys.stdout
+    print(output, file=stream)
+    return 1 if output.startswith("error:") else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,3 +1,5 @@
+local opencode_sidecar = require"opencode_sidecar"
+
 local function maximizedbutton(c)
     local widget = awful.titlebar.widget.button(c, "maximized", function(cl)
         return cl.kinda_maximized or false
@@ -8,7 +10,7 @@ local function maximizedbutton(c)
     return widget
 end
 
-return function(c)
+local function setup(c)
     local buttons = gears.table.join(
         awful.button({ }, 1, function()
             if not c.floating then
@@ -49,6 +51,25 @@ return function(c)
         return widget
     end
 
+    local controls = wibox.layout.flex.horizontal()
+    if opencode_sidecar.is_opencode(c) then
+        controls:add(opencode_sidecar.button(c))
+    else
+        opencode_sidecar.hide(c)
+    end
+    controls:add(titlebar_button_with_hover_effect(wibox.widget{
+        awful.titlebar.widget.minimizebutton(c),
+        widget = wibox.container.margin,
+    }))
+    controls:add(titlebar_button_with_hover_effect(wibox.widget{
+        maximizedbutton(c),
+        widget = wibox.container.margin,
+    }))
+    controls:add(titlebar_button_with_hover_effect(wibox.widget{
+        awful.titlebar.widget.closebutton(c),
+        widget = wibox.container.margin,
+    }))
+
     awful.titlebar(c):setup{
         {
             {
@@ -67,24 +88,26 @@ return function(c)
             buttons = buttons,
             layout  = wibox.layout.flex.horizontal
         },
-        {
-            titlebar_button_with_hover_effect(wibox.widget{
-                awful.titlebar.widget.minimizebutton(c),
-                widget = wibox.container.margin,
-            }),
-            titlebar_button_with_hover_effect(wibox.widget{
-                maximizedbutton(c),
-                widget = wibox.container.margin,
-            }),
-            titlebar_button_with_hover_effect(wibox.widget{
-                awful.titlebar.widget.closebutton(c),
-                widget = wibox.container.margin,
-            }),
-            layout = wibox.layout.flex.horizontal,
-            widget = wibox.container.place
-        },
+        controls,
         layout = wibox.layout.align.horizontal
     }
+end
+
+return function(c)
+    setup(c)
+    c._opencode_titlebar_matches = opencode_sidecar.is_opencode(c)
+
+    if c._opencode_titlebar_watcher then
+        return
+    end
+    c._opencode_titlebar_watcher = true
+    c:connect_signal("property::name", function(cl)
+        local matches = opencode_sidecar.is_opencode(cl)
+        if matches ~= cl._opencode_titlebar_matches then
+            cl._opencode_titlebar_matches = matches
+            setup(cl)
+        end
+    end)
 end
 
 -- vim:set et sw=4 ts=4:

@@ -24,7 +24,8 @@ function scroll.arrange(p)
 		g.height = mouse.screen.geometry.height-beautiful.dock_height-10
 		p.geometries[c] = g
 
-		x = x + c.width
+		local reserved_width = tonumber(c.opencode_sidecar_width) or 0
+		x = x + c.width + math.max(0, reserved_width)
 	end
 end
 

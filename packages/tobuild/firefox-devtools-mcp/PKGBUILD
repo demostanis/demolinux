@@ -1,6 +1,6 @@
 pkgname=firefox-devtools-mcp
 pkgver=0.7.4
-pkgrel=6
+pkgrel=7
 pkgdesc="Model Context Protocol (MCP) server for Firefox DevTools automation"
 arch=('any')
 url="https://github.com/freema/firefox-devtools-mcp"
@@ -21,7 +21,7 @@ sha256sums=('50507454043ee1c214aea7adb084915dbbd6d675c93c03f53adccc2531f52fc7'
             '0c2e584b0d2e91db84ac077b55d5b4a14eaaea4dae294ef05952d7c3695f797d'
             '071e4377cb66fad695b33fa4c5d436b23e772d2747dc92edded0b5be91bfc606'
             'd5ef6e033f41a30dc67d897c9ff9608663b44907c81c5efe06287b7326487425'
-             '757d9e35cb96bbbd0aa2a94e6fcc620e8332330599548f8c4b9755eba778d839'
+             'cb4db1f2b79bc2f7c5f1b0c809ac461630560df5394beda7ec99c2e4ee13640c'
              '9e781b9a1cbe104b18152c98073bdf0232a09204fc454b220670b5d5201f46b7')
 
 prepare() {

@@ -15,7 +15,7 @@
 +    return;
 +  }
 +
-+  const result = spawnSync('opencode-sidewindow', ['capture-firefox'], {
++  const result = spawnSync('opencode-sidewindow-ctl', ['capture-firefox'], {
 +    stdio: 'ignore',
 +    timeout: 2000,
 +  });

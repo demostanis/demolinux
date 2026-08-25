@@ -29,7 +29,6 @@ require"tagpopup"
 
 local function is_opencode_sidewindow_host(c)
     return c.opencode_sidecar_hosted
-        or c.instance == "opencode-sidewindow-urxvt"
 end
 
 local function hide_splash()
@@ -132,17 +131,6 @@ awful.rules.rules = {{
     rule_any = {type = {"normal", "dialog"}},
     properties = {
         titlebars_enabled = true
-    }
-},
-{
-    rule = {instance = "opencode-sidewindow-urxvt"},
-    properties = {
-        floating = true,
-        focus = false,
-        raise = false,
-        skip_taskbar = true,
-        titlebars_enabled = false,
-        size_hints_honor = false,
     }
 },
 {

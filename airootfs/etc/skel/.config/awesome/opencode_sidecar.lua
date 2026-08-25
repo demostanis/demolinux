@@ -15,7 +15,6 @@ local arrow_icons = {
 local sidecar = {}
 local states = setmetatable({}, {__mode = "k"})
 local active_state
-local hosted_terminal_instance = "opencode-sidewindow-urxvt"
 
 local animation_frames = 11
 local animation_interval = 1 / 60
@@ -39,8 +38,7 @@ function sidecar.is_opencode(c)
 end
 
 function sidecar.is_hosted(c)
-    return is_valid(c) and (c.opencode_sidecar_hosted
-        or c.instance == hosted_terminal_instance)
+    return is_valid(c) and c.opencode_sidecar_hosted
 end
 
 function sidecar.is_firefox(c)
@@ -543,10 +541,6 @@ local function unique_name(state, preferred)
     return preferred.." "..suffix
 end
 
-local function generated_name(state)
-    return unique_name(state, "Tab "..(#state.tabs + 1))
-end
-
 local function make_tab(state, name, role)
     return {
         owner = state,
@@ -582,15 +576,6 @@ local function append_tab(state, name, role)
     update_titlebar(state)
     redraw_button(state)
     return tab, #state.tabs
-end
-
-local function ensure_active_tab(state, preferred_name)
-    local tab = active_tab(state)
-    if tab then
-        return tab, false
-    end
-    tab = append_tab(state, unique_name(state, preferred_name))
-    return tab, true
 end
 
 activate_index = function(state, index)
@@ -733,10 +718,6 @@ local function remove_tab_from_state(state, tab)
     return true
 end
 
-local function discard_created_tab(state, tab)
-    remove_tab_from_state(state, tab)
-end
-
 local function attach_hosted(tab, hosted, kind, expand_on_attach)
     local state = tab.owner
     if tab.removed or not is_valid(state.client) then
@@ -793,8 +774,7 @@ local function attach_hosted(tab, hosted, kind, expand_on_attach)
     end)
     hosted:connect_signal("unmanage", function(c)
         if tab.hosted_client == c then
-            local browser_closed = tab.hosted_kind == "firefox"
-                or tab.hosted_kind == "firefox-mcp"
+            local browser_closed = tab.hosted_kind == "firefox-mcp"
             local was_focused = client.focus == c
             tab.hosted_client = nil
             tab.hosted_kind = nil
@@ -833,8 +813,7 @@ local function attach_hosted(tab, hosted, kind, expand_on_attach)
     restore_launch_focus(tab, hosted)
 end
 
-local function watch_for_hosted(tab, matcher, kind, expand_on_attach,
-    discard_on_timeout)
+local function watch_for_hosted(tab, matcher, kind, expand_on_attach)
     local state = tab.owner
     local known = {}
     for _, candidate in ipairs(client.get()) do
@@ -866,11 +845,7 @@ local function watch_for_hosted(tab, matcher, kind, expand_on_attach,
             tab.hosted_kind = nil
             tab.hosted_pid = nil
             restore_launch_focus(tab)
-            if discard_on_timeout then
-                discard_created_tab(state, tab)
-            else
-                refresh(state)
-            end
+            refresh(state)
         end
         return false
     end)
@@ -1073,28 +1048,6 @@ function sidecar.resize(c, width)
     return resize_state(state, width)
 end
 
-function sidecar.new(c, name)
-    if not sidecar.is_opencode(c) then
-        return "error: target is not an OpenCode window"
-    end
-    local state = get_state(c)
-    if name == nil then
-        name = generated_name(state)
-    else
-        local normalized, err = normalize_name(name)
-        if not normalized then
-            return "error: "..err
-        end
-        name = normalized
-    end
-    if find_tab_by_name(state, name) then
-        return "error: sidewindow already exists: "..name
-    end
-    local _, index = append_tab(state, name)
-    activate_index(state, index)
-    return sidecar.status(c)
-end
-
 function sidecar.rename(c, name)
     if not sidecar.is_opencode(c) then
         return "error: target is not an OpenCode window"
@@ -1192,83 +1145,6 @@ function sidecar.list(c)
     return table.concat(result, " ")
 end
 
-function sidecar.open_terminal(c)
-    if not sidecar.is_opencode(c) then
-        return "error: target is not an OpenCode window"
-    end
-
-    local state = get_state(c)
-    local tab, created = ensure_active_tab(state, "Terminal")
-    local focus_before_launch = client.focus
-    if is_valid(tab.hosted_client) then
-        if tab.hosted_kind == "terminal" then
-            set_expanded(state, true)
-            return sidecar.status(c)
-        end
-        close_hosted(tab)
-    end
-    if tab.launching then
-        if tab.hosted_kind == "terminal" then
-            return sidecar.status(c)
-        end
-        close_hosted(tab)
-    end
-
-    tab.imagebox:set_image(nil)
-    tab.image_path = nil
-    tab.launching = true
-    tab.hosted_kind = "terminal"
-    prepare_launch_focus(tab, focus_before_launch)
-    set_expanded(state, true)
-
-    local pid = awful.spawn({
-        "urxvt",
-        "-name", hosted_terminal_instance,
-        "-title", "SideWindow terminal: "..tab.name,
-    }, {
-        floating = true,
-        skip_taskbar = true,
-        titlebars_enabled = false,
-        size_hints_honor = false,
-        screen = c.screen,
-        tag = c.first_tag,
-    }, function(hosted)
-        if not tab.removed and tab.launching
-            and tab.hosted_kind == "terminal" then
-            attach_hosted(tab, hosted, "terminal", true)
-        else
-            hosted:kill()
-        end
-    end)
-    if not pid then
-        tab.launching = false
-        tab.hosted_kind = nil
-        restore_launch_focus(tab)
-        if created then
-            discard_created_tab(state, tab)
-        end
-        return "error: unable to launch urxvt"
-    end
-    tab.hosted_pid = pid
-    tab.launch_timer = gears.timer.start_new(45, function()
-        if tab.removed or not tab.launching
-            or tab.hosted_kind ~= "terminal" then
-            return false
-        end
-        tab.launching = false
-        tab.hosted_kind = nil
-        tab.hosted_pid = nil
-        restore_launch_focus(tab)
-        if created then
-            discard_created_tab(state, tab)
-        else
-            refresh(state)
-        end
-        return false
-    end)
-    return sidecar.status(c)
-end
-
 function sidecar.capture_firefox(c)
     if not sidecar.is_opencode(c) then
         return "error: target is not an OpenCode window"
@@ -1290,95 +1166,7 @@ function sidecar.capture_firefox(c)
     tab.hosted_kind = "firefox-mcp"
     prepare_launch_focus(tab, focus_before_launch)
     set_expanded(state, false, true)
-    watch_for_hosted(tab, sidecar.is_firefox, "firefox-mcp", false, false)
-    return sidecar.status(c)
-end
-
-function sidecar.open_firefox(c, url)
-    if not sidecar.is_opencode(c) then
-        return "error: target is not an OpenCode window"
-    end
-    if url == nil or url == "" then
-        url = "about:blank"
-    elseif type(url) ~= "string" then
-        return "error: Firefox URL must be a string"
-    end
-
-    local state = get_state(c)
-    local tab, created = ensure_active_tab(state, "Firefox")
-    local focus_before_launch = client.focus
-    if is_valid(tab.hosted_client) then
-        if tab.hosted_kind == "firefox" then
-            set_expanded(state, true)
-            return sidecar.status(c)
-        end
-        close_hosted(tab)
-    end
-    if tab.launching then
-        if tab.hosted_kind == "firefox" then
-            return sidecar.status(c)
-        end
-        close_hosted(tab)
-    end
-
-    tab.imagebox:set_image(nil)
-    tab.image_path = nil
-    tab.launching = true
-    tab.hosted_kind = "firefox"
-    prepare_launch_focus(tab, focus_before_launch)
-    set_expanded(state, true)
-    watch_for_hosted(tab, sidecar.is_firefox, "firefox", true, created)
-
-    local pid = awful.spawn({
-        "/usr/local/bin/firefox-hardened",
-        "--new-window", url,
-    })
-    if not pid then
-        clear_launch_watch(tab)
-        tab.launching = false
-        tab.hosted_kind = nil
-        restore_launch_focus(tab)
-        if created then
-            discard_created_tab(state, tab)
-        end
-        return "error: unable to launch firefox-hardened"
-    end
-    tab.hosted_pid = pid
-    return sidecar.status(c)
-end
-
-function sidecar.close_terminal(c)
-    if not sidecar.is_opencode(c) then
-        return "error: target is not an OpenCode window"
-    end
-
-    local state = states[c]
-    if not state or #state.tabs == 0 then
-        return "error: no sidewindow exists"
-    end
-    local tab = active_tab(state)
-    if tab.hosted_kind == "terminal" then
-        close_hosted(tab)
-    end
-    refresh(state)
-    return sidecar.status(c)
-end
-
-function sidecar.close_firefox(c)
-    if not sidecar.is_opencode(c) then
-        return "error: target is not an OpenCode window"
-    end
-
-    local state = states[c]
-    if not state or #state.tabs == 0 then
-        return "error: no sidewindow exists"
-    end
-    local tab = active_tab(state)
-    if tab.hosted_kind == "firefox" or tab.hosted_kind == "firefox-mcp" then
-        remove_tab_from_state(state, tab)
-        return sidecar.status(c)
-    end
-    refresh(state)
+    watch_for_hosted(tab, sidecar.is_firefox, "firefox-mcp", false)
     return sidecar.status(c)
 end
 
@@ -1395,7 +1183,11 @@ function sidecar.set_image(c, path)
         return "error: unable to load image "..path
     end
     local state = get_state(c)
-    local tab = ensure_active_tab(state, "Image")
+    local tab, index = find_tab_by_role(state, "image")
+    if not tab then
+        tab, index = append_tab(state, unique_name(state, "Image"), "image")
+    end
+    activate_index(state, index)
     close_hosted(tab)
     tab.imagebox:set_image(path)
     tab.image_path = path

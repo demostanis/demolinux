@@ -8,8 +8,7 @@ if not runtime then runtime = "/run/user/1000" end
 local global_x_filename = runtime.."/.awesome.x"
 
 local function is_sidewindow_host(c)
-	return c and (c.opencode_sidecar_hosted
-		or c.instance == "opencode-sidewindow-urxvt")
+	return c and c.opencode_sidecar_hosted
 end
 
 local function layout_client(c)

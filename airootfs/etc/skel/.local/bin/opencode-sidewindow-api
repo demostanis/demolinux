@@ -1,0 +1,7 @@
+#!/usr/bin/env python3
+
+from _opencode_sidewindow_cli import main_api
+
+
+if __name__ == "__main__":
+    raise SystemExit(main_api())

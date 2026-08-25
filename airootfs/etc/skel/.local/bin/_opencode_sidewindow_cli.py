@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import argparse
 import ast
 import os
@@ -74,12 +72,20 @@ end
 """
 
 
-def action_code(args):
-    if args.command == "new":
-        name = "nil" if args.name is None else lua_string(args.name)
-        return f"return sidewindow.new(target, {name})"
-    if args.command in {"name", "rename"}:
+def api_action_code(args):
+    if args.command == "name":
         return f"return sidewindow.rename(target, {lua_string(args.name)})"
+    if args.command == "list":
+        return "return sidewindow.list(target)"
+    if args.command == "image":
+        path = Path(args.path).expanduser().resolve(strict=True)
+        if not path.is_file():
+            raise ValueError(f"not a file: {path}")
+        return f"return sidewindow.set_image(target, {lua_string(str(path))})"
+    return "return sidewindow.status(target)"
+
+
+def control_action_code(args):
     if args.command == "select":
         return f"return sidewindow.select(target, {lua_string(args.selector)})"
     if args.command == "next":
@@ -89,51 +95,24 @@ def action_code(args):
     if args.command == "remove":
         selector = "nil" if args.selector is None else lua_string(args.selector)
         return f"return sidewindow.remove(target, {selector})"
-    if args.command == "list":
-        return "return sidewindow.list(target)"
-    if args.command == "image":
-        path = Path(args.path).expanduser().resolve(strict=True)
-        if not path.is_file():
-            raise ValueError(f"not a file: {path}")
-        return f"return sidewindow.set_image(target, {lua_string(str(path))})"
     if args.command == "clear":
         return "return sidewindow.clear_image(target)"
-    if args.command == "terminal":
-        return "return sidewindow.open_terminal(target)"
-    if args.command == "close-terminal":
-        return "return sidewindow.close_terminal(target)"
-    if args.command == "firefox":
-        return f"return sidewindow.open_firefox(target, {lua_string(args.url)})"
-    if args.command == "close-firefox":
-        return "return sidewindow.close_firefox(target)"
     if args.command == "capture-firefox":
         return "return sidewindow.capture_firefox(target)"
-    if args.command == "show":
+    if args.command in {"show", "hide", "toggle"}:
         return (
-            'if not sidewindow.has_sidewindows(target) then '
+            "if not sidewindow.has_sidewindows(target) then "
             'return "error: no sidewindow exists" end; '
-            "sidewindow.show(target); return sidewindow.status(target)"
-        )
-    if args.command == "hide":
-        return (
-            'if not sidewindow.has_sidewindows(target) then '
-            'return "error: no sidewindow exists" end; '
-            "sidewindow.hide(target); return sidewindow.status(target)"
-        )
-    if args.command == "toggle":
-        return (
-            'if not sidewindow.has_sidewindows(target) then '
-            'return "error: no sidewindow exists" end; '
-            "sidewindow.toggle(target); return sidewindow.status(target)"
+            f"sidewindow.{args.command}(target); return sidewindow.status(target)"
         )
     if args.command == "resize":
         return (
-            'if not sidewindow.has_sidewindows(target) then '
+            "if not sidewindow.has_sidewindows(target) then "
             'return "error: no sidewindow exists" end; '
             f"sidewindow.resize(target, {args.width}); "
             "return sidewindow.status(target)"
         )
-    return "return sidewindow.status(target)"
+    raise ValueError(f"unsupported control command: {args.command}")
 
 
 def decode_output(output):
@@ -146,20 +125,30 @@ def decode_output(output):
         return match.group(1)[1:-1]
 
 
-def parser():
-    result = argparse.ArgumentParser(
-        prog="opencode-sidewindow",
-        description="Control the AwesomeWM sidewindow attached to this OpenCode window.",
+def api_parser():
+    parser = argparse.ArgumentParser(
+        prog="opencode-sidewindow-api",
+        description="Agent API for the sidewindow attached to this OpenCode window.",
     )
-    commands = result.add_subparsers(dest="command", required=True)
-    new = commands.add_parser("new", help="create and select a sidewindow")
-    new.add_argument("name", nargs="?", help="title name; defaults to Tab N")
-    name = commands.add_parser(
-        "name",
-        aliases=["rename"],
-        help="rename the selected sidewindow",
-    )
+    commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("status", help="print selected sidewindow details")
+    commands.add_parser("list", help="list sidewindows and mark the selected one")
+    name = commands.add_parser("name", help="rename the selected sidewindow")
     name.add_argument("name", help="new title name")
+    image = commands.add_parser(
+        "image",
+        help="display an image; creates the first sidewindow when needed",
+    )
+    image.add_argument("path", help="path to a PNG, JPEG, WebP, GIF, or SVG image")
+    return parser
+
+
+def control_parser():
+    parser = argparse.ArgumentParser(
+        prog="opencode-sidewindow-ctl",
+        description="Internal controls for AwesomeWM sidewindow integration.",
+    )
+    commands = parser.add_subparsers(dest="command", required=True)
     select = commands.add_parser(
         "select",
         help="select a sidewindow by exact name or one-based index",
@@ -167,60 +156,31 @@ def parser():
     select.add_argument("selector", help="sidewindow name or one-based index")
     commands.add_parser("next", help="select the next sidewindow")
     commands.add_parser("previous", help="select the previous sidewindow")
-    remove = commands.add_parser(
-        "remove",
-        help="remove a sidewindow and close its hosted application",
-    )
-    remove.add_argument(
-        "selector",
-        nargs="?",
-        help="name or index; removing the final sidewindow hides the owner arrow",
-    )
-    commands.add_parser("list", help="list sidewindows and mark the selected one")
-    image = commands.add_parser(
-        "image",
-        help="display an image; creates the first sidewindow when needed",
-    )
-    image.add_argument("path", help="path to a PNG, JPEG, WebP, GIF, or SVG image")
-    commands.add_parser("clear", help="remove the current image")
-    commands.add_parser(
-        "terminal",
-        help="open URxvt; creates the first sidewindow when needed",
-    )
-    commands.add_parser("close-terminal", help="close the docked URxvt")
-    firefox = commands.add_parser(
-        "firefox",
-        help="open Firefox; creates the first sidewindow when needed",
-    )
-    firefox.add_argument("url", nargs="?", default="about:blank")
-    commands.add_parser(
-        "close-firefox",
-        help="close Firefox and remove its sidewindow",
-    )
+    remove = commands.add_parser("remove", help="remove a sidewindow")
+    remove.add_argument("selector", nargs="?", help="sidewindow name or index")
+    commands.add_parser("clear", help="remove the selected image")
     commands.add_parser(
         "capture-firefox",
         help="capture the next MCP-launched Firefox window",
     )
-    commands.add_parser("show", help="open the sidewindow")
-    commands.add_parser("hide", help="close the sidewindow")
+    commands.add_parser("show", help="expand the sidewindow")
+    commands.add_parser("hide", help="collapse the sidewindow")
     commands.add_parser("toggle", help="toggle the sidewindow")
     resize = commands.add_parser("resize", help="set the sidewindow width in pixels")
     resize.add_argument("width", type=int)
-    commands.add_parser(
-        "status",
-        help="print empty state or selected sidewindow details",
-    )
-    return result
+    return parser
 
 
-def main():
-    args = parser().parse_args()
+def run(parser, action_builder):
+    args = parser.parse_args()
     if not shutil.which("awesome-client"):
         print("error: awesome-client is not installed", file=sys.stderr)
         return 1
 
     try:
-        lua = target_code(owner_only=args.command == "capture-firefox") + action_code(args)
+        lua = target_code(
+            owner_only=args.command == "capture-firefox"
+        ) + action_builder(args)
     except (OSError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
@@ -244,5 +204,9 @@ def main():
     return 1 if output.startswith("error:") else 0
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
+def main_api():
+    return run(api_parser(), api_action_code)
+
+
+def main_control():
+    return run(control_parser(), control_action_code)

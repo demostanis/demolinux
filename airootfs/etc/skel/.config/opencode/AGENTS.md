@@ -7,4 +7,4 @@ When producing simple demo web apps:
 
 Never start git merges. Always prefer rebases.
 
-Whenever creating or updating `~/.agents/skills/opencode-sidewindow`, its CLI, or its AwesomeWM integration, do not run evals. Before considering the change complete, use `openopencode` to launch a fresh agent that explicitly loads the skill and smoke-tests it through the CLI.
+Whenever creating or updating `~/.agents/skills/opencode-sidewindow`, its API, control interface, or AwesomeWM integration, do not run evals. Normally use `openopencode` to launch a fresh agent that explicitly loads the skill and smoke-tests `opencode-sidewindow-api`, unless the user explicitly asks to defer tests.

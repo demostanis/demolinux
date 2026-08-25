@@ -251,28 +251,41 @@ local function cycle_window_focus()
 	if any_floatyfloaty() then return end
 
 	local windows_in_viewport = {}
+	local visible_host_by_owner = {}
 	for _, c in ipairs(mouse.screen.clients) do
-		if not is_sidewindow_host(c)
-			and c.x+c.width > margin_before_window_on_focus and
-			c.x < c.screen.geometry.width-margin_before_window_on_focus then
+		if is_sidewindow_host(c) then
+			local ok, visible = pcall(function() return c:isvisible() end)
+			if c.opencode_sidecar_owner and not c.hidden and not c.minimized
+				and ok and visible then
+				visible_host_by_owner[c.opencode_sidecar_owner] = c
+			end
+		elseif c.x+c.width > margin_before_window_on_focus
+			and c.x < c.screen.geometry.width-margin_before_window_on_focus then
 			table.insert(windows_in_viewport, c)
 		end
 	end
 	table.sort(windows_in_viewport, function(a, b)
 		return a.x < b.x
 	end)
-	if #windows_in_viewport < 2 then
+	local focus_sequence = {}
+	for _, c in ipairs(windows_in_viewport) do
+		table.insert(focus_sequence, c)
+		if visible_host_by_owner[c] then
+			table.insert(focus_sequence, visible_host_by_owner[c])
+		end
+	end
+	if #focus_sequence < 2 then
 		return
 	end
-	local focused = layout_client(client.focus)
-	for i, c in ipairs(windows_in_viewport) do
-		if c == focused then
-			if i == #windows_in_viewport then
-				i = 1
+	for i, c in ipairs(focus_sequence) do
+		if c == client.focus then
+			local target_index
+			if i == #focus_sequence then
+				target_index = 1
 			else
-				i = i+1
+				target_index = i+1
 			end
-			local target = windows_in_viewport[i]
+			local target = focus_sequence[target_index]
 			target:activate { context = "mouse_enter", raise = false }
 			return
 		end

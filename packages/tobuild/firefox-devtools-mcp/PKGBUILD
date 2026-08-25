@@ -1,6 +1,6 @@
 pkgname=firefox-devtools-mcp
 pkgver=0.7.4
-pkgrel=5
+pkgrel=6
 pkgdesc="Model Context Protocol (MCP) server for Firefox DevTools automation"
 arch=('any')
 url="https://github.com/freema/firefox-devtools-mcp"
@@ -13,14 +13,16 @@ source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/$pkgver.tar.gz"
         "reopen-firefox-on-disconnect.patch"
         "update-reconnect-tests.patch"
         "serialize-firefox-initialization.patch"
-        "capture-firefox-in-opencode-sidewindow.patch")
+        "capture-firefox-in-opencode-sidewindow.patch"
+        "use-bidi-responsive-viewport.patch")
 sha256sums=('50507454043ee1c214aea7adb084915dbbd6d675c93c03f53adccc2531f52fc7'
             '1f9591626c7d0fbce296f7b58693c41c2f960e0dc8dbdd8ded008b67520600a1'
             'ce84db60c3da781f958ae0d446d4986a401384b79de83311875c7ab144a8bc95'
             '0c2e584b0d2e91db84ac077b55d5b4a14eaaea4dae294ef05952d7c3695f797d'
             '071e4377cb66fad695b33fa4c5d436b23e772d2747dc92edded0b5be91bfc606'
             'd5ef6e033f41a30dc67d897c9ff9608663b44907c81c5efe06287b7326487425'
-             '757d9e35cb96bbbd0aa2a94e6fcc620e8332330599548f8c4b9755eba778d839')
+             '757d9e35cb96bbbd0aa2a94e6fcc620e8332330599548f8c4b9755eba778d839'
+             '9e781b9a1cbe104b18152c98073bdf0232a09204fc454b220670b5d5201f46b7')
 
 prepare() {
   cd "$pkgname-$pkgver"
@@ -31,6 +33,7 @@ prepare() {
   patch -p2 -i "$srcdir/update-reconnect-tests.patch"
   patch -p2 -i "$srcdir/serialize-firefox-initialization.patch"
   patch -p2 -i "$srcdir/capture-firefox-in-opencode-sidewindow.patch"
+  patch -p2 -i "$srcdir/use-bidi-responsive-viewport.patch"
 }
 
 build() {

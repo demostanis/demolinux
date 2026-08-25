@@ -1,0 +1,85 @@
+--- src/firefox-devtools-mcp-0.7.4/src/firefox/pages.ts
++++ src/firefox-devtools-mcp-0.7.4/src/firefox/pages.ts
+@@ -3,13 +3,20 @@
+  */
+ 
+ import type { WebDriver } from 'selenium-webdriver';
++import getBrowsingContext from 'selenium-webdriver/bidi/browsingContext.js';
+ import { log } from '../utils/logger.js';
++
++type ViewportContextFactory = (
++  driver: WebDriver,
++  options: { browsingContextId: string }
++) => Promise<{ setViewport(width: number, height: number): Promise<void> }>;
+ 
+ export class PageManagement {
+   constructor(
+     private driver: WebDriver,
+     private getCurrentContextId: () => string | null,
+-    private setCurrentContextId: (id: string) => void
++    private setCurrentContextId: (id: string) => void,
++    private createViewportContext: ViewportContextFactory = getBrowsingContext
+   ) {}
+ 
+   /**
+@@ -35,10 +42,14 @@
+   }
+ 
+   /**
+-   * Set viewport size
++   * Emulate the content viewport without resizing the browser window
+    */
+   async setViewportSize(width: number, height: number): Promise<void> {
+-    await this.driver.manage().window().setRect({ width, height });
++    const contextId = await this.driver.getWindowHandle();
++    const context = await this.createViewportContext(this.driver, {
++      browsingContextId: contextId,
++    });
++    await context.setViewport(width, height);
+   }
+ 
+   /**
+--- src/firefox-devtools-mcp-0.7.4/src/tools/utilities.ts
++++ src/firefox-devtools-mcp-0.7.4/src/tools/utilities.ts
+@@ -49,7 +49,8 @@
+ // Tool definitions - Viewport
+ export const setViewportSizeTool = {
+   name: 'set_viewport_size',
+-  description: 'Set viewport dimensions in pixels.',
++  description:
++    'Emulate the content viewport with Firefox responsive design semantics without resizing the browser window.',
+   inputSchema: {
+     type: 'object',
+     properties: {
+--- src/firefox-devtools-mcp-0.7.4/tests/firefox/pages.test.ts
++++ src/firefox-devtools-mcp-0.7.4/tests/firefox/pages.test.ts
+@@ -0,0 +1,29 @@
++/**
++ * Unit tests for page management
++ */
++
++import { describe, expect, it, vi } from 'vitest';
++import type { WebDriver } from 'selenium-webdriver';
++import { PageManagement } from '@/firefox/pages.js';
++
++describe('PageManagement', () => {
++  describe('setViewportSize', () => {
++    it('uses BiDi viewport emulation without resizing the browser window', async () => {
++      const getWindowHandle = vi.fn().mockResolvedValue('context-123');
++      const manage = vi.fn();
++      const driver = { getWindowHandle, manage } as unknown as WebDriver;
++      const setViewport = vi.fn().mockResolvedValue(undefined);
++      const createViewportContext = vi.fn().mockResolvedValue({ setViewport });
++      const pages = new PageManagement(driver, () => null, vi.fn(), createViewportContext);
++
++      await pages.setViewportSize(390, 844);
++
++      expect(getWindowHandle).toHaveBeenCalledOnce();
++      expect(createViewportContext).toHaveBeenCalledWith(driver, {
++        browsingContextId: 'context-123',
++      });
++      expect(setViewport).toHaveBeenCalledWith(390, 844);
++      expect(manage).not.toHaveBeenCalled();
++    });
++  });
++});

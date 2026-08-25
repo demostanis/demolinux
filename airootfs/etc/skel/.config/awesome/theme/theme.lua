@@ -67,6 +67,7 @@ theme.wibar_height = 40
 theme.wibar_widget_hover_color = theme.color13
 theme.panel_width = 415
 theme.panel_height = 600
+theme.opencode_sidecar_width = dpi(560)
 theme.dock_width = 50
 theme.dock_height = 100
 theme.dock_indicator_color = theme.color7

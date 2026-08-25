@@ -1,0 +1,10 @@
+--- src/firefox-devtools-mcp-0.7.4/tests/utils/errors.test.ts	2026-02-27 11:19:45.000000000 +0100
++++ src/firefox-devtools-mcp-0.7.4/tests/utils/errors.test.ts	2026-08-25 00:00:00.000000000 +0200
+@@ -9,2 +9,2 @@
+-    expect(error.message).toContain('ask the user to restart');
+-    expect(error.message).toContain('firefox-devtools-mcp server');
++    expect(error.message).toContain('Retry the same MCP request');
++    expect(error.message).toContain('server will launch a new Firefox instance');
+@@ -17 +17 @@
+-    expect(error.message).toContain('restart Claude Code or the MCP connection');
++    expect(error.message).toContain('Retry the same MCP request');

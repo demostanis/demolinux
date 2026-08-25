@@ -138,6 +138,8 @@ awful.rules.rules = {{
     rule = {instance = "opencode-sidewindow-urxvt"},
     properties = {
         floating = true,
+        focus = false,
+        raise = false,
         skip_taskbar = true,
         titlebars_enabled = false,
         size_hints_honor = false,

@@ -1,5 +1,26 @@
 local opencode_sidecar = require"opencode_sidecar"
 
+local function update_sidecar_button(c)
+    local controls = c._opencode_titlebar_controls
+    if not controls then
+        return
+    end
+
+    local should_show = opencode_sidecar.is_opencode(c)
+        and opencode_sidecar.has_sidewindows(c)
+    local current = c._opencode_sidecar_button
+    if should_show and not current then
+        local button = opencode_sidecar.button(c)
+        if button then
+            controls:insert(1, button)
+            c._opencode_sidecar_button = button
+        end
+    elseif not should_show and current then
+        controls:remove_widgets(current)
+        c._opencode_sidecar_button = nil
+    end
+end
+
 local function maximizedbutton(c)
     local widget = awful.titlebar.widget.button(c, "maximized", function(cl)
         return cl.kinda_maximized or false
@@ -53,8 +74,15 @@ local function setup(c)
 
     local controls = wibox.layout.flex.horizontal()
     if opencode_sidecar.is_opencode(c) then
-        controls:add(opencode_sidecar.button(c))
+        if opencode_sidecar.has_sidewindows(c) then
+            local button = opencode_sidecar.button(c)
+            controls:add(button)
+            c._opencode_sidecar_button = button
+        else
+            c._opencode_sidecar_button = nil
+        end
     else
+        c._opencode_sidecar_button = nil
         opencode_sidecar.hide(c)
     end
     controls:add(titlebar_button_with_hover_effect(wibox.widget{
@@ -69,6 +97,7 @@ local function setup(c)
         awful.titlebar.widget.closebutton(c),
         widget = wibox.container.margin,
     }))
+    c._opencode_titlebar_controls = controls
 
     awful.titlebar(c):setup{
         {
@@ -107,6 +136,9 @@ return function(c)
             cl._opencode_titlebar_matches = matches
             setup(cl)
         end
+    end)
+    c:connect_signal("opencode_sidecar::availability", function(cl)
+        update_sidecar_button(cl)
     end)
 end
 

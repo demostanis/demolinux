@@ -287,7 +287,9 @@ local function on_window_appearance_change(c)
 
 	delayed(function()
 		local is_valid = pcall(function() return c.valid end) and c.valid
-		if is_valid then
+		if is_valid and is_sidewindow_host(c) then
+			return
+		elseif is_valid then
 			if #mouse.screen.clients > 0 then -- why to we reach here?
 				set_global_x(global_x_of_client(c))
 			end
@@ -473,7 +475,7 @@ client.connect_signal("manage", function(c)
 	if is_sidewindow_host(c) then return end
 	delayed(function()
 		local is_valid = pcall(function() return c.valid end) and c.valid
-		if not is_valid then return end
+		if not is_valid or is_sidewindow_host(c) then return end
 		local lefthand = lefthand_window(c)
 		if lefthand then
 			local master = lefthand.master

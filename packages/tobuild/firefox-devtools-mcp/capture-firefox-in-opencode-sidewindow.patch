@@ -1,0 +1,44 @@
+--- src/firefox-devtools-mcp-0.7.4/src/firefox/core.ts	2026-08-25 00:00:00.000000000 +0200
++++ src/firefox-devtools-mcp-0.7.4/src/firefox/core.ts	2026-08-25 00:00:00.000000000 +0200
+@@ -2,11 +2,30 @@
+  * Core WebDriver + BiDi connection management
+  */
+ 
++import { spawnSync } from 'node:child_process';
+ import { Builder, Browser, WebDriver } from 'selenium-webdriver';
+ import firefox from 'selenium-webdriver/firefox.js';
+ import type { FirefoxLaunchOptions } from './types.js';
+ import { log, logDebug } from '../utils/logger.js';
+ 
++function captureFirefoxInOpenCodeSidewindow(): void {
++  if (process.platform !== 'linux' || !process.env.DISPLAY) {
++    return;
++  }
++
++  const result = spawnSync('opencode-sidewindow', ['capture-firefox'], {
++    stdio: 'ignore',
++    timeout: 2000,
++  });
++  if (result.error) {
++    logDebug(`OpenCode sidewindow capture unavailable: ${result.error.message}`);
++  } else if (result.status !== 0) {
++    logDebug(
++      `OpenCode sidewindow capture exited with status ${result.status ?? 'unknown'}`,
++    );
++  }
++}
++
+ export class FirefoxCore {
+   private driver: WebDriver | null = null;
+   private currentContextId: string | null = null;
+@@ -50,6 +69,10 @@
+       firefoxOptions.setAcceptInsecureCerts(true);
+     }
+ 
++    if (!this.options.headless) {
++      captureFirefoxInOpenCodeSidewindow();
++    }
++
+     // Build WebDriver instance
+     this.driver = await new Builder()
+       .forBrowser(Browser.FIREFOX)

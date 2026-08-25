@@ -10,7 +10,7 @@ Use the `opencode-sidewindow` command instead of sending ad hoc Lua directly thr
 
 ## Named sidewindows
 
-Every sidewindow has a custom titlebar matching the normal AwesomeWM titlebar height and active/inactive colors, with the owning application's icon on the left and `SideWindow | <name>` centered. It has no standard window actions. Its only controls are compact previous and next arrows around a `current / total` count. The arrows wrap through the owner's sidewindows like tabs; each sidewindow retains its own image or hosted application while it is inactive. `Super+Tab` visits the active visible hosted terminal or Firefox immediately after its owner, while movement, swapping, resizing, and maximizing continue to treat both as one logical window. The initial width is 560 pixels where the screen workarea allows, and remains manually resizable.
+Every sidewindow has a custom titlebar matching the normal AwesomeWM titlebar height and active/inactive colors, with the owning application's icon on the left and `SideWindow | <name>` centered. It has no standard window actions. Its only controls are compact previous and next arrows around a `current / total` count. The arrows wrap through the owner's sidewindows like tabs; with exactly one sidewindow they remain visible but do nothing. Each sidewindow retains its own image or hosted application while it is inactive. `Super+Tab` visits the active visible hosted terminal or Firefox immediately after its owner, while movement, swapping, resizing, and maximizing continue to treat both as one logical window. The initial width is 560 pixels where the screen workarea allows, and remains manually resizable.
 
 Create, rename, inspect, and switch sidewindows with:
 

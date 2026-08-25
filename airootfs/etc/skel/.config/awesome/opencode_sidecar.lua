@@ -389,9 +389,7 @@ local function make_arrow_button(state, direction)
     function button:draw(_, cr, width, height)
         local enabled = #state.tabs > 1
         local color = state.titlebar.fg or beautiful.fg_normal
-        if not enabled then
-            color = beautiful.color8 or beautiful.bg_normal
-        elseif self.hovered then
+        if enabled and self.hovered then
             color = beautiful.wibar_widget_hover_color
                 or beautiful.fg_focus
         end

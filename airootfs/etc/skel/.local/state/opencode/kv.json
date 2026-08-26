@@ -1,5 +1,7 @@
 {
-	"thinking_visibility": false,
-	"scrollbar_visible": true,
-	"generic_tool_output_visibility": true
+  "thinking_visibility": false,
+  "scrollbar_visible": true,
+  "generic_tool_output_visibility": true,
+  "permission_auto_accept": "yolo",
+  "memory_mode": "remember"
 }

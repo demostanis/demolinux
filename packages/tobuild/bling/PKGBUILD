@@ -1,4 +1,5 @@
 pkgname='bling'
+_commit=bcfb671248cf9ff636b7fd7d7120d8ed9deaa395
 pkgdesc="Utilities for the AwesomeWM"
 pkgver=dev
 pkgrel=16
@@ -7,7 +8,7 @@ url='https://github.com/BlingCorp/bling'
 license=(MIT)
 makedepends=(git)
 depends=(awesome)
-source=(git+https://github.com/BlingCorp/bling.git
+source=("${pkgname}::git+https://github.com/BlingCorp/bling.git#commit=${_commit}"
 	0001-Let-me-theme-my-app-launcher-with-beautiful-variable.patch
 	0002-Improve-the-window-switcher-dith-dirty-patches.patch
 	0003-Remove-prompt-icon-and-cursor.patch

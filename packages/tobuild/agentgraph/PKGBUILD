@@ -1,5 +1,6 @@
 pkgname=agentgraph
 _binname=d3-force-three-renderer
+_commit=cefb1b6213d31e3b43a1f53ea69e403f2674a3c5
 pkgver=0.1.0.r44.gcefb1b6
 pkgrel=1
 pkgdesc='Desktop viewer for agent produced memory nodes'
@@ -20,7 +21,7 @@ makedepends=(
   'pkgconf'
 )
 options=('!debug')
-source=("${pkgname}::git+https://github.com/demostanis/agentgraph.git")
+source=("${pkgname}::git+https://github.com/demostanis/agentgraph.git#commit=${_commit}")
 sha256sums=('SKIP')
 
 pkgver() {

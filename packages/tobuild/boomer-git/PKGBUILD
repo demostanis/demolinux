@@ -1,0 +1,29 @@
+pkgname=boomer-git
+pkgver=r295.97189f7
+pkgrel=2
+pkgdesc='Zoomer application for Linux'
+arch=('x86_64')
+url='https://github.com/tsoding/boomer'
+license=('MIT')
+depends=('mesa' 'libx11' 'libxext' 'libxrandr')
+makedepends=('git' 'nim')
+provides=('boomer')
+conflicts=('boomer')
+source=(
+  'boomer::git+https://github.com/tsoding/boomer.git#commit=97189f7ef07859a86420ef11258ca29527774d9c'
+  'opengl::git+https://github.com/nim-lang/opengl.git#commit=8e2e098f82dc5eefd874488c37b5830233cd18f4'
+  'x11::git+https://github.com/nim-lang/x11.git#commit=29aca5e519ebf5d833f63a6a2769e62ec7bfb83a'
+)
+sha256sums=('SKIP' 'SKIP' 'SKIP')
+
+build() {
+  cd boomer
+  nim c --path="$srcdir/x11" --path="$srcdir/opengl/src" -d:danger src/boomer.nim
+}
+
+package() {
+  cd boomer
+  install -Dm755 src/boomer "$pkgdir/usr/bin/boomer"
+  install -Dm644 demo.gif README.md -t "$pkgdir/usr/share/doc/$pkgname"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

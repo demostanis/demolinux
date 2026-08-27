@@ -4,7 +4,7 @@
 
 pkgname=firefox-bitwarden
 pkgver=2026.1.1
-pkgrel=14
+pkgrel=15
 pkgdesc='Bitwarden browser extension for Firefox'
 arch=('any')
 url='https://github.com/bitwarden/clients'
@@ -28,7 +28,7 @@ prepare() {
   patch -p1 < ../0003-remove-premium-spotlight.patch
   patch -p1 < ../0004-refresh-fido2-content-scripts-on-unlock.patch
   patch -p1 < ../0005-skip-single-passkey-prompts.patch
-  npm ci
+  npm ci --allow-git=all
 }
 
 build() {

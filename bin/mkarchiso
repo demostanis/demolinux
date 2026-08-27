@@ -267,9 +267,9 @@ _make_chroot() {
     buildpkg() {
         pkgdir=$1
         cd "${pkgdir}"
-        mypkgver=$(grep pkgver= PKGBUILD)
+        mypkgver=$(grep -m1 '^pkgver=' PKGBUILD)
         mypkgver=${mypkgver##pkgver=}
-        mypkgrel=$(grep pkgrel= PKGBUILD)
+        mypkgrel=$(grep -m1 '^pkgrel=' PKGBUILD)
         mypkgrel=${mypkgrel##pkgrel=}
         pkg="${pkgdir##*/}"
         if ! tar tf "${profile}/packages/db/packages.db.tar.gz" 2>/dev/null | grep "$pkg-$mypkgver-$mypkgrel" >/dev/null 2>&1; then

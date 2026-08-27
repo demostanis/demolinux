@@ -3,30 +3,31 @@
 
 pkgname=freetube
 _pkgname=FreeTube
-pkgver=0.23.14
-pkgrel=2
+pkgver=0.25.2
+pkgrel=1
 pkgdesc='An open source desktop YouTube player built with privacy in mind.'
 arch=('x86_64' 'i686' 'arm' 'armv6h' 'armv7h' 'aarch64')
 license=('AGPL-3.0-or-later')
-depends=( 'electron34')
-makedepends=('npm' 'nodejs>=20.0.0')
+depends=('electron42')
+makedepends=('pnpm')
 url=https://freetubeapp.io
 source=(https://github.com/FreeTubeApp/FreeTube/archive/v$pkgver-beta.tar.gz
         freetube.desktop
         freetube.sh)
-sha256sums=('e96e116c89e73d8337f5f6ad26fb6004d4bdd48cedf2a47173d4a5ce8aae63a3'
+sha256sums=('1a90edfdd97e305f2701a05e6bf3a35de76d8cb5a3b9826376c4faa2aec0335c'
             'ada2b4b8f6a1e8896acbce4f4d311228d2c86026c273ffa00afa3247294f8b1e'
-            '77db5d399ee84e4f005f5a72c96e273d9e1f6dd57d2fe98c65a67b3d13c9ec68')
+            '1804772a9c17a6101111e076f674f00b760d3db9ed1c567ee29ddc8d91c1670c')
 
 prepare() {
-  sed -i "4i electronDist: '/usr/lib/electron34'," "$srcdir/$_pkgname-$pkgver-beta/_scripts/ebuilder.config.js"
-  sed -i "s/targets = Platform.LINUX.*/targets = Platform.LINUX.createTarget(['dir'], arch)/" "$srcdir/$_pkgname-$pkgver-beta/_scripts/build.js"
+  sed -i "5i electronDist: '/usr/lib/electron42'," "$srcdir/$_pkgname-$pkgver-beta/_scripts/ebuilder.config.mjs"
+  sed -i "s/targets = Platform.LINUX.*/targets = Platform.LINUX.createTarget(['dir'], arch)/" "$srcdir/$_pkgname-$pkgver-beta/_scripts/build.mjs"
+  echo "strictDepBuilds: false" > "$srcdir/$_pkgname-$pkgver-beta/pnpm-workspace.yaml"
 }
 
 build() {
   cd "$srcdir/$_pkgname-$pkgver-beta"
-  npm install --cache "${srcdir}/npm-cache"
-  npm run build
+  pnpm install
+  pnpm run build
 }
 
 package() {
@@ -35,6 +36,7 @@ package() {
   install -Dm755 "./freetube.sh" "$pkgdir/usr/bin/$pkgname"
   
   cd $_pkgname-$pkgver-beta
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
   install -Dm644 "./_icons/icon.svg" "$pkgdir/usr/share/pixmaps/$pkgname.svg"
   cd ..
   install -Dm644 "freetube.desktop" "$pkgdir/usr/share/applications/$_pkgname.desktop"

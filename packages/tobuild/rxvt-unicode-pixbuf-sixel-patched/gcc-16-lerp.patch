@@ -1,0 +1,37 @@
+--- src/rxvtutil.h
++++ src/rxvtutil.h
+@@ -21,7 +21,7 @@
+ // linear interpolation
+ template<typename T, typename U, typename P>
+ static inline T
+-lerp (T a, U b, P p)
++urxvt_lerp (T a, U b, P p)
+ {
+   return (long(a) * long(100 - p) + long(b) * long(p) + 50) / 100;
+ }
+--- src/rxvttoolkit.C
++++ src/rxvttoolkit.C
+@@ -834,7 +834,7 @@
+   // parse the nonstandard "[alphapercent]" prefix
+   if (1 <= sscanf (name, "[%hd]%n", &c.a, &skip))
+     {
+-      c.a = lerp<int, int, int> (0, rgba::MAX_CC, c.a);
++      c.a = urxvt_lerp<int, int, int> (0, rgba::MAX_CC, c.a);
+       name += skip;
+     }
+ 
+@@ -981,10 +981,10 @@
+   result.set (
+     screen,
+     rgba (
+-      lerp (c.r, to.r, percent),
+-      lerp (c.g, to.g, percent),
+-      lerp (c.b, to.b, percent),
+-      lerp (c.a, to.a, percent)
++      urxvt_lerp (c.r, to.r, percent),
++      urxvt_lerp (c.g, to.g, percent),
++      urxvt_lerp (c.b, to.b, percent),
++      urxvt_lerp (c.a, to.a, percent)
+     )
+   );
+ }

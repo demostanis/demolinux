@@ -18,6 +18,10 @@ local function layout_client(c)
 	return c
 end
 
+local function sidewindow_width(c)
+	return math.max(0, tonumber(c and c.opencode_sidecar_width) or 0)
+end
+
 local scroll = {name = "scroll"}
 function scroll.arrange(p)
 	local t = p.tag
@@ -35,8 +39,7 @@ function scroll.arrange(p)
 		g.height = mouse.screen.geometry.height-beautiful.dock_height-10
 		p.geometries[c] = g
 
-		local reserved_width = tonumber(c.opencode_sidecar_width) or 0
-		x = x + c.width + math.max(0, reserved_width)
+		x = x + c.width + sidewindow_width(c)
 	end
 end
 
@@ -380,7 +383,7 @@ local function maximize(c)
 		c.width = c.oldwidth
 	else
 		c.oldwidth = c.width
-		local width = c.screen.geometry.width
+		local width = c.screen.geometry.width - sidewindow_width(c)
 		local lefthand = lefthand_window(c)
 		local righthand = righthand_window(c)
 		if lefthand and lefthand ~= c then
@@ -420,7 +423,13 @@ local function maximize_two_windows()
 	local leftmost = leftmost_window()
 	local righthand = righthand_window()
 
-	if leftmost and righthand and leftmost ~= righthand then
+	if leftmost and leftmost == righthand
+		and sidewindow_width(leftmost) > 0 then
+		local width = leftmost.screen.geometry.width/2
+			-margin_before_window_on_focus/2+1
+		leftmost.width = width
+		require"opencode_sidecar".resize(leftmost, width)
+	elseif leftmost and righthand and leftmost ~= righthand then
 		local mid = margin_before_window_on_focus/2
 		if leftmost ~= first_window() then
 			mid = mid * 2

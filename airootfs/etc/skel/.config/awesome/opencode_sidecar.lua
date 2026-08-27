@@ -1191,7 +1191,6 @@ function sidecar.set_image(c, path)
     close_hosted(tab)
     tab.imagebox:set_image(path)
     tab.image_path = path
-    set_expanded(state, true)
     return sidecar.status(c)
 end
 

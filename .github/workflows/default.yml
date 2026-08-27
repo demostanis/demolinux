@@ -12,7 +12,7 @@ jobs:
     permissions: write-all # for releasing
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e # v1
       - name: Set up pacman
         run: ./.github/setup-pacman.sh
 
@@ -35,7 +35,7 @@ jobs:
       - name: Delete the temporary SSH key
         run: rm -f  ~/.ssh/id_ed25519{,.pub}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         name: Upload screenshot
         if: failure()
         with:
@@ -51,7 +51,7 @@ jobs:
           sha256sum demolinux-* out/demolinux*.img > sha256sums.txt
 
       - name: Publish release
-        uses: andelf/nightly-release@main
+        uses: andelf/nightly-release@5834076edc55cc05975561c9722043f072ac5c26 # main
         id: create_release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -73,7 +73,7 @@ jobs:
     permissions: write-all # for releasing
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e # v1
       - name: Set up pacman
         run: ./.github/setup-pacman.sh
 
@@ -105,7 +105,7 @@ jobs:
           sha256sum demolinux-* out/demolinux*.img > sha256sums.txt
 
       - name: Publish release
-        uses: actions/create-release@v1
+        uses: actions/create-release@0cb9c9b65d5d1901c1f53e5e66eaf4afd303e70e # v1
         id: create_release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -118,7 +118,7 @@ jobs:
             Shouldn't be unstable.
             The image was split into smaller chunks to fit in GitHub releases, you can reassemble it with cat:
               cat demolinux-* > demolinux.img
-      - uses: xresloader/upload-to-github-release@main
+      - uses: xresloader/upload-to-github-release@7c5757a90c0bcf0c0e1741da8f2abd7b85e675d0 # main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

@@ -35,8 +35,6 @@ build() {
     add_udev_rule 60-cdrom_id.rules
     add_udev_rule 10-dm.rules
     add_udev_rule 95-dm-notify.rules
-    add_udev_rule /usr/lib/initcpio/udev/11-dm-initramfs.rules
-
     if [[ -v ARCHISO_GNUPG_FD ]]; then
         add_binary gpg
         add_dir '/gpg' 0700

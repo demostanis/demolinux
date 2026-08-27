@@ -43,6 +43,9 @@ user_pref("signon.autofillForms", false);
 user_pref("browser.startup.page",                               0);
 user_pref("browser.startup.homepage",                           "about:blank");
 
+// why do they keep hiding useless ugly stuff, stop it
+user_pref("browser.preonboarding.splashShown", true);
+
 // Disable Firefox's password manager
 user_pref("signon.rememberSignons", false);
 user_pref("signon.management.page.breach-alerts.enabled", false);

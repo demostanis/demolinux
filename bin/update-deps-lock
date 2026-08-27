@@ -1,0 +1,142 @@
+#!/usr/bin/env bash
+
+set -e -u
+
+if (( $# > 0 )); then
+    if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+        printf 'usage: %s\n\nRefresh deps.lock from the current AUR, Neovim, and Zsh repository heads.\n' "${0##*/}"
+        exit
+    fi
+    printf 'Unknown argument: %s\n' "$1" >&2
+    exit 1
+fi
+
+root="$(realpath -- "$(dirname -- "$0")/..")"
+lock_file="${root}/deps.lock"
+jobs="${DEPS_LOCK_JOBS:-8}"
+git_dir="$(git -C "$root" rev-parse --absolute-git-dir)"
+
+exec {update_lock_fd}> "${git_dir}/deps-lock.update.lock"
+if ! flock -n "$update_lock_fd"; then
+    printf 'Another dependency lock update is already running.\n' >&2
+    exit 1
+fi
+
+if [[ ! "$jobs" =~ ^[1-9][0-9]*$ ]]; then
+    printf 'DEPS_LOCK_JOBS must be a positive integer.\n' >&2
+    exit 1
+fi
+
+_parse_file() {
+    sed '/^[[:blank:]]*#.*/d;s/[[:blank:]]\?#.*//;/^[[:blank:]]*$/d' "$1"
+}
+
+declare -a kinds=()
+declare -a sources=()
+declare -a urls=()
+declare -a pids=()
+declare -A seen=()
+
+_add_dependency() {
+    local key="${1}:${2}"
+
+    if [[ -n "${seen[$key]-}" ]]; then
+        printf 'Duplicate %s source in dependency manifests: %s\n' "$1" "$2" >&2
+        return 1
+    fi
+    seen["$key"]=1
+    kinds+=("$1")
+    sources+=("$2")
+    urls+=("$3")
+}
+
+for manifest in available_packages nvim_packages zsh_plugins; do
+    if [[ ! -r "${root}/${manifest}" ]]; then
+        printf 'Dependency manifest is not readable: %s\n' "${root}/${manifest}" >&2
+        exit 1
+    fi
+done
+
+available_packages="$(_parse_file "${root}/available_packages")"
+while IFS= read -r source; do
+    [[ "$source" == aur\ * ]] || continue
+    source="${source#aur }"
+    _add_dependency aur "$source" "https://aur.archlinux.org/${source}.git"
+done <<< "$available_packages"
+
+nvim_packages="$(_parse_file "${root}/nvim_packages")"
+while IFS= read -r source; do
+    url="$source"
+    [[ "$source" == https://* ]] || url="https://github.com/${source}"
+    _add_dependency nvim "$source" "$url"
+done <<< "$nvim_packages"
+
+zsh_plugins="$(_parse_file "${root}/zsh_plugins")"
+while IFS= read -r source; do
+    url="$source"
+    [[ "$source" == https://* ]] || url="https://github.com/${source}"
+    _add_dependency zsh "$source" "$url"
+done <<< "$zsh_plugins"
+
+result_dir="$(mktemp -d)"
+output="$(mktemp "${lock_file}.tmp.XXXXXX")"
+trap 'rm -rf -- "$result_dir"; rm -f -- "$output"' EXIT
+
+_resolve_commit() {
+    local index="$1"
+    local response commit
+
+    if ! response="$(git ls-remote "${urls[$index]}" HEAD)"; then
+        if [[ "${kinds[$index]}" != "aur" ]] || \
+            ! response="$(git ls-remote https://github.com/archlinux/aur.git "refs/heads/${sources[$index]}")"; then
+            printf 'Failed to query %s source %s.\n' "${kinds[$index]}" "${sources[$index]}" >&2
+            return 1
+        fi
+    fi
+    read -r commit _ <<< "$response"
+    if [[ ! "$commit" =~ ^[0-9a-f]{40}$ ]]; then
+        printf 'No commit found for %s source %s.\n' "${kinds[$index]}" "${sources[$index]}" >&2
+        return 1
+    fi
+    printf '%s\n' "$commit" > "${result_dir}/${index}"
+}
+
+failed=0
+for (( index=0; index < ${#sources[@]}; index++ )); do
+    _resolve_commit "$index" &
+    pids+=("$!")
+    if (( ${#pids[@]} >= jobs )); then
+        if ! wait "${pids[0]}"; then
+            failed=1
+        fi
+        pids=("${pids[@]:1}")
+    fi
+done
+for pid in "${pids[@]}"; do
+    if ! wait "$pid"; then
+        failed=1
+    fi
+done
+(( failed == 0 )) || exit 1
+
+{
+    printf '# Format: kind source commit\n'
+    previous_kind=""
+    for (( index=0; index < ${#sources[@]}; index++ )); do
+        kind="${kinds[$index]}"
+        if [[ "$kind" != "$previous_kind" ]]; then
+            case "$kind" in
+                aur) title="AUR package recipes" ;;
+                nvim) title="Neovim packages" ;;
+                zsh) title="Zsh plugins" ;;
+            esac
+            printf '\n# %s\n' "$title"
+            previous_kind="$kind"
+        fi
+        printf '%s %s %s\n' "$kind" "${sources[$index]}" "$(<"${result_dir}/${index}")"
+    done
+} > "$output"
+
+chmod 0644 "$output"
+mv -- "$output" "$lock_file"
+printf 'Updated %s with %d commits.\n' "$lock_file" "${#sources[@]}"

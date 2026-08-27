@@ -38,12 +38,14 @@ pacman_conf=""
 packages=""
 nvim_packages=""
 zsh_packages=""
+deps_lock=""
 bootstrap_packages=""
 pacstrap_dir=""
 iso_name=demolinux
 buildmodes=()
 bootmodes=()
 declare -A file_permissions=()
+declare -A locked_commits=()
 efibootimg=""
 efiboot_files=()
 # adapted from GRUB_EARLY_INITRD_LINUX_STOCK in https://git.savannah.gnu.org/cgit/grub.git/tree/util/grub-mkconfig.in
@@ -126,6 +128,7 @@ _show_config() {
     _msg_info "             AUR Packages:   ${aur_pkg_list[*]}"
     _msg_info "            Nvim Packages:   ${nvim_pkg_list[*]}"
     _msg_info "             Zsh Packages:   ${zsh_pkg_list[*]}"
+    _msg_info "     Dependency Lock File:   ${deps_lock}"
     _msg_info "           Local Packages:   ${local_pkg_list[*]}"
     _msg_info "               SSH access:   ${ssh_access}"
 }
@@ -254,8 +257,95 @@ machine_name() {\
 chmod +x "$correct_makechrootpkg"
 trap 'rm "$correct_makechrootpkg"' EXIT
 
+# Ensures the commit locked for a Git-backed package is cached locally.
+_cache_locked_commit() {
+    local kind="$1"
+    local source="$2"
+    local cache_path="$3"
+    local source_url="$4"
+    local fallback_url="${5:-}"
+    local key="${kind}:${source}"
+    local commit="${locked_commits[$key]}"
+
+    if [[ -e "$cache_path" ]]; then
+        if ! git -c safe.directory="$cache_path" -C "$cache_path" rev-parse --git-dir &> /dev/null; then
+            _msg_error "Git cache '${cache_path}' is not a repository." 1
+        fi
+    elif ! git clone --quiet --no-checkout -- "$source_url" "$cache_path"; then
+        rm -rf -- "$cache_path"
+        if [[ -z "$fallback_url" ]] || \
+            ! git clone --quiet --no-checkout --branch "$source" --single-branch -- "$fallback_url" "$cache_path"; then
+            _msg_error "Failed to clone ${kind} source '${source}'." 1
+        fi
+    fi
+
+    if ! git -c safe.directory="$cache_path" -C "$cache_path" cat-file -e "${commit}^{commit}" 2> /dev/null; then
+        git -c safe.directory="$cache_path" -C "$cache_path" fetch --quiet origin || :
+    fi
+    if ! git -c safe.directory="$cache_path" -C "$cache_path" cat-file -e "${commit}^{commit}" 2> /dev/null; then
+        git -c safe.directory="$cache_path" -C "$cache_path" fetch --quiet "$source_url" || :
+    fi
+    if [[ -n "$fallback_url" ]] && \
+        ! git -c safe.directory="$cache_path" -C "$cache_path" cat-file -e "${commit}^{commit}" 2> /dev/null; then
+        git -c safe.directory="$cache_path" -C "$cache_path" fetch --quiet "$fallback_url" "$source" || :
+    fi
+    if ! git -c safe.directory="$cache_path" -C "$cache_path" cat-file -e "${commit}^{commit}" 2> /dev/null; then
+        _msg_error "Locked commit '${commit}' for ${kind} source '${source}' is unavailable." 1
+    fi
+}
+
+_checkout_locked_commit() {
+    local kind="$1"
+    local source="$2"
+    local cache_path="$3"
+    local key="${kind}:${source}"
+    local commit="${locked_commits[$key]}"
+
+    if ! git -c safe.directory="$cache_path" -C "$cache_path" checkout --quiet --force --detach "$commit"; then
+        _msg_error "Failed to check out locked commit '${commit}' for ${kind} source '${source}'." 1
+    fi
+}
+
+# Exports a clean tree without relying on the cache's working directory.
+_export_locked_commit() {
+    local kind="$1"
+    local source="$2"
+    local cache_path="$3"
+    local destination="$4"
+    local key="${kind}:${source}"
+    local commit="${locked_commits[$key]}"
+    local index_file
+
+    rm -rf -- "$destination"
+    mkdir -p "$destination"
+    if ! (
+        index_file="$(mktemp)"
+        trap 'rm -f "$index_file"' EXIT
+        rm -f "$index_file"
+        GIT_INDEX_FILE="$index_file" git -c safe.directory="$cache_path" -C "$cache_path" read-tree "$commit"
+        GIT_INDEX_FILE="$index_file" git -c safe.directory="$cache_path" -C "$cache_path" --work-tree="$destination" checkout-index --all
+    ); then
+        _msg_error "Failed to export locked commit '${commit}' for ${kind} source '${source}'." 1
+    fi
+}
+
+_wait_for_background_jobs() {
+    local pid
+    local failed=0
+
+    for pid in "$@"; do
+        if ! wait "$pid"; then
+            failed=1
+        fi
+    done
+    return "$failed"
+}
+
 # Creates and builds packages in a chroot
 _make_chroot() {
+    local chroot_dir pkg cachepkgpath pkgname url path
+    local -a clone_pids=()
+
     chroot_dir="${profile}/packages/chroot" 
     if [ ! -e "${chroot_dir}" ]; then
         mkdir -p "${chroot_dir}"
@@ -265,15 +355,27 @@ _make_chroot() {
     fi
 
     buildpkg() {
-        pkgdir=$1
+        local pkgdir="$1"
+        local source_commit="${2:-}"
+        local mypkgver mypkgrel pkg commit_stamp needs_build file
+        local -a additional_opts=()
+
         cd "${pkgdir}"
         mypkgver=$(grep -m1 '^pkgver=' PKGBUILD)
         mypkgver=${mypkgver##pkgver=}
         mypkgrel=$(grep -m1 '^pkgrel=' PKGBUILD)
         mypkgrel=${mypkgrel##pkgrel=}
         pkg="${pkgdir##*/}"
+        commit_stamp="${profile}/packages/aurcache/.commits/${pkg}"
+        needs_build=n
         if ! tar tf "${profile}/packages/db/packages.db.tar.gz" 2>/dev/null | grep "$pkg-$mypkgver-$mypkgrel" >/dev/null 2>&1; then
-            chown -R $SUDO_USER:$SUDO_USER "${pkgdir}"
+            needs_build=y
+        elif [[ -n "$source_commit" ]] && \
+            { [[ ! -e "$commit_stamp" ]] || [[ "$(<"$commit_stamp")" != "$source_commit" ]]; }; then
+            needs_build=y
+        fi
+        if [[ "$needs_build" = "y" ]]; then
+            chown -R "$SUDO_USER:$SUDO_USER" "${pkgdir}"
 
             realpkgname() {
                 tar -xOf "$1" .PKGINFO 2>/dev/null | \
@@ -287,7 +389,6 @@ _make_chroot() {
                 fi
             fi
 
-            additional_opts=()
             if compgen -G "${profile}"/packages/db/*pkg.tar* >/dev/null; then
                 for file in "${profile}"/packages/db/*pkg.tar*; do
                     if [[ "${additional_opts[@]}" != *"$(realpkgname "$file")"* ]]; then
@@ -295,76 +396,73 @@ _make_chroot() {
                     fi
                 done
             fi
-            "$correct_makechrootpkg" -U $SUDO_USER -r "${chroot_dir}" ${additional_opts[@]}
+            "$correct_makechrootpkg" -U "$SUDO_USER" -r "${chroot_dir}" "${additional_opts[@]}"
             repo-add "${profile}"/packages/db/packages.db.tar.gz *pkg.tar*
             mv *pkg.tar* "${profile}"/packages/db/
+            if [[ -n "$source_commit" ]]; then
+                printf '%s\n' "$source_commit" > "$commit_stamp"
+            fi
             _msg_info "Done!"
         fi
         pkg_list+=("$pkg")
     }
 
-    mkdir -p "${profile}"/packages/{aurcache,db}/
-    for pkg in ${aur_pkg_list[@]}; do
+    mkdir -p "${profile}"/packages/{aurcache,db,nvimcache,zshcache}/
+    mkdir -p "${profile}/packages/aurcache/.commits"
+    for pkg in "${aur_pkg_list[@]}"; do
         _msg_info "Building AUR package $pkg..."
         cachepkgpath="${profile}/packages/aurcache/$pkg"
-        if [ -e "$cachepkgpath" ]; then
-            cd "$cachepkgpath"
-            git pull >/dev/null 2>&1 || :
-        else
-            git clone https://aur.archlinux.org/$pkg.git "$cachepkgpath" || \
-                git clone --branch $pkg --single-branch https://github.com/archlinux/aur.git "$cachepkgpath"
-        fi
-        buildpkg "$cachepkgpath"
+        _cache_locked_commit \
+            aur "$pkg" "$cachepkgpath" \
+            "https://aur.archlinux.org/$pkg.git" \
+            "https://github.com/archlinux/aur.git"
+        _checkout_locked_commit aur "$pkg" "$cachepkgpath"
+        buildpkg "$cachepkgpath" "${locked_commits["aur:${pkg}"]}"
     done
-    wait
-    for pkg in ${local_pkg_list[@]}; do
+    for pkg in "${local_pkg_list[@]}"; do
         _msg_info "Building package $pkg..."
-        buildpkg "${profile}"/packages/tobuild/$pkg
+        buildpkg "${profile}/packages/tobuild/$pkg"
     done
 
-    for pkg in ${nvim_pkg_list[@]}; do
+    for pkg in "${nvim_pkg_list[@]}"; do
         (
             _msg_info "Cloning nvim package $pkg..."
             pkgname="${pkg##*/}"
             cachepkgpath="${profile}/packages/nvimcache/${pkgname}"
-            if [ -e "$cachepkgpath" ]; then
-                cd "$cachepkgpath"
-                git pull --quiet
-            else
-                url="$pkg"
-                if [[ "$pkg" != https://* ]]; then
-                    url=https://github.com/$pkg
-                fi
-                git clone $url "$cachepkgpath"
+            url="$pkg"
+            if [[ "$pkg" != https://* ]]; then
+                url="https://github.com/$pkg"
             fi
             # damn, thats a long path
             path="${pacstrap_dir}/etc/skel/.local/share/nvim/site/pack/${pkgname}/start/${pkgname}/"
-            mkdir -p "$path"
-            cp -r "$cachepkgpath"/* "$path"
+            _cache_locked_commit nvim "$pkg" "$cachepkgpath" "$url"
+            _export_locked_commit nvim "$pkg" "$cachepkgpath" "$path"
         ) &
+        clone_pids+=("$!")
     done
-    wait
+    if ! _wait_for_background_jobs "${clone_pids[@]}"; then
+        _msg_error "Failed to install one or more Nvim packages." 1
+    fi
 
-    for pkg in ${zsh_pkg_list[@]}; do
+    clone_pids=()
+    for pkg in "${zsh_pkg_list[@]}"; do
         (
             _msg_info "Cloning zsh package $pkg..."
             pkgname="${pkg##*/}"
             cachepkgpath="${profile}/packages/zshcache/${pkgname}"
-            if [ -e "$cachepkgpath" ]; then
-                cd "$cachepkgpath"
-                git pull --quiet
-            else
-                url="$pkg"
-                if [[ "$pkg" != https://* ]]; then
-                    url=https://github.com/$pkg
-                fi
-                git clone $url "$cachepkgpath"
+            url="$pkg"
+            if [[ "$pkg" != https://* ]]; then
+                url="https://github.com/$pkg"
             fi
-            mkdir -p "${pacstrap_dir}/etc/skel/.zplugins/${pkgname}"
-            cp -r "$cachepkgpath"/{.[!.]*,*} "${pacstrap_dir}/etc/skel/.zplugins/${pkgname}"
+            path="${pacstrap_dir}/etc/skel/.zplugins/${pkgname}"
+            _cache_locked_commit zsh "$pkg" "$cachepkgpath" "$url"
+            _export_locked_commit zsh "$pkg" "$cachepkgpath" "$path"
         ) &
+        clone_pids+=("$!")
     done
-    wait
+    if ! _wait_for_background_jobs "${clone_pids[@]}"; then
+        _msg_error "Failed to install one or more Zsh packages." 1
+    fi
 }
 
 # Install desired packages to the root file system
@@ -513,6 +611,8 @@ _validate_common_requirements_buildmode_all() {
             _msg_error "no package specified in '${zsh_packages}'." 0
         fi
     fi
+
+    _validate_deps_lock
 }
 
 copy_boot_files() {
@@ -550,6 +650,62 @@ copy_boot_files() {
 
 _parse_file() {
     sed '/^[[:blank:]]*#.*/d;s/[[:blank:]]\?#.*//;/^[[:blank:]]*$/d' "$1"
+}
+
+_validate_deps_lock() {
+    local line kind source commit extra key
+    local -A expected_commits=()
+
+    locked_commits=()
+    for source in "${aur_pkg_list[@]}"; do
+        expected_commits["aur:${source}"]=1
+    done
+    for source in "${nvim_pkg_list[@]}"; do
+        expected_commits["nvim:${source}"]=1
+    done
+    for source in "${zsh_pkg_list[@]}"; do
+        expected_commits["zsh:${source}"]=1
+    done
+
+    if [[ ! -e "$deps_lock" ]]; then
+        (( validation_error=validation_error+1 ))
+        _msg_error "dependency lock file '${deps_lock}' does not exist." 0
+        return
+    fi
+
+    while IFS= read -r line; do
+        kind=""
+        source=""
+        commit=""
+        extra=""
+        read -r kind source commit extra <<< "$line"
+        if [[ "$kind" != "aur" && "$kind" != "nvim" && "$kind" != "zsh" ]] || \
+            [[ -z "$source" || ! "$commit" =~ ^[0-9a-f]{40}$ || -n "$extra" ]]; then
+            (( validation_error=validation_error+1 ))
+            _msg_error "invalid dependency lock entry '${line}'." 0
+            continue
+        fi
+
+        key="${kind}:${source}"
+        if [[ -n "${locked_commits[$key]-}" ]]; then
+            (( validation_error=validation_error+1 ))
+            _msg_error "duplicate dependency lock entry for ${kind} source '${source}'." 0
+            continue
+        fi
+        locked_commits["$key"]="$commit"
+
+        if [[ -z "${expected_commits[$key]-}" ]]; then
+            (( validation_error=validation_error+1 ))
+            _msg_error "dependency lock contains unknown ${kind} source '${source}'." 0
+        fi
+    done < <(_parse_file "$deps_lock")
+
+    for key in "${!expected_commits[@]}"; do
+        if [[ -z "${locked_commits[$key]-}" ]]; then
+            (( validation_error=validation_error+1 ))
+            _msg_error "dependency lock has no entry for ${key%%:*} source '${key#*:}'." 0
+        fi
+    done
 }
 
 _validate_requirements_bootmode_hybrid.grub.gpt() {
@@ -704,9 +860,11 @@ _read_profile() {
         [[ -n "$packages" ]] || packages="${profile}/available_packages"
         [[ -n "$nvim_packages" ]] || nvim_packages="${profile}/nvim_packages"
         [[ -n "$zsh_packages" ]] || zsh_packages="${profile}/zsh_plugins"
+        [[ -n "$deps_lock" ]] || deps_lock="${profile}/deps.lock"
         packages="$(realpath -- "${packages}")"
         nvim_packages="$(realpath -- "${nvim_packages}")"
         zsh_packages="$(realpath -- "${zsh_packages}")"
+        deps_lock="$(realpath -- "${deps_lock}")"
         pacman_conf="$(realpath -- "${pacman_conf}")"
 
         # Resolve paths of files that may reside in the profile's directory

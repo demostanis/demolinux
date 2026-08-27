@@ -22,6 +22,10 @@ local function sidewindow_width(c)
 	return math.max(0, tonumber(c and c.opencode_sidecar_width) or 0)
 end
 
+local function layout_width(c)
+	return c.width + sidewindow_width(c)
+end
+
 local scroll = {name = "scroll"}
 function scroll.arrange(p)
 	local t = p.tag
@@ -39,7 +43,7 @@ function scroll.arrange(p)
 		g.height = mouse.screen.geometry.height-beautiful.dock_height-10
 		p.geometries[c] = g
 
-		x = x + c.width + sidewindow_width(c)
+		x = x + layout_width(c)
 	end
 end
 
@@ -89,8 +93,8 @@ local function lefthand_window(c)
 	if not leftmost then return nil end
 	for _, c in ipairs(mouse.screen.clients) do
 		if not is_sidewindow_host(c) and (not lefthand or (
-			math.abs(c.x+c.width-leftmost.x) <
-			math.abs(lefthand.x+lefthand.width-leftmost.x))) then
+			math.abs(c.x+layout_width(c)-leftmost.x) <
+			math.abs(lefthand.x+layout_width(lefthand)-leftmost.x))) then
 			lefthand = c
 		end
 	end
@@ -101,10 +105,11 @@ local function righthand_window(c)
 	local righthand = nil
 	local leftmost = layout_client(c) or leftmost_window()
 	if not leftmost then return nil end
+	local right_edge = leftmost.x + layout_width(leftmost)
 	for _, c in ipairs(mouse.screen.clients) do
 		if not is_sidewindow_host(c) and (not righthand or (
-			math.abs(c.x-(leftmost.x+leftmost.width)) <
-			math.abs(righthand.x-(leftmost.x+leftmost.width)))) then
+			math.abs(c.x-right_edge) <
+			math.abs(righthand.x-right_edge))) then
 			righthand = c
 		end
 	end
@@ -422,14 +427,19 @@ local function maximize_two_windows()
 
 	local leftmost = leftmost_window()
 	local righthand = righthand_window()
+	if not leftmost then return end
 
-	if leftmost and leftmost == righthand
-		and sidewindow_width(leftmost) > 0 then
-		local width = leftmost.screen.geometry.width/2
-			-margin_before_window_on_focus/2+1
-		leftmost.width = width
-		require"opencode_sidecar".resize(leftmost, width)
-	elseif leftmost and righthand and leftmost ~= righthand then
+	if sidewindow_width(leftmost) > 0 then
+		local margin = margin_before_window_on_focus
+		if leftmost ~= first_window() then
+			margin = margin * 2
+		end
+		local available_width = leftmost.screen.geometry.width-margin+1
+		local left_width = math.ceil(available_width/2)
+		local right_width = available_width-left_width
+		leftmost.width = left_width
+		require"opencode_sidecar".resize(leftmost, right_width)
+	elseif righthand and leftmost ~= righthand then
 		local mid = margin_before_window_on_focus/2
 		if leftmost ~= first_window() then
 			mid = mid * 2

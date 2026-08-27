@@ -1,8 +1,33 @@
 #!/bin/bash
 
-out=$(opencode run -m opencode/big-pickle "write ONLY yes if you are working correctly" 2>&1 </dev/null)
+prompt="write ONLY yes if you are working correctly"
 
-if ! echo "$out" | grep -q yes; then
-	echo big pickle in opencode didn\'t run >&2
+run_model() {
+	timeout 120 opencode run -m "opencode/$1" "$prompt" 2>&1 </dev/null
+}
+
+model=big-pickle
+out=$(run_model "$model") || :
+
+if ! grep -q yes <<<"$out"; then
+	model=$(curl -fsSL --max-time 30 https://models.dev/api.json | jq -r '
+		.opencode.models
+		| to_entries[]
+		| select(.key != "big-pickle")
+		| select((.value.status // "") != "deprecated")
+		| select((.value.cost.input // -1) == 0 and (.value.cost.output // -1) == 0)
+		| .key
+	' | shuf -n1)
+
+	if [ -z "$model" ]; then
+		echo "could not pick a free opencode model from models.dev" >&2
+		exit 1
+	fi
+
+	out=$(run_model "$model") || :
+fi
+
+if ! grep -q yes <<<"$out"; then
+	echo "$model in opencode didn't run" >&2
 	exit 1
 fi

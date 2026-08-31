@@ -6,14 +6,14 @@ expectwin iwgtk
 quitwin
 
 modkeypress p
-orig=$(curl -4 -s icanhazip.com)
+orig=$(curl -4 icanhazip.com)
 xdotool key v
 
 tries=10
 success=
 for i in {1..$tries}; do
 	sleep 5
-	new=$(curl -4 -s icanhazip.com)
+	new=$(curl -4 icanhazip.com) || continue
 	if [ "$orig" != "$new" ]; then
 		success=y
 		break
@@ -28,7 +28,7 @@ modkeypress p
 xdotool key v
 sleep 5
 
-new=$(curl -4 -s icanhazip.com)
+new=$(curl -4 icanhazip.com)
 if [ "$new" != "$orig" ]; then
 	echo RiseupVPN is broken, can\'t disconnect >&2
 	exit 1

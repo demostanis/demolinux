@@ -1253,11 +1253,11 @@ function sidecar.set_image(c, path)
     tab.launching = true
     tab.hosted_kind = "imv"
     prepare_launch_focus(tab, focus_before_launch)
-    set_expanded(state, true)
+    set_expanded(state, false, true)
 
     tab.launch_generation = tab.launch_generation + 1
     local instance = image_viewer_instance(c, tab.launch_generation)
-    watch_for_hosted(tab, matches_image_viewer(instance), "imv", true)
+    watch_for_hosted(tab, matches_image_viewer(instance), "imv", false)
     local pid = awful.spawn({
         "/usr/local/bin/imv-hardened",
         "-i", instance,

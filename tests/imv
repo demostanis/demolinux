@@ -44,6 +44,8 @@ for i in {1..10}; do
 			.." viewers="..viewers
 	')
 	if [[ "$status" == *"image=/tmp/output-next.png app=imv:"* \
+		&& "$status" == *"collapsed right"* \
+		&& "$status" == *"reserved=0"* \
 		&& "$status" =~ instance=opencode-sidewindow-imv-[0-9a-f]+-2 \
 		&& "$status" == *"viewers=1"* ]]; then
 		break
@@ -52,6 +54,8 @@ for i in {1..10}; do
 done
 
 if [[ "$status" != *"image=/tmp/output-next.png app=imv:"* \
+	|| "$status" != *"collapsed right"* \
+	|| "$status" != *"reserved=0"* \
 	|| ! "$status" =~ instance=opencode-sidewindow-imv-[0-9a-f]+-2 \
 	|| "$status" != *"viewers=1"* ]]; then
 	echo "sidewindow image did not attach to imv: $status" >&2

@@ -1,0 +1,85 @@
+--- src/firefox-devtools-mcp-0.7.4/node_modules/selenium-webdriver/io/zip.js.orig
++++ src/firefox-devtools-mcp-0.7.4/node_modules/selenium-webdriver/io/zip.js
+@@ -19,7 +19,8 @@
+ 
+ const jszip = require('jszip')
+ const path = require('node:path')
+-const fs = require('fs/promises')
++const fs = require('node:fs')
++const fsPromises = require('node:fs/promises')
+ const io = require('./index')
+ const { InvalidArgumentError } = require('../lib/error')
+ 
+@@ -44,8 +45,8 @@
+    * @return {!Promise<?>} a promise that will resolve when added.
+    */
+   addFile(filePath, zipPath = path.basename(filePath)) {
+-    let add = Promise.all([io.read(filePath), fs.stat(filePath)]).then(([buffer, stats]) =>
+-      this.z_.file(/** @type {string} */ (zipPath.replace(/\\/g, '/')), buffer, {
++    let add = fsPromises.stat(filePath).then((stats) =>
++      this.z_.file(/** @type {string} */ (zipPath.replace(/\\/g, '/')), fs.createReadStream(filePath), {
+         date: stats.mtime, // preserve file's "last modified" value
+       }),
+     )
+@@ -134,7 +135,7 @@
+     if (compression !== 'STORE' && compression !== 'DEFLATE') {
+       return Promise.reject(new InvalidArgumentError(`compression must be one of {STORE, DEFLATE}, got ${compression}`))
+     }
+-    return Promise.resolve(this.z_.generateAsync({ compression, type: 'nodebuffer' }))
++    return Promise.resolve(this.z_.generateAsync({ compression, type: 'nodebuffer', streamFiles: true }))
+   }
+ }
+ 
+--- src/firefox-devtools-mcp-0.7.4/node_modules/selenium-webdriver/firefox.js.orig
++++ src/firefox-devtools-mcp-0.7.4/node_modules/selenium-webdriver/firefox.js
+@@ -213,27 +213,30 @@
+  * @return {!Promise<string>} a promise for the base64 encoded profile.
+  */
+ async function buildProfile(template, extensions) {
+-  let dir = template
+-
+-  dir = await io.tmpDir()
+-  if (template) {
+-    await io.copyDir(/** @type {string} */ (template), dir, /(parent\.lock|lock|\.parentlock)/)
+-  }
+-
+-  if (extensions.length) {
+-    const extensionsDir = path.join(dir, 'extensions')
+-    await io.mkdir(extensionsDir)
+-
+-    for (let i = 0; i < extensions.length; i++) {
+-      await installExtension(extensions[i], extensionsDir)
+-    }
+-  }
+-
+-  let zip = new Zip()
+-  return zip
+-    .addDir(dir)
+-    .then(() => zip.toBuffer())
+-    .then((buf) => buf.toString('base64'))
++  const dir = await io.tmpDir()
++
++  try {
++    if (template) {
++      await io.copyDir(/** @type {string} */ (template), dir, /(parent\.lock|lock|\.parentlock)/)
++    }
++
++    if (extensions.length) {
++      const extensionsDir = path.join(dir, 'extensions')
++      await io.mkdir(extensionsDir)
++
++      for (let i = 0; i < extensions.length; i++) {
++        await installExtension(extensions[i], extensionsDir)
++      }
++    }
++
++    const zip = new Zip()
++    return await zip
++      .addDir(dir)
++      .then(() => zip.toBuffer('DEFLATE'))
++      .then((buf) => buf.toString('base64'))
++  } finally {
++    await io.rmDir(dir)
++  }
+ }
+ 

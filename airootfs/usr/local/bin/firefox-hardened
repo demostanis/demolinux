@@ -50,6 +50,9 @@ while [ ! -e "$XDG_RUNTIME_DIR"/dbus-proxy/firefox ]; do sleep 0.1; done
 trap '
 	kill "$dbus_proxy_pid" "$mpv_worker_pid" 2>/dev/null || true
 	rm -rf "$XDG_RUNTIME_DIR"/ffhardened-$pid
+	if [[ "$profile" == /tmp/rust_* ]]; then
+		rm -rf -- "$profile"
+	fi
 	# For some reason, two firefox-hardened instances
 	# exist. Kill the remaining ones if no browser is
 	# open.

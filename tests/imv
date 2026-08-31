@@ -1,7 +1,75 @@
 #!/bin/bash
 
 magick xc: /tmp/output.png
+magick xc:red /tmp/output-next.png
 
-imv-hardened /tmp/output.png >/dev/null 2>&1 &
-expectwin "imv - \[1/1\] \[1x1\] \[[0-9]\+%\] /tmp/output.png \[scale to fit\]"
+imv-hardened -w "hardened imv test" /tmp/output.png >/dev/null 2>&1 &
+expectwin "hardened imv test"
 quitwin
+
+rm -f /tmp/sidewindow-api-status
+urxvt -title "OC | sidewindow test" -e sh -c '
+	sleep 1
+	opencode-sidewindow-api image /tmp/output.png > /tmp/sidewindow-api-status
+	opencode-sidewindow-api image /tmp/output-next.png > /tmp/sidewindow-api-status-next
+	sleep 30
+' &
+expectwin "OC | sidewindow test"
+expectwin "OpenCode sidewindow image"
+
+status=
+for i in {1..10}; do
+	status=$(awesome-client '
+		local sidewindow = require"opencode_sidecar"
+		local owner
+		for _, candidate in ipairs(client.get()) do
+			if candidate.name == "OC | sidewindow test" then
+				owner = candidate
+				break
+			end
+		end
+		if not owner then return "missing" end
+		local instance = "none"
+		local viewers = 0
+		for _, candidate in ipairs(client.get()) do
+			if candidate.class == "imv"
+				and candidate.name == "OpenCode sidewindow image" then
+				viewers = viewers + 1
+			end
+			if candidate.opencode_sidecar_owner == owner then
+				instance = candidate.instance or "none"
+			end
+		end
+		return sidewindow.status(owner).." instance="..instance
+			.." viewers="..viewers
+	')
+	if [[ "$status" == *"image=/tmp/output-next.png app=imv:"* \
+		&& "$status" =~ instance=opencode-sidewindow-imv-[0-9a-f]+-2 \
+		&& "$status" == *"viewers=1"* ]]; then
+		break
+	fi
+	sleep 1
+done
+
+if [[ "$status" != *"image=/tmp/output-next.png app=imv:"* \
+	|| ! "$status" =~ instance=opencode-sidewindow-imv-[0-9a-f]+-2 \
+	|| "$status" != *"viewers=1"* ]]; then
+	echo "sidewindow image did not attach to imv: $status" >&2
+	exit 1
+fi
+
+focus=$(awesome-client 'return client.focus and client.focus.name or "none"')
+if [[ "$focus" != *"OC | sidewindow test"* ]]; then
+	echo "sidewindow image stole focus: $focus" >&2
+	exit 1
+fi
+
+awesome-client '
+	for _, candidate in ipairs(client.get()) do
+		if candidate.name == "OC | sidewindow test" then
+			candidate:kill()
+			return true
+		end
+	end
+	return false
+' >/dev/null

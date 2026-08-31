@@ -15,6 +15,7 @@ local arrow_icons = {
 local sidecar = {}
 local states = setmetatable({}, {__mode = "k"})
 local active_state
+local image_viewer_instance_prefix = "opencode-sidewindow-imv-"
 
 local animation_frames = 11
 local animation_interval = 1 / 60
@@ -44,6 +45,31 @@ end
 function sidecar.is_firefox(c)
     return is_valid(c) and type(c.class) == "string"
         and c.class:lower() == "firefox"
+end
+
+local function image_viewer_instance(c, generation)
+    local identifier = tonumber(c.window) or tonumber(c.pid) or 0
+    return image_viewer_instance_prefix
+        ..string.format("%x-%x", identifier, generation)
+end
+
+local function matches_image_viewer(instance)
+    return function(c)
+        return is_valid(c) and c.instance == instance
+    end
+end
+
+local function sidecar_background()
+    return beautiful.opencode_sidecar_bg
+        or beautiful.color0 or beautiful.bg_normal
+end
+
+local function image_viewer_background()
+    local background = sidecar_background()
+    if type(background) == "string" then
+        return background:match("^#?(%x%x%x%x%x%x)") or "000000"
+    end
+    return "000000"
 end
 
 local function clamp_panel_width(c, width)
@@ -485,6 +511,7 @@ local function make_button(state)
 end
 
 local function clear_launch_watch(tab)
+    tab.launch_watch_generation = (tab.launch_watch_generation or 0) + 1
     if tab.launch_handler then
         client.disconnect_signal("manage", tab.launch_handler)
         tab.launch_handler = nil
@@ -557,11 +584,13 @@ local function make_tab(state, name, role)
         hosted_kind = nil,
         hosted_pid = nil,
         launching = false,
+        launch_generation = 0,
         focus_before_launch = nil,
         restore_focus_pending = false,
         focus_restore_generation = 0,
         launch_handler = nil,
         launch_timer = nil,
+        launch_watch_generation = 0,
         removed = false,
     }
 end
@@ -624,6 +653,7 @@ local function restore_launch_focus(tab, hosted)
     local previous = tab.focus_before_launch
     tab.focus_restore_generation = tab.focus_restore_generation + 1
     local generation = tab.focus_restore_generation
+    local attempts = 0
     gears.timer.start_new(0.15, function()
         if tab.removed or generation ~= tab.focus_restore_generation
             or not tab.restore_focus_pending then
@@ -632,6 +662,11 @@ local function restore_launch_focus(tab, hosted)
 
         local current = client.focus
         if is_valid(current) and current ~= hosted then
+            attempts = attempts + 1
+            local owner = tab.owner.client
+            if attempts < 6 and (current == previous or current == owner) then
+                return true
+            end
             tab.focus_before_launch = nil
             tab.restore_focus_pending = false
             return false
@@ -661,6 +696,7 @@ end
 local function close_hosted(tab, restore_focus)
     local hosted = tab.hosted_client
     local hosted_was_focused = is_valid(hosted) and client.focus == hosted
+    local launching_pid = tab.launching and tab.hosted_pid
     clear_launch_watch(tab)
     tab.hosted_client = nil
     tab.hosted_kind = nil
@@ -671,6 +707,9 @@ local function close_hosted(tab, restore_focus)
     end
     if is_valid(hosted) then
         hosted:kill()
+    end
+    if launching_pid then
+        awful.spawn({"kill", "-TERM", tostring(launching_pid)})
     end
     if restore_focus == false then
         tab.focus_restore_generation = tab.focus_restore_generation + 1
@@ -752,9 +791,16 @@ local function attach_hosted(tab, hosted, kind, expand_on_attach)
             c.fullscreen = false
         end
     end)
-    hosted:connect_signal("request::activate", function(c)
-        if tab.hosted_client ~= c or (active_tab(state) == tab
-            and state.expanded and owner_is_visible(state.client)) then
+    hosted:connect_signal("request::activate", function(c, context)
+        if tab.hosted_client ~= c then
+            return
+        end
+        local visible = active_tab(state) == tab
+            and state.expanded and owner_is_visible(state.client)
+        if visible and context == "mouse_click" then
+            tab.focus_restore_generation = tab.focus_restore_generation + 1
+            tab.focus_before_launch = nil
+            tab.restore_focus_pending = false
             return
         end
         local previous = client.focus
@@ -762,7 +808,11 @@ local function attach_hosted(tab, hosted, kind, expand_on_attach)
             if tab.hosted_client ~= c or not is_valid(c) then
                 return
             end
-            c.hidden = true
+            local still_visible = active_tab(state) == tab
+                and state.expanded and owner_is_visible(state.client)
+            if not still_visible then
+                c.hidden = true
+            end
             if client.focus == c then
                 if client_is_visible(previous) and previous ~= c then
                     client.focus = previous
@@ -815,13 +865,16 @@ end
 
 local function watch_for_hosted(tab, matcher, kind, expand_on_attach)
     local state = tab.owner
+    tab.launch_watch_generation = tab.launch_watch_generation + 1
+    local watch_generation = tab.launch_watch_generation
     local known = {}
     for _, candidate in ipairs(client.get()) do
         known[candidate] = true
     end
 
     local function consider(candidate)
-        if tab.removed or not tab.launching or tab.hosted_kind ~= kind
+        if watch_generation ~= tab.launch_watch_generation
+            or tab.removed or not tab.launching or tab.hosted_kind ~= kind
             or known[candidate] or sidecar.is_hosted(candidate)
             or not matcher(candidate) then
             return false
@@ -839,6 +892,9 @@ local function watch_for_hosted(tab, matcher, kind, expand_on_attach)
     end
     client.connect_signal("manage", tab.launch_handler)
     tab.launch_timer = gears.timer.start_new(45, function()
+        if watch_generation ~= tab.launch_watch_generation then
+            return false
+        end
         clear_launch_watch(tab)
         if not tab.removed and tab.launching and tab.hosted_kind == kind then
             tab.launching = false
@@ -870,8 +926,7 @@ local function make_state(c)
         ontop = true,
         visible = false,
         type = "utility",
-        bg = beautiful.opencode_sidecar_bg
-            or beautiful.color0 or beautiful.bg_normal,
+        bg = sidecar_background(),
         border_width = border_width,
         border_color = beautiful.opencode_sidecar_border_color
             or beautiful.color3 or beautiful.bg_focus,
@@ -1178,19 +1233,48 @@ function sidecar.set_image(c, path)
         return "error: image path is empty"
     end
 
-    local probe = wibox.widget.imagebox()
-    if not probe:set_image(path) then
-        return "error: unable to load image "..path
+    local image = io.open(path, "rb")
+    if not image then
+        return "error: unable to read image "..path
     end
+    image:close()
+
     local state = get_state(c)
     local tab, index = find_tab_by_role(state, "image")
     if not tab then
         tab, index = append_tab(state, unique_name(state, "Image"), "image")
     end
     activate_index(state, index)
+
+    local focus_before_launch = client.focus
     close_hosted(tab)
-    tab.imagebox:set_image(path)
+    tab.imagebox:set_image(nil)
     tab.image_path = path
+    tab.launching = true
+    tab.hosted_kind = "imv"
+    prepare_launch_focus(tab, focus_before_launch)
+    set_expanded(state, true)
+
+    tab.launch_generation = tab.launch_generation + 1
+    local instance = image_viewer_instance(c, tab.launch_generation)
+    watch_for_hosted(tab, matches_image_viewer(instance), "imv", true)
+    local pid = awful.spawn({
+        "/usr/local/bin/imv-hardened",
+        "-i", instance,
+        "-b", image_viewer_background(),
+        "-w", "OpenCode sidewindow image",
+        path,
+    })
+    if not pid then
+        clear_launch_watch(tab)
+        tab.launching = false
+        tab.hosted_kind = nil
+        tab.image_path = nil
+        restore_launch_focus(tab)
+        refresh(state)
+        return "error: unable to launch imv-hardened"
+    end
+    tab.hosted_pid = pid
     return sidecar.status(c)
 end
 
@@ -1204,6 +1288,9 @@ function sidecar.clear_image(c)
         return "error: no sidewindow exists"
     end
     local tab = active_tab(state)
+    if tab.role == "image" then
+        close_hosted(tab)
+    end
     tab.imagebox:set_image(nil)
     tab.image_path = nil
     refresh(state)

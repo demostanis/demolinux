@@ -1,9 +1,9 @@
 #!/bin/zsh
 
-# we assume the image we want to look at is the first argument
+# We assume the image to display is the last argument.
 file="${@: -1}"
 realfile="$(realpath -- "$file")"
-args="${@:1: -1}"
+args=("${(@)argv[1,-2]}")
 
 exec bwrap \
 	`# For dynamically linked executables` \
@@ -23,5 +23,4 @@ exec bwrap \
 	`# Media to display` \
 	--ro-bind-try "$file" "$realfile" \
 	--unshare-all --new-session \
-	/usr/bin/imv-x11 $args "$realfile"
-
+	/usr/bin/imv-x11 "${args[@]}" "$realfile"

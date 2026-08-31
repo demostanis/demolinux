@@ -139,7 +139,7 @@ def api_parser():
         "image",
         help="display an image; creates the first sidewindow when needed",
     )
-    image.add_argument("path", help="path to a PNG, JPEG, WebP, GIF, or SVG image")
+    image.add_argument("path", help="path to an image supported by imv")
     return parser
 
 

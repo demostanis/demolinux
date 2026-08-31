@@ -53,9 +53,9 @@ local separatorw = wibox.widget{
 }
 
 local profiles = {
-    {id = "performance", icon = "\u{f625}", label = "Performance"},
-    {id = "balanced", icon = "\u{f24e}", label = "Balanced"},
-    {id = "power-saver", icon = "\u{f06c}", label = "Power saver"}
+    {id = "performance", icon = "\u{f625}", label = "Performance", dpm_option = "--disable"},
+    {id = "balanced", icon = "\u{f24e}", label = "Balanced", dpm_option = "--enable"},
+    {id = "power-saver", icon = "\u{f06c}", label = "Power saver", dpm_option = "--enable"}
 }
 
 local function update_profile_rows()
@@ -90,12 +90,15 @@ end
 local function set_power_profile(profile)
     current_profile = profile.id
     update_profile_rows()
-    awful.spawn.easy_async_with_shell("powerprofilesctl set " .. profile.id, function(_, stderr, _, code)
+    local command = "powerprofilesctl set " .. profile.id
+        .. " && powerprofilesctl configure-action amdgpu_dpm " .. profile.dpm_option
+    awful.spawn.easy_async_with_shell(command, function(_, stderr, _, code)
         if code ~= 0 then
             local message = stderr or "unknown error"
             naughty.notify({
                 title = "Power profile",
-                text = "Could not switch to " .. profile.label .. ": " .. message,
+                text = "Could not switch to " .. profile.label
+                    .. " or configure AMD GPU power management: " .. message,
                 preset = naughty.config.presets.critical
             })
         end

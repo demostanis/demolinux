@@ -2,7 +2,7 @@ local app_whitelist = {
     "Firefox Web Browser",
     "urxvt", "Files", "Neovim",
     "scrcpy", "Transmission", "Tor Browser", "Ghidra",
-    "FreeTube", "Bottles", "Chromium",
+    "FreeTube", "Rhythmbox", "Bottles", "Chromium",
     "Bitwarden", "Dolphin Emulator",
     "Nitrokey App 2", "KDE Connect",
     "Volume Control", "AgentGraph"

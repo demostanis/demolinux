@@ -1,5 +1,7 @@
 #!/bin/bash
 
+original_dpi=$(xrdb -get Xft.dpi)
+
 awesome_metrics() {
 	awesome-client '
 		local s = screen.primary
@@ -153,3 +155,11 @@ if grep -q 'gears/object/properties.lua.*invalid object' ~/.awesome.log; then
 	echo "Awesome applied a delayed property to an invalid object" >&2
 	exit 1
 fi
+
+original_scale=$(awk -v dpi="$original_dpi" 'BEGIN {
+	value = int(dpi / 96 + 0.5)
+	print value < 1 ? 1 : value
+}')
+set_dpi "$original_dpi" "$original_dpi"
+wait_for_xsettings "$((original_dpi * 1024))" "$original_scale"
+wait_for_picom "$(scale "$original_dpi" 5)" "$(scale "$original_dpi" 50)"

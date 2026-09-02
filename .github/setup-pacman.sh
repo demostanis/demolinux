@@ -13,6 +13,9 @@ sudo apt-get install pacman-package-manager \
                       archlinux-keyring libarchive-tools \
                       systemd-container qemu-system zsh
 
+# Let Arch's passt create the namespaces used by its own sandbox.
+sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
 sudo mkdir -p /etc/pacman.d
 cat <<-EOF | sudo tee -a /etc/pacman.conf >/dev/null
   [core]
@@ -49,7 +52,11 @@ sudo mkdir /boot/memtest86+
 sudo cp /boot/memtest86+x64.bin /boot/memtest86+/memtest.bin
 sudo cp /boot/memtest86+x64.efi /boot/memtest86+/memtest.efi
 
-sudo pacman -Sddw --noconfirm devtools grub ipxe
+sudo pacman -Sddw --noconfirm devtools grub ipxe passt
+sudo bsdtar -C / -xf /var/cache/pacman/pkg/passt-*.zst \
+  usr/bin/passt \
+  usr/bin/passt.avx2
+
 sudo bsdtar -C / -xf /var/cache/pacman/pkg/devtools-*.zst \
   usr/bin/makechrootpkg \
   usr/bin/mkarchroot \

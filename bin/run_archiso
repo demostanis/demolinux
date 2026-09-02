@@ -9,6 +9,7 @@
 #
 # Requirements:
 # - qemu
+# - passt
 # - edk2-ovmf (when UEFI booting)
 
 
@@ -27,7 +28,6 @@ Options:
     -h              print help
     -i [image]      image to boot into
     -H              run headless (-nographic)
-    -n              specify that the guest does not have a bridge interface (e.g. virbr0)
     -T [size]       truncate image to specific size
     -s              use Secure Boot (only relevant when using UEFI)
     -u              set boot type to 'UEFI'
@@ -42,9 +42,44 @@ EOF
 }
 
 cleanup_working_dir() {
+    if [[ -n "${passt_pid:-}" ]]; then
+        kill "${passt_pid}" 2>/dev/null || true
+        wait "${passt_pid}" 2>/dev/null || true
+    fi
     if [[ -d "${working_dir}" ]]; then
         rm -rf -- "${working_dir}"
     fi
+}
+
+start_passt() {
+    local passt_socket="${working_dir}/passt.socket"
+
+    if ! command -v passt >/dev/null; then
+        printf 'ERROR: %s\n' 'passt not found. Install passt.'
+        exit 1
+    fi
+
+    passt --foreground --quiet --one-off \
+        --socket "${passt_socket}" --tcp-ports 60022:22 &
+    passt_pid=$!
+
+    for _ in {1..50}; do
+        if [[ -S "${passt_socket}" ]]; then
+            network_options=(
+                '-netdev' "stream,id=net0,server=off,addr.type=unix,addr.path=${passt_socket}"
+            )
+            return
+        fi
+        if ! kill -0 "${passt_pid}" 2>/dev/null; then
+            wait "${passt_pid}" || true
+            printf 'ERROR: %s\n' 'passt exited before creating its socket.'
+            exit 1
+        fi
+        sleep 0.1
+    done
+
+    printf 'ERROR: %s\n' 'Timed out waiting for passt socket.'
+    exit 1
 }
 
 copy_ovmf_vars() {
@@ -73,6 +108,8 @@ truncate_image() {
 }
 
 run_image() {
+    start_passt
+
     if [[ "$boot_type" == 'uefi' ]]; then
         copy_ovmf_vars
         if [[ "${secure_boot}" == 'on' ]]; then
@@ -102,12 +139,6 @@ run_image() {
         )
     fi
 
-    # second IP address given by QEMU's DHCP
-    bridge_ip=10.0.2.16
-    if [ "$bridge" = n ]; then
-        bridge_ip=10.0.2.15
-    fi
-
     if [ "$headless" = y ]; then
         qemu_options+=( -nographic )
     fi
@@ -120,7 +151,8 @@ run_image() {
         -drive "format=raw,file=${image}" \
         -display "${display}" \
         -vga virtio \
-        -device virtio-net-pci,romfile=,netdev=net0 -netdev user,id=net0,hostfwd=tcp::60022-$bridge_ip:22 \
+        -device virtio-net-pci,romfile=,netdev=net0 \
+        "${network_options[@]}" \
         -qmp tcp:localhost:4444,server,nowait \
         -machine type=q35,smm=on,accel=kvm,usb=on \
         -cpu max -enable-kvm \
@@ -134,16 +166,17 @@ accessibility=''
 boot_type='bios'
 mediatype='cdrom'
 secure_boot='off'
-bridge='y'
 headless='n'
 display='gtk,show-cursor=on'
 qemu_options=()
+network_options=()
+passt_pid=''
 working_dir="$(mktemp -dt run_archiso.XXXXXXXXXX)"
 truncatesize=''
 trap cleanup_working_dir EXIT
 
 if (( ${#@} > 0 )); then
-    while getopts 'abc:dhHi:nT:suv' flag; do
+    while getopts 'abc:dhHi:T:suv' flag; do
         case "$flag" in
             a)
                 accessibility='on'
@@ -172,9 +205,6 @@ if (( ${#@} > 0 )); then
                 ;;
             s)
                 secure_boot='on'
-                ;;
-            n)
-                bridge='n';
                 ;;
             T)
                 truncatesize="$OPTARG"

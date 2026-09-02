@@ -3,6 +3,8 @@ local mykeygrabber = nil
 local old_client_focus = nil
 local state = nil
 local screenrecorder_status = "Not recording"
+local screenrecorder_transition = nil
+local screenrecorder_transition_started = 0
 local mypanel = nil
 local panes = {}
 local caffeine_enabled = false
@@ -49,14 +51,22 @@ local function spawn_vpn()
     awful.spawn("systemctl "..verb.." openvpn-client@riseup", false)
 end
 local function spawn_recorder(opts)
+    if screenrecorder_transition then return end
+
     local args = ""
     if opts and opts.slop then
         args = " --slop"
     end
 
     if screenrecorder_status == "Not recording" then
+        screenrecorder_status = "Starting..."
+        screenrecorder_transition = "start"
+        screenrecorder_transition_started = os.time()
         awful.spawn("screenrecord start"..args, false)
     elseif screenrecorder_status == "Recording..." then
+        screenrecorder_status = "Saving..."
+        screenrecorder_transition = "stop"
+        screenrecorder_transition_started = os.time()
         awful.spawn("screenrecord stop")
     end
 end
@@ -364,7 +374,23 @@ return function(s)
         call_now = true,
         callback = function()
             awful.spawn.easy_async("screenrecord status", function(message)
-                screenrecorder_status = message:gsub("\n", "")
+                message = message:gsub("\n", "")
+                if screenrecorder_transition == "start" then
+                    if message == "Recording..." then
+                        screenrecorder_transition = nil
+                    elseif os.time() - screenrecorder_transition_started < 3 then
+                        message = "Starting..."
+                    else
+                        screenrecorder_transition = nil
+                    end
+                elseif screenrecorder_transition == "stop" then
+                    if message == "Not recording" then
+                        screenrecorder_transition = nil
+                    else
+                        message = "Saving..."
+                    end
+                end
+                screenrecorder_status = message
                 local statusw = mypanel:get_children_by_id("status-record screen")[1]
                 if statusw.markup and statusw.markup:match"span foreground" then -- is hovered
                     statusw.oldtext = screenrecorder_status

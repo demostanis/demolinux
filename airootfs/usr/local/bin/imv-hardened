@@ -22,5 +22,5 @@ exec bwrap \
 	--bind /tmp/.X11-unix/X${DISPLAY##:} /tmp/.X11-unix/X${DISPLAY##:} \
 	`# Media to display` \
 	--ro-bind-try "$file" "$realfile" \
-	--unshare-all --new-session \
+	--unshare-all --new-session --die-with-parent \
 	/usr/bin/imv-x11 "${args[@]}" "$realfile"

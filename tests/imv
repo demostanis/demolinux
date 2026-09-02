@@ -10,16 +10,15 @@ quitwin
 rm -f /tmp/sidewindow-api-status
 urxvt -title "OC | sidewindow test" -e sh -c '
 	sleep 1
-	opencode-sidewindow-api image /tmp/output.png > /tmp/sidewindow-api-status
-	opencode-sidewindow-api image /tmp/output-next.png > /tmp/sidewindow-api-status-next
+	$HOME/.local/bin/opencode-sidewindow-api image /tmp/output.png > /tmp/sidewindow-api-status
+	$HOME/.local/bin/opencode-sidewindow-api image /tmp/output-next.png > /tmp/sidewindow-api-status-next
 	sleep 30
 ' &
 expectwin "OC | sidewindow test"
-expectwin "OpenCode sidewindow image"
 
-status=
+sidewindow_status=
 for i in {1..10}; do
-	status=$(awesome-client '
+	sidewindow_status=$(awesome-client '
 		local sidewindow = require"opencode_sidecar"
 		local owner
 		for _, candidate in ipairs(client.get()) do
@@ -30,35 +29,40 @@ for i in {1..10}; do
 		end
 		if not owner then return "missing" end
 		local instance = "none"
-		local viewers = 0
+		local viewer_instances = {}
 		for _, candidate in ipairs(client.get()) do
 			if candidate.class == "imv"
 				and candidate.name == "OpenCode sidewindow image" then
-				viewers = viewers + 1
+				table.insert(viewer_instances, candidate.instance or "none")
 			end
 			if candidate.opencode_sidecar_owner == owner then
 				instance = candidate.instance or "none"
 			end
 		end
 		return sidewindow.status(owner).." instance="..instance
-			.." viewers="..viewers
+			.." viewers="..#viewer_instances
+			.." viewer_instances="..table.concat(viewer_instances, ",")
+			.." viewer_matches="..tostring(
+				#viewer_instances == 1 and viewer_instances[1] == instance)
 	')
-	if [[ "$status" == *"image=/tmp/output-next.png app=imv:"* \
-		&& "$status" == *"collapsed right"* \
-		&& "$status" == *"reserved=0"* \
-		&& "$status" =~ instance=opencode-sidewindow-imv-[0-9a-f]+-2 \
-		&& "$status" == *"viewers=1"* ]]; then
+	if [[ "$sidewindow_status" == *"image=/tmp/output-next.png app=imv:"* \
+		&& "$sidewindow_status" == *"collapsed right"* \
+		&& "$sidewindow_status" == *"reserved=0"* \
+		&& "$sidewindow_status" =~ instance=opencode-sidewindow-imv-[0-9a-f]+-2 \
+		&& "$sidewindow_status" == *"viewer_matches=true"* \
+		&& "$sidewindow_status" == *"viewers=1"* ]]; then
 		break
 	fi
 	sleep 1
 done
 
-if [[ "$status" != *"image=/tmp/output-next.png app=imv:"* \
-	|| "$status" != *"collapsed right"* \
-	|| "$status" != *"reserved=0"* \
-	|| ! "$status" =~ instance=opencode-sidewindow-imv-[0-9a-f]+-2 \
-	|| "$status" != *"viewers=1"* ]]; then
-	echo "sidewindow image did not attach to imv: $status" >&2
+if [[ "$sidewindow_status" != *"image=/tmp/output-next.png app=imv:"* \
+	|| "$sidewindow_status" != *"collapsed right"* \
+	|| "$sidewindow_status" != *"reserved=0"* \
+	|| ! "$sidewindow_status" =~ instance=opencode-sidewindow-imv-[0-9a-f]+-2 \
+	|| "$sidewindow_status" != *"viewer_matches=true"* \
+	|| "$sidewindow_status" != *"viewers=1"* ]]; then
+	echo "sidewindow image did not attach to imv: $sidewindow_status" >&2
 	exit 1
 fi
 

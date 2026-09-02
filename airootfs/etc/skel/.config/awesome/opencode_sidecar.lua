@@ -22,6 +22,7 @@ local animation_interval = 1 / 60
 local titlebar_height = gears.math.round(
     beautiful.get_font_height() * 1.5)
 local titlebar_navigation_width = dpi(82)
+local margin_window_move_on_click = dpi(200)
 
 local function is_valid(c)
     if not c then
@@ -390,8 +391,11 @@ end
 local function hosted_buttons(state)
     return gears.table.join(
         awful.button({}, 1, function(c)
+            local raise = c.x > c.screen.geometry.width
+                - margin_window_move_on_click
+                or c.x + c.width < margin_window_move_on_click
             client.focus = c
-            c:activate({context = "mouse_click", raise = false})
+            c:activate({context = "mouse_click", raise = raise})
         end),
         awful.button({modkey}, 3, function()
             begin_resize(state)

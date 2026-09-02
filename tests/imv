@@ -12,7 +12,7 @@ urxvt -title "OC | sidewindow test" -e sh -c '
 	sleep 1
 	$HOME/.local/bin/opencode-sidewindow-api image /tmp/output.png > /tmp/sidewindow-api-status
 	$HOME/.local/bin/opencode-sidewindow-api image /tmp/output-next.png > /tmp/sidewindow-api-status-next
-	sleep 30
+	sleep 60
 ' &
 expectwin "OC | sidewindow test"
 
@@ -73,11 +73,94 @@ if [[ "$focus" != *"OC | sidewindow test"* ]]; then
 fi
 
 awesome-client '
+	local sidewindow = require"opencode_sidecar"
 	for _, candidate in ipairs(client.get()) do
 		if candidate.name == "OC | sidewindow test" then
-			candidate:kill()
+			sidewindow.show(candidate)
+			sidewindow.resize(candidate, require"beautiful.xresources".apply_dpi(450))
 			return true
 		end
 	end
 	return false
+' >/dev/null
+sleep 0.5
+
+urxvt -title "sidewindow edge spacer" -e sleep 60 &
+expectwin "sidewindow edge spacer"
+
+sleep 0.5
+
+edge_state=
+for i in {1..20}; do
+	edge_state=$(awesome-client '
+		local dpi = require"beautiful.xresources".apply_dpi
+		local owner
+		local hosted
+		for _, candidate in ipairs(client.get()) do
+			if candidate.name == "OC | sidewindow test" then
+				owner = candidate
+			elseif candidate.opencode_sidecar_hosted then
+				hosted = candidate
+			end
+		end
+		if not owner or not hosted or hosted.hidden then return "missing" end
+		local visible_left = math.max(0, hosted.x)
+		local visible_right = hosted.x + hosted.width
+		return table.concat({
+			math.floor((visible_left + visible_right) / 2),
+			hosted.y + math.floor(hosted.height / 2),
+			owner.x,
+			tostring(hosted.width > dpi(200)
+				and hosted.x < 0
+				and visible_right > dpi(20)
+				and visible_right < dpi(200)),
+		}, " ")
+	' | cut -d'"' -f2)
+	[[ "$edge_state" == *" true" ]] && break
+	sleep 0.2
+done
+
+if [[ "$edge_state" != *" true" ]]; then
+	echo "sidewindow host was not placed in the viewport margin: $edge_state" >&2
+	exit 1
+fi
+
+read -r hosted_x hosted_y owner_x _ <<< "$edge_state"
+xdotool mousemove --sync "$hosted_x" "$hosted_y" click 1
+
+click_state=
+for i in {1..20}; do
+	click_state=$(awesome-client '
+		local owner
+		local hosted
+		for _, candidate in ipairs(client.get()) do
+			if candidate.name == "OC | sidewindow test" then
+				owner = candidate
+			elseif candidate.opencode_sidecar_hosted then
+				hosted = candidate
+			end
+		end
+		return tostring(hosted and client.focus == hosted)
+			.." "..tostring(owner and owner.x or 0)
+	' | cut -d'"' -f2)
+	read -r hosted_focused new_owner_x <<< "$click_state"
+	if [[ "$hosted_focused" == true && "$new_owner_x" -gt $((owner_x + 200)) ]]; then
+		break
+	fi
+	sleep 0.2
+done
+
+if [[ "$hosted_focused" != true || "$new_owner_x" -le $((owner_x + 200)) ]]; then
+	echo "sidewindow margin click did not focus and reveal its owner: $click_state" >&2
+	exit 1
+fi
+
+awesome-client '
+	for _, candidate in ipairs(client.get()) do
+		if candidate.name == "OC | sidewindow test"
+			or candidate.name == "sidewindow edge spacer" then
+			candidate:kill()
+		end
+	end
+	return true
 ' >/dev/null

@@ -299,15 +299,15 @@ local function cycle_window_focus()
 	end
 end
 
-local function on_window_appearance_change(c)
-	if is_sidewindow_host(c)
+local function on_window_appearance_change(c, allow_sidewindow)
+	if (is_sidewindow_host(c) and not allow_sidewindow)
 		or not global_x_restored
 		or (c and any_floatyfloaty())
 		or controlling_tabs then return end
 
 	delayed(function()
 		local is_valid = pcall(function() return c.valid end) and c.valid
-		if is_valid and is_sidewindow_host(c) then
+		if is_valid and is_sidewindow_host(c) and not allow_sidewindow then
 			return
 		elseif is_valid then
 			if #mouse.screen.clients > 0 then -- why to we reach here?
@@ -338,7 +338,7 @@ end)
 -- sometimes "raised" event is not called, but request::activate is...
 client.connect_signal("request::activate", function(c, _, o)
 	if o.raise then
-		on_window_appearance_change(c)
+		on_window_appearance_change(c, true)
 	end
 end)
 

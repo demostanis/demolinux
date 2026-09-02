@@ -1,6 +1,8 @@
 pcall(require, "luarocks.loader")
 
 beautiful = require"beautiful"
+xresources = require"beautiful.xresources"
+dpi = xresources.apply_dpi
 cwd = debug.getinfo(1, "S").source:match("@(.*/)")
 beautiful.init(cwd.."theme/theme.lua")
 
@@ -20,6 +22,11 @@ tabs = require"tabs"
 
 terminal = "urxvt"
 modkey = "Mod4"
+
+local configured_dpi = xresources.get_dpi()
+awful.screen.connect_for_each_screen(function(s)
+    xresources.set_dpi(configured_dpi, s)
+end)
 
 require"awful.autofocus"
 require"startup"

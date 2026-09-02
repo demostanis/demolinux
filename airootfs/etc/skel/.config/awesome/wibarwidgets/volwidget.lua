@@ -49,7 +49,7 @@ myvolwidget:buttons(gears.table.join(
 myvolwidget:connect_signal("mouse::enter", function()
     local geo = mouse.current_widget_geometry
     if overview_shown or not percentage or not geo then return end
-    geo.y = geo.y + 7
+    geo.y = geo.y + dpi(7)
 
     popup:move_next_to(geo)
     popup.visible = true
@@ -85,7 +85,7 @@ vicious.register(myvolwidget,
             mycontainer.left = 0
             return fmt(mutedicon)
         else
-            mycontainer.left = -2
+            mycontainer.left = dpi(-2)
             return fmt(unmutedicon)
         end
     end, 1, {mixer, "-D", "pulse"})

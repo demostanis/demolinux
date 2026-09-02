@@ -3,7 +3,7 @@ local hovering_widget = false
 local hovering_popup = false
 local current_profile = nil
 local profile_rows = {}
-local menu_width = 148
+local menu_width = dpi(148)
 
 local function with_opacity(color, alpha)
     if color and color:match("^#%x%x%x%x%x%x") then
@@ -45,9 +45,9 @@ local titlew = wibox.widget{
 
 local separatorw = wibox.widget{
     orientation = "horizontal",
-    forced_width = menu_width - 10,
-    forced_height = 1,
-    thickness = 0.5,
+    forced_width = menu_width - dpi(10),
+    forced_height = dpi(1),
+    thickness = dpi(1) / 2,
     color = with_opacity(beautiful.fg_normal, "80"),
     widget = wibox.widget.separator
 }
@@ -108,11 +108,11 @@ end
 
 local function make_profile_row(profile)
     local right = 0
-    local width = 22
+    local width = dpi(22)
     if profile.id == "balanced" then
         -- the icon is shit
-        right = 4
-        width = 18
+        right = dpi(4)
+        width = dpi(18)
     end
 
     local iconw = wibox.widget{
@@ -135,7 +135,7 @@ local function make_profile_row(profile)
         text = "",
         widget = wibox.widget.textbox,
         font = beautiful.base_icon_font .. " 8",
-        forced_width = 12,
+        forced_width = dpi(12),
         halign = "center"
     }
     local bg = wibox.widget{
@@ -144,10 +144,10 @@ local function make_profile_row(profile)
                 iconw,
                 labelw,
                 checkw,
-                spacing = 5,
+                spacing = dpi(5),
                 layout = wibox.layout.fixed.horizontal
             },
-            margins = 3,
+            margins = dpi(3),
             widget = wibox.container.margin
         },
         bg = beautiful.bg_focus,
@@ -173,7 +173,7 @@ local function make_profile_row(profile)
     return bg
 end
 
-local profile_widgets = {spacing = 1, layout = wibox.layout.fixed.vertical}
+local profile_widgets = {spacing = dpi(1), layout = wibox.layout.fixed.vertical}
 for _, profile in ipairs(profiles) do
     table.insert(profile_widgets, make_profile_row(profile))
 end
@@ -187,10 +187,10 @@ local popup = awful.popup {
                 separatorw,
                 titlew,
                 wibox.widget(profile_widgets),
-                spacing = 4,
+                spacing = dpi(4),
                 layout = wibox.layout.fixed.vertical
             },
-            margins = 5,
+            margins = dpi(5),
             widget = wibox.container.margin
         },
         strategy = "exact",
@@ -202,7 +202,7 @@ local popup = awful.popup {
     shape = rrect(),
     preferred_positions = {"bottom", "left", "right", "top"},
     preferred_anchors = {"middle", "front", "back"},
-    offset = {y = 5}
+    offset = {y = dpi(5)}
 }
 
 local function hide_popup_delayed()
@@ -224,8 +224,8 @@ end)
 mybatwidget:connect_signal("mouse::enter", function()
     local geo = mouse.current_widget_geometry
     if overview_shown or not geo then return end
-    geo.x = geo.x + 3
-    geo.y = geo.y + 7
+    geo.x = geo.x + dpi(3)
+    geo.y = geo.y + dpi(7)
 
     popup:move_next_to(geo)
     popup.visible = true

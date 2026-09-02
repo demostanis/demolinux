@@ -1,0 +1,126 @@
+#!/bin/sh
+
+detect_dpi() {
+	xrandr --listactivemonitors 2>/dev/null | awk '
+		NR == 2 { fallback = $0 }
+		NR > 1 && /\*/ && primary == "" { primary = $0 }
+		END {
+			line = primary != "" ? primary : fallback
+			fields = split(line, part)
+			for (i = 1; i <= fields; i++) {
+				if (part[i] ~ /^[0-9]+\/[0-9]+x[0-9]+\/[0-9]+\+/) {
+					split(part[i], geometry, "[/x+]")
+					if (geometry[2] > 0 && geometry[4] > 0) {
+						xdpi = geometry[1] * 25.4 / geometry[2]
+						ydpi = geometry[3] * 25.4 / geometry[4]
+						printf "%.0f\n", (xdpi + ydpi) / 2
+						exit
+					}
+				}
+			}
+		}'
+}
+
+settings_file=${XDG_CONFIG_HOME:-$HOME/.config}/global-dpi
+requested_dpi=${DEMOLINUX_DPI:-}
+[ -z "$requested_dpi" ] && [ -r "$settings_file" ] && \
+	IFS= read -r requested_dpi < "$settings_file"
+dpi=
+
+if [ -z "$requested_dpi" ]; then
+	dpi=$(xrdb -get Xft.dpi 2>/dev/null || true)
+elif [ "$requested_dpi" != auto ]; then
+	dpi=$requested_dpi
+fi
+
+if [ -z "$dpi" ]; then
+	dpi=$(detect_dpi)
+fi
+if [ -z "$dpi" ]; then
+	dpi=$(xdpyinfo 2>/dev/null | awk '
+		/resolution:/ {
+			split($2, resolution, "x")
+			print resolution[1]
+			exit
+		}')
+fi
+
+dpi=$(awk -v dpi="$dpi" 'BEGIN {
+	if (dpi !~ /^[0-9]+([.][0-9]+)?$/ || dpi < 72 || dpi > 384)
+		dpi = 96
+	printf "%d\n", int(dpi + 0.5)
+}')
+
+scale=$(awk -v dpi="$dpi" 'BEGIN { printf "%.4f\n", dpi / 96 }')
+gtk_scale=$(awk -v dpi="$dpi" 'BEGIN {
+	value = int(dpi / 96 + 0.5)
+	print value < 1 ? 1 : value
+}')
+cursor_size=$(awk -v dpi="$dpi" 'BEGIN { print int(24 * dpi / 96 + 0.5) }')
+terminal_border=$(awk -v dpi="$dpi" 'BEGIN { print int(5 * dpi / 96 + 0.5) }')
+xft_dpi=$((dpi * 1024))
+unscaled_dpi=$((xft_dpi / gtk_scale))
+
+runtime_dir=${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}/demolinux-$(id -u)}
+display_name=$(printf '%s' "${DISPLAY:-default}" | tr -c 'A-Za-z0-9._-' '_')
+state_dir=$runtime_dir/demolinux-dpi/$display_name
+if ! mkdir -p "$state_dir" || ! chmod 700 "$state_dir"; then
+	printf '%s\n' 'demolinux-dpi: could not create the runtime state directory' >&2
+	return 1 2>/dev/null || exit 1
+fi
+resources=$state_dir/Xresources
+xsettings=$state_dir/xsettingsd.conf
+xsettings_pid=$state_dir/xsettingsd.pid
+
+previous_umask=$(umask)
+umask 077
+if ! printf '%s\n' \
+	"Xft.dpi: $dpi" \
+	"Xcursor.size: $cursor_size" \
+	"URxvt.internalBorder: $terminal_border" > "$resources"; then
+	printf '%s\n' 'demolinux-dpi: could not write the X resource settings' >&2
+	return 1 2>/dev/null || exit 1
+fi
+if ! xrdb -merge "$resources"; then
+	printf '%s\n' 'demolinux-dpi: could not update the X resource database' >&2
+	return 1 2>/dev/null || exit 1
+fi
+
+if ! printf '%s\n' \
+	"Xft/DPI $xft_dpi" \
+	"Gdk/WindowScalingFactor $gtk_scale" \
+	"Gdk/UnscaledDPI $unscaled_dpi" \
+	"Gtk/CursorThemeSize $cursor_size" > "$xsettings"; then
+	printf '%s\n' 'demolinux-dpi: could not write the XSettings configuration' >&2
+	return 1 2>/dev/null || exit 1
+fi
+umask "$previous_umask"
+
+if command -v xsettingsd >/dev/null 2>&1; then
+	pid=
+	[ -r "$xsettings_pid" ] && IFS= read -r pid < "$xsettings_pid"
+	xsettingsd_reloaded=
+	if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+		xsettingsd_exe=$(readlink "/proc/$pid/exe" 2>/dev/null || true)
+		case $xsettingsd_exe in
+			*/xsettingsd)
+				kill -HUP "$pid" 2>/dev/null && xsettingsd_reloaded=1
+				;;
+		esac
+	fi
+	if [ -z "$xsettingsd_reloaded" ]; then
+		rm -f "$xsettings_pid"
+		xsettingsd --config="$xsettings" >"$state_dir/xsettingsd.log" 2>&1 &
+		xsettingsd_pid=$!
+		printf '%s\n' "$xsettingsd_pid" > "$xsettings_pid"
+		sleep 0.1
+		if ! kill -0 "$xsettingsd_pid" 2>/dev/null; then
+			printf '%s\n' 'demolinux-dpi: xsettingsd failed to start' >&2
+			return 1 2>/dev/null || exit 1
+		fi
+	fi
+fi
+
+export DEMOLINUX_DPI=$dpi
+export DEMOLINUX_SCALE=$scale
+export XCURSOR_SIZE=$cursor_size

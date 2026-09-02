@@ -7,4 +7,22 @@ if grep -q QEMU /proc/cpuinfo || \
 	sed 25,\$d -i ~/.config/picom/picom.conf
 	echo 'backend = "xrender";' >> ~/.config/picom/picom.conf
 fi
-picom
+
+dpi=$(xrdb -get Xft.dpi 2>/dev/null || true)
+case $dpi in
+	''|*[!0-9.]*) dpi=96 ;;
+esac
+
+scale() {
+	awk -v dpi="$dpi" -v value="$1" 'BEGIN {
+		print int(value * dpi / 96 + 0.5)
+	}'
+}
+
+corner_radius=$(scale 5)
+shadow_radius=$(scale 50)
+exec picom \
+	--corner-radius "$corner_radius" \
+	--shadow-radius "$shadow_radius" \
+	--shadow-offset-x "-$shadow_radius" \
+	--shadow-offset-y "-$shadow_radius"

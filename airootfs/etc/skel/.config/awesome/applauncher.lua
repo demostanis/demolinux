@@ -15,6 +15,8 @@ return function()
         whitelist = app_whitelist,
         app_shape = rrect(),
         apps_per_row = 2,
+        shrink_width = true,
+        shrink_height = true,
     }:toggle()
 end
 

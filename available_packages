@@ -4,6 +4,7 @@ local awesome
 aur awesome-rubato-git
 aur la-capitaine-icon-theme
 picom
+xsettingsd
 local emoji-test
 local bling
 local vicious

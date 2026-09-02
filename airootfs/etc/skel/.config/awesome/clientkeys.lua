@@ -31,9 +31,9 @@ function toggle_firefox_fullscreen(c)
 
         c.x = 0
         -- hmmm where do these margins come from...
-        c.y = -20
+        c.y = dpi(-20)
         c.width = c.screen.geometry.width
-        c.height = c.screen.geometry.height+20
+        c.height = c.screen.geometry.height+dpi(20)
 
         awful.titlebar.hide(c)
     end

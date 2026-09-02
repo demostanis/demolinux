@@ -19,6 +19,6 @@ gears.timer{
 
 autospawn("scc-daemon ~/.config/scc/profiles/default.sccprofile start")
 
---autospawn("/usr/lib/xrandr.sh")
+autospawn("/usr/lib/xrandr.sh")
 
 -- vim:set et sw=4 ts=4:

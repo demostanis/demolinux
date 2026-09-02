@@ -1,0 +1,155 @@
+#!/bin/bash
+
+awesome_metrics() {
+	awesome-client '
+		local s = screen.primary
+		return string.format(
+			"%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d",
+			math.floor(xresources.get_dpi() + 0.5),
+			math.floor(s.dpi + 0.5),
+			beautiful.wibar_height,
+			s.mypanel.width,
+			s.mypanel.height,
+			beautiful.dock_width,
+			beautiful.border_radius,
+			s.mywibar.x,
+			s.mywibar.y,
+			s.mywibar.width,
+			s.mywibar.height,
+			s.mypanel.x,
+			s.mypanel.y,
+			s.mydock.y,
+			s.mydock.height,
+			s.geometry.width,
+			s.geometry.height)'
+}
+
+scale() {
+	awk -v dpi="$1" -v value="$2" 'BEGIN {
+		print int(value * dpi / 96 + 0.5)
+	}'
+}
+
+expected_metrics() {
+	local dpi=$1
+	local screen_width screen_height wibar panel_width panel_height dock radius gap4 gap5 gap8
+	read -r screen_width screen_height < <(xdotool getdisplaygeometry)
+	wibar=$(scale "$dpi" 40)
+	panel_width=$(scale "$dpi" 415)
+	panel_height=$(scale "$dpi" 600)
+	dock=$(scale "$dpi" 50)
+	radius=$(scale "$dpi" 5)
+	gap4=$(scale "$dpi" 4)
+	gap5=$(scale "$dpi" 5)
+	gap8=$(scale "$dpi" 8)
+	panel_height=$((panel_height < screen_height - wibar - gap8 - gap5
+		? panel_height : screen_height - wibar - gap8 - gap5))
+	printf '%s\n' "$dpi:$dpi:$wibar:$panel_width:$panel_height:$dock:$radius:$gap4:$gap4:$((screen_width - gap8)):$wibar:$gap5:$((wibar + gap8)):$((screen_height - dock - gap4)):$dock:$screen_width:$screen_height"
+}
+
+wait_for_metrics() {
+	local expected=$1
+	local actual=
+	for _ in {1..30}; do
+		actual=$(awesome_metrics 2>/dev/null | cut -d '"' -f 2) || true
+		[ "$actual" = "$expected" ] && return
+		sleep 1
+	done
+	echo "expected AwesomeWM metrics $expected but got $actual" >&2
+	return 1
+}
+
+wait_for_xsettings() {
+	local expected_dpi=$1
+	local expected_scale=$2
+	for _ in {1..10}; do
+		if dump_xsettings 2>/dev/null | grep -q "^Xft/DPI $expected_dpi$" &&
+			dump_xsettings 2>/dev/null | grep -q "^Gdk/WindowScalingFactor $expected_scale$"; then
+			return
+		fi
+		sleep 1
+	done
+	echo "xsettingsd did not publish DPI $expected_dpi at scale $expected_scale" >&2
+	return 1
+}
+
+assert_gtk_settings() {
+	local expected_dpi=$1
+	local expected_cursor=$2
+	local settings
+	settings=$(gtk-query-settings)
+	if printf '%s\n' "$settings" | grep -Eq "^[[:space:]]*gtk-xft-dpi: $expected_dpi$" &&
+		printf '%s\n' "$settings" | grep -Eq "^[[:space:]]*gtk-cursor-theme-size: $expected_cursor$"; then
+		return
+	fi
+	printf 'unexpected GTK settings:\n' >&2
+	printf '%s\n' "$settings" | grep -E 'gtk-(xft-dpi|cursor-theme-size):' >&2
+	return 1
+}
+
+wait_for_picom() {
+	local radius=$1
+	local shadow=$2
+	for _ in {1..10}; do
+		pgrep -af "^picom .*--corner-radius $radius .*--shadow-radius $shadow " >/dev/null && return
+		sleep 1
+	done
+	echo "Picom did not restart with radius $radius and shadow $shadow" >&2
+	return 1
+}
+
+assert_panel_controls_fit() {
+	awesome-client '
+		local panel = screen.primary.mypanel
+		local controls = panel:get_children_by_id("system")
+		local geometry = wgeometry(controls[1], panel)
+		return geometry.y + geometry.height <= panel.height' | grep -q 'true$'
+}
+
+set_dpi() {
+	local requested=$1
+	local expected=$2
+	DEMOLINUX_DPI=$requested ~/.local/bin/demolinux-dpi
+	[ "$expected" = auto ] && expected=$(xrdb -get Xft.dpi)
+	awesome-client 'awesome.restart()' >/dev/null 2>&1 || true
+	wait_for_metrics "$(expected_metrics "$expected")"
+}
+
+set_dpi 96 96
+[ "$(xrdb -get Xft.dpi)" = 96 ]
+[ "$(xrdb -get Xcursor.size)" = 24 ]
+[ "$(xrdb -get URxvt.internalBorder)" = 5 ]
+wait_for_xsettings 98304 1
+wait_for_picom 5 50
+
+set_dpi 192 192
+[ "$(xrdb -get Xft.dpi)" = 192 ]
+[ "$(xrdb -get Xcursor.size)" = 48 ]
+[ "$(xrdb -get URxvt.internalBorder)" = 10 ]
+wait_for_xsettings 196608 2
+wait_for_picom 10 100
+assert_gtk_settings 98304 48
+assert_panel_controls_fit
+
+qt_environment=$(awesome-client '
+	return os.getenv("QT_AUTO_SCREEN_SCALE_FACTOR") .. ":" ..
+		os.getenv("QT_ENABLE_HIGHDPI_SCALING") .. ":" ..
+		os.getenv("QT_SCALE_FACTOR_ROUNDING_POLICY")' | cut -d '"' -f 2)
+[ "$qt_environment" = 1:1:PassThrough ]
+
+set_dpi auto auto
+auto_dpi=$(xrdb -get Xft.dpi)
+auto_scale=$(awk -v dpi="$auto_dpi" 'BEGIN {
+	value = int(dpi / 96 + 0.5)
+	print value < 1 ? 1 : value
+}')
+auto_xft_dpi=$((auto_dpi * 1024))
+auto_unscaled_dpi=$((auto_xft_dpi / auto_scale))
+auto_cursor=$(scale "$auto_dpi" 24)
+wait_for_xsettings "$auto_xft_dpi" "$auto_scale"
+assert_gtk_settings "$auto_unscaled_dpi" "$auto_cursor"
+
+if grep -q 'gears/object/properties.lua.*invalid object' ~/.awesome.log; then
+	echo "Awesome applied a delayed property to an invalid object" >&2
+	exit 1
+fi

@@ -1,5 +1,5 @@
-local step = 500
-local margin_before_window_on_focus = 56
+local step = dpi(500)
+local margin_before_window_on_focus = dpi(56)
 
 local global_x = 0
 
@@ -37,10 +37,10 @@ function scroll.arrange(p)
 		local g = {}
 		local c = cls[i]
 
-		g.x = x + 5
-		g.y = beautiful.wibar_height+10
+		g.x = x + dpi(5)
+		g.y = beautiful.wibar_height+dpi(10)
 		g.width = c.width
-		g.height = mouse.screen.geometry.height-beautiful.dock_height-10
+		g.height = mouse.screen.geometry.height-beautiful.dock_height-dpi(10)
 		p.geometries[c] = g
 
 		x = x + layout_width(c)
@@ -231,7 +231,7 @@ local function global_x_of_client(c)
 	if new_global_x <= 0 then
 		new_global_x = 0
 	else
-		new_global_x = new_global_x - (margin_before_window_on_focus-6)
+		new_global_x = new_global_x - (margin_before_window_on_focus-dpi(6))
 	end
 	return -new_global_x
 end
@@ -397,7 +397,7 @@ local function maximize(c)
 		if righthand and righthand ~= c then
 			width = width - margin_before_window_on_focus
 		else
-			width = width - 10
+			width = width - dpi(10)
 		end
 		c.kinda_maximizing = true -- im so messy......
 		c.width = width+1

@@ -6,14 +6,15 @@ local screenrecorder_status = "Not recording"
 local mypanel = nil
 local panes = {}
 local caffeine_enabled = false
+local pane_margin = dpi(50)
 
 local footerw = {
     {
         {
             image = "/usr/share/pixmaps/nyarch.png",
             widget = wibox.widget.imagebox,
-            forced_width = 96,
-            forced_height = 96,
+            forced_width = dpi(96),
+            forced_height = dpi(96),
         },
         {
             {
@@ -29,12 +30,12 @@ local footerw = {
                 layout = wibox.layout.fixed.vertical,
             },
             widget = wibox.container.margin,
-            top = 13, left = -5,
+            top = dpi(13), left = dpi(-5),
         },
         layout = wibox.layout.fixed.horizontal,
     },
     widget = wibox.container.margin,
-    bottom = -30, left = -10
+    bottom = dpi(-30), left = dpi(-10)
 }
 
 local function spawn_wifi()
@@ -76,8 +77,8 @@ local function mkpanew(icon, text, command, opts)
             text = icon,
         },
         widget = wibox.container.margin,
-        bottom = 5, right = 5, left = 5,
-        top = hide_status and 10 or 5
+        bottom = dpi(5), right = dpi(5), left = dpi(5),
+        top = hide_status and dpi(10) or dpi(5)
     },
     {
         widget = wibox.widget.textbox,
@@ -100,13 +101,13 @@ local function mkpanew(icon, text, command, opts)
         {
             contentw,
             widget = wibox.container.margin,
-            margins = 50,
+            margins = pane_margin,
         },
         id = "pane",
-        forced_width = 200,
+        forced_width = dpi(200),
         widget = wibox.container.background,
         bg = beautiful.bg_normal,
-        shape = rrect(10),
+        shape = rrect(dpi(10)),
         command = command,
         opts = opts,
     }
@@ -232,11 +233,14 @@ function show_panel()
 end
 
 return function(s)
+    local panel_y = beautiful.wibar_height+dpi(8)
+    local panel_height = math.min(beautiful.panel_height, s.geometry.height-panel_y-dpi(5))
+    pane_margin = math.max(dpi(10), dpi(50)-math.ceil((beautiful.panel_height-panel_height)/4))
     mypanel = wibox{screen = s,
-        x = 5, y = beautiful.wibar_height+8,
+        x = dpi(5), y = panel_y,
         ontop = true, visible = false,
         width = beautiful.panel_width,
-        height = beautiful.panel_height,
+        height = panel_height,
         bg = beautiful.bg_focus,
     }
     s.mypanel = mypanel
@@ -390,7 +394,7 @@ return function(s)
                             spawn_vpn()
                         end),
                         layout = wibox.layout.fixed.horizontal,
-                        spacing = 5
+                        spacing = dpi(5)
                     },
                     {
                         mkpanew("\u{f03d}", "Record screen", function()
@@ -403,10 +407,10 @@ return function(s)
                             awful.spawn("colorpicker")
                         end, {hide_panel_on_click = true, size = 13, hide_status = true}),
                         layout = wibox.layout.fixed.horizontal,
-                        spacing = 5
+                        spacing = dpi(5)
                     },
                     layout = wibox.layout.fixed.vertical,
-                    spacing = 5
+                    spacing = dpi(5)
                 },
                 {
                     {
@@ -419,11 +423,11 @@ return function(s)
                                         halign = "center",
                                         text = "...",
                                         id = "music-player-message",
-                                        forced_height = 30,
+                                        forced_height = dpi(30),
                                     },
                                     widget = wibox.container.margin,
-                                    top = 20, bottom = 10,
-                                    left = 15, right = 15
+                                    top = dpi(20), bottom = dpi(10),
+                                    left = dpi(15), right = dpi(15)
                                 },
                                 {
                                     {
@@ -456,19 +460,19 @@ return function(s)
                                 layout = wibox.layout.fixed.vertical
                             },
                             widget = wibox.container.margin,
-                            bottom = 20
+                            bottom = dpi(20)
                         },
                         widget = wibox.container.background,
                         bg = beautiful.bg_normal,
                         shape = rrect(),
                     },
                     widget = wibox.container.margin,
-                    top = 5, bottom = -5
+                    top = dpi(5), bottom = dpi(-5)
                 },
                 layout = wibox.layout.fixed.vertical,
             },
             widget = wibox.container.margin,
-            margins = 5
+            margins = dpi(5)
         },
         nil,
         {
@@ -479,14 +483,14 @@ return function(s)
                         {
                             widget = wibox.widget.textbox,
                             font = beautiful.base_icon_font .. " 25",
-                            forced_width = 42,
+                            forced_width = dpi(42),
                             halign = "center",
                             text = "\u{e2fa}",
                             id = "caffeine-icon"
                         },
                         widget = wibox.container.margin,
-                        top = 3, bottom = 3,
-                        left = 8, right = 8,
+                        top = dpi(3), bottom = dpi(3),
+                        left = dpi(8), right = dpi(8),
                     },
                     widget = wibox.container.background,
                     id = "caffeine-button",
@@ -510,7 +514,7 @@ return function(s)
                     end
                 },
                 widget = wibox.container.margin,
-                top = 1, left = 5, bottom = 8
+                top = dpi(1), left = dpi(5), bottom = dpi(8)
             },
             nil,
             {
@@ -521,7 +525,7 @@ return function(s)
                                 {
                                     widget = wibox.widget.textbox,
                                     font = beautiful.base_icon_font .. " 25",
-                                    forced_width = 32,
+                                    forced_width = dpi(32),
                                     text = "\u{f011}"
                                 },
                                 widget = wibox.container.background,
@@ -567,22 +571,23 @@ return function(s)
                                 end
                             },
                             layout = wibox.layout.fixed.horizontal,
-                            spacing = 8
+                            spacing = dpi(8)
                         },
                         widget = wibox.container.margin,
-                        top = 3, bottom = 3,
-                        left = 8, right = 8,
+                        top = dpi(3), bottom = dpi(3),
+                        left = dpi(8), right = dpi(8),
                     },
                     widget = wibox.container.background,
                     shape = rrect(),
                     bg = beautiful.bg_normal,
                 },
                 widget = wibox.container.margin,
-                top = 1, right = 5, bottom = 8
+                top = dpi(1), right = dpi(5), bottom = dpi(8)
             },
         },
         layout = wibox.layout.align.vertical
     }
+    mypanel.height = panel_height
 
     for _, pane in ipairs(mypanel:get_children_by_id("pane")) do
         pane:connect_signal("mouse::enter", function()
@@ -706,7 +711,7 @@ return function(s)
     end)
 
     local containerw = wibox.container.margin(
-        panel_button, 10, 10, 10, 10)
+        panel_button, dpi(10), dpi(10), dpi(10), dpi(10))
     containerw:buttons(gears.table.join(
         awful.button({ }, 1, function()
             show_panel()

@@ -145,7 +145,7 @@ return function()
         -- Calculate a global aspect ratio for
         -- each window to be able to fit without overlap
         -- in the whole screen
-        local screen_diagonal = math.sqrt((s.geometry.width-beautiful.dock_width)^2+s.geometry.height^2)-100
+        local screen_diagonal = math.sqrt((s.geometry.width-beautiful.dock_width)^2+s.geometry.height^2)-dpi(100)
         local total_height = 0
         local diagonal = 0
         for _, c in ipairs(clients) do
@@ -234,12 +234,12 @@ return function()
                 new_popup{
                     widget = wibox.widget{
                         widget = awful.widget.clienticon,
-                        forced_width = 64,
-                        forced_height = 64,
+                        forced_width = dpi(64),
+                        forced_height = dpi(64),
                         client = c
                     },
-                    x = popup_x+(geo.width*ratio/2)-32,
-                    y = popup_y+geo.height*ratio-32,
+                    x = popup_x+(geo.width*ratio/2)-dpi(32),
+                    y = popup_y+geo.height*ratio-dpi(32),
                     bg = gears.color.transparent
                 }:set_xproperty("WM_NAME", "overview_client_icon")
 
@@ -251,7 +251,7 @@ return function()
                             text = c.keybinds,
                         },
                         widget = wibox.container.margin,
-                        margins = 5
+                        margins = dpi(5)
                     },
                     widget = wibox.container.background,
                     bg = beautiful.color4,
@@ -308,12 +308,12 @@ return function()
                         text = filter
                     },
                     widget = wibox.container.margin,
-                    margins = 10
+                    margins = dpi(10)
                 },
                 widget = wibox.container.background,
                 bg = beautiful.bg_normal,
                 shape = rrect(),
-                shape_border_width = 2
+                shape_border_width = dpi(2)
             }
             local w, h = wibox.widget.base.fit_widget(filterw,
                 {dpi = xresources.get_dpi()}, filterw, 9999, 9999)

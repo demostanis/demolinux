@@ -1,17 +1,17 @@
 return function(s)
     local mywibar = wibox {
         screen = s,
-        y = 4, x = 4,
+        y = dpi(4), x = dpi(4),
         ontop = false,
         visible = false,
         bg = beautiful.bg_focus,
-        width = s.geometry.width-8,
+        width = s.geometry.width-dpi(8),
         height = beautiful.wibar_height,
     }
     mywibar:struts{
-        top = beautiful.wibar_height+10, right = 5,
-        bottom = beautiful.dock_width+10,
-        left = 5
+        top = beautiful.wibar_height+dpi(10), right = dpi(5),
+        bottom = beautiful.dock_width+dpi(10),
+        left = dpi(5)
     }
     mywibar:set_xproperty("WM_NAME", "picom_fade_in")
 
@@ -26,7 +26,7 @@ return function(s)
         if w == nil then return nil end
         return wibox.widget{
             w,
-            margins = -8,
+            margins = dpi(-8),
             widget = wibox.container.margin
         }
     end
@@ -43,16 +43,16 @@ return function(s)
                             marginify(mybrightnesswidget),
                             marginify(myvolwidget),
                             marginify(mybatwidget),
-                            spacing = 18,
+                            spacing = dpi(18),
                             layout = wibox.layout.flex.horizontal,
                         },
                         widget = wibox.container.margin,
-                        right = 20
+                        right = dpi(20)
                     },
                     mytimewidget,
                     layout = wibox.layout.fixed.horizontal
                 },
-                right = 10,
+                right = dpi(10),
                 widget = wibox.container.margin
             },
             layout = wibox.layout.align.horizontal,

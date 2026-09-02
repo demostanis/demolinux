@@ -45,6 +45,7 @@ local function hook_icon_draw(icon)
 end
 
 local iconpath = "/usr/share/icons/"..beautiful.icon_theme.."/apps/scalable/"
+local item_size = dpi(48)
 
 local function makelauncher(app, opts)
     local mylauncher = wibox.widget {
@@ -53,16 +54,16 @@ local function makelauncher(app, opts)
                 id = "icon",
                 image = iconpath .. app .. ".svg",
                 widget = wibox.widget.imagebox,
-                forced_width = 28,
-                forced_height = 28
+                forced_width = dpi(28),
+                forced_height = dpi(28)
             },
             widget = wibox.container.margin,
-            margins = 10,
+            margins = dpi(10),
         },
         bg = beautiful.bg_focus,
         widget = wibox.container.background,
-        forced_width = 48,
-        forced_height = 48,
+        forced_width = item_size,
+        forced_height = item_size,
     }
     mylauncher:connect_signal("button::press", function(_,_,_,button)
         if button ~= 1 or overview_shown then return end
@@ -105,11 +106,11 @@ return function(s)
                     {
                         id = "icon",
                         widget = awful.widget.clienticon,
-                        forced_width = 28,
-                        forced_height = 28
+                        forced_width = dpi(28),
+                        forced_height = dpi(28)
                     },
                     widget = wibox.container.margin,
-                    margins = 10,
+                    margins = dpi(10),
                 },
                 {
                     {
@@ -118,30 +119,30 @@ return function(s)
                             wibox.widget.base.make_widget(),
                             widget = wibox.container.background,
                             bg = beautiful.color7,
-                            forced_height = 1,
+                            forced_height = dpi(1),
                             id = "indicator"
                         },
                         wibox.widget.base.make_widget(),
                         layout = wibox.layout.flex.horizontal
                     },
                     widget = wibox.container.margin,
-                    left = 3 
+                    left = dpi(3)
                 },
                 widget = wibox.container.background,
                 layout = wibox.layout.fixed.vertical,
             },
             bg = beautiful.bg_focus,
             widget = wibox.container.background,
-            forced_width = 48,
-            forced_height = 48,
+            forced_width = item_size,
+            forced_height = item_size,
             update_callback = function(self, c)
                 local indicator = self:get_children_by_id("indicator")[1]
 
-                pos = 6
-                target = 2
+                pos = dpi(6)
+                target = dpi(2)
                 if c == client.focus or (c.master and c.master.active_slave == client.focus) then
-                    pos = 2
-                    target = 6
+                    pos = dpi(2)
+                    target = dpi(6)
                 end
 
                 if indicator.lastpos == pos then return end
@@ -153,7 +154,7 @@ return function(s)
                     pos = pos,
                     subscribed = function(w)
                         indicator.shape = function(cr)
-                            cr:rectangle(6-w, 0, w*2, indicator.forced_height)
+                            cr:rectangle(dpi(6)-w, 0, w*2, indicator.forced_height)
                         end
                     end
                 }.target = target
@@ -168,7 +169,7 @@ return function(s)
         buttons = tasklist_buttons,
         update_function = function(w, b, l, d, clients, a)
             local n = #clients+#mylaunchers:get_children()
-            local bs = 48
+            local bs = item_size
             s.mydock.width = bs*n
             s.mydock.x = s.geometry.width/2-bs*n/2
 
@@ -177,7 +178,7 @@ return function(s)
     }
 
     local mydock = wibox {
-        y = s.geometry.height-beautiful.dock_width-4,
+        y = s.geometry.height-beautiful.dock_width-dpi(4),
         ontop = false, visible = false,
         height = beautiful.dock_width,
         screen = s,

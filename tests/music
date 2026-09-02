@@ -1,14 +1,12 @@
 #!/bin/bash
 
-sudo pacman -S --noconfirm tesseract-data-eng >/dev/null 2>&1
-
 expectmusic() {
 	awesome-client 'show_panel()'
 
 	music=
 	tries=${2:-10}
 	for i in {1..$tries}; do
-		music=$(import -window root -crop 409x147+8+442 png:- | tesseract - - 2>/dev/null)
+		music=$(awesome-client 'return screen.primary.mypanel:get_children_by_id("music-player-message")[1].text' | cut -d\" -f2)
 
 		if [[ "$music" = *"$1"* ]]; then
 			xdotool key Escape
@@ -37,12 +35,11 @@ rhythmbox >/dev/null 2>&1 &
 expectwin Rhythmbox
 sleep 5
 
-# play button
-xdotool mousemove 120 110
-xdotool click 1
+rhythmbox-client --play-uri "file://$HOME/music/test1.mp3"
 sleep 1
 
 expectmusic 'demostanis - demolinux song'
+rhythmbox-client --play-uri "file://$HOME/music/test2.mp3"
 expectmusic 'demostanus - demolinoox song'
 
 quitwin

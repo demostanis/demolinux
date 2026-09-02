@@ -402,11 +402,12 @@ return function(s)
         end
     }:start()
 
-    gears.timer{
+    mypanel.music_timer = gears.timer{
         timeout = 1,
         call_now = true,
         callback = update_music_player
-    }:start()
+    }
+    mypanel.music_timer:start()
 
     mypanel:setup{
         {

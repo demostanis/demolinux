@@ -3,8 +3,9 @@ local mutedicon = "\u{f6a9}"
 local unmutedicon = "\u{f6a8}"
 
 local hovering = false
+local percentage, muted
 
-function widgettext()
+local function widgettext()
     if muted then
         return "Muted"
     else
@@ -20,7 +21,7 @@ local myvolwidget = wibox.widget{
     halign = "center"
 }
 
-function fmt(text)
+local function fmt(text)
     if hovering then
         return "<span foreground='" .. beautiful.wibar_widget_hover_color .. "'>" .. text .. "</span>"
     else
@@ -28,7 +29,7 @@ function fmt(text)
     end
 end
 
-function handle(command)
+local function handle(command)
     awful.spawn(command, false)
     vicious.force({myvolwidget})
 end

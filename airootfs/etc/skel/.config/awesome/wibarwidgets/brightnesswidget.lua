@@ -30,7 +30,7 @@ mybrightnesswidget:connect_signal("mouse::leave", function()
     mybrightnesswidget.markup = mybrightnesswidget.oldtext
 end)
 
-function handle(command)
+local function handle(command)
     awful.spawn(command, false)
     vicious.force({mybrightnesswidget})
 end

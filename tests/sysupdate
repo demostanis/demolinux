@@ -57,7 +57,7 @@ sudo cp /boot/initramfs-linux.img $fake_sysupdate_root/system/airootfs/boot/
 
 sudo umount /dev/loop0p3
 sudo mkdir -p /data/sysupdate
-sudo cp /dev/loop0 /data/sysupdate/demolinux.img
+sudo cp --sparse=always "$imgpath" /data/sysupdate/demolinux.img
 sudo losetup -D
 
 sudo sysupdate --no-fetch # sadly

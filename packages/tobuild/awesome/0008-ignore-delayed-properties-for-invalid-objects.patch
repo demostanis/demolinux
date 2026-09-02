@@ -1,0 +1,46 @@
+From 4ffaf865a6121c5de5cbeb2c0a92f709a3e37d78 Mon Sep 17 00:00:00 2001
+From: demostanis <demostanis@protonmail.com>
+Date: Tue, 1 Sep 2026 12:00:00 +0000
+Subject: [PATCH] Ignore delayed properties for invalid objects
+
+A client can be unmanaged between scheduling an expensive legacy property
+setter and running its delayed callback. Avoid dereferencing userdata that
+has become invalid while preserving errors from setters on live objects.
+---
+ lib/gears/object/properties.lua | 16 ++++++++++++----
+ 1 file changed, 12 insertions(+), 4 deletions(-)
+
+diff --git a/lib/gears/object/properties.lua b/lib/gears/object/properties.lua
+index 4a0fba808..77c0c856f 100644
+--- a/lib/gears/object/properties.lua
++++ b/lib/gears/object/properties.lua
+@@ -271,15 +271,23 @@ function object._legacy_accessors(obj, name, capi_name, is_object, join_if, set_e
+         if not delay then
+             apply()
+         else
+-            if not self._private["_delayed_"..name] then
++            local delayed_name = "_delayed_"..name
++            if not self._private[delayed_name] then
+                 gtimer = gtimer or require("gears.timer")
+                 gtimer.delayed_call(function()
+-                    self._private["_delayed_"..name]()
+-                    self._private["_delayed_"..name] = nil
++                    local ok, pending = pcall(function()
++                        local callback = self._private[delayed_name]
++                        self._private[delayed_name] = nil
++                        return callback
++                    end)
++
++                    if ok and pending then
++                        pending()
++                    end
+                 end)
+             end
+ 
+-            self._private["_delayed_"..name] = apply
++            self._private[delayed_name] = apply
+         end
+ 
+         self._private[name] = copy_object(
+-- 
+2.51.0

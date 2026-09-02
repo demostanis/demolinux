@@ -16,20 +16,28 @@ key(){
 
 (
 	cap
+	sleep 0.2
 	key down
+	sleep 0.2
 	key down
+	sleep 0.2
 	key down
+	sleep 0.2
 	key ret
+	sleep 2
 	key ret
 ) | qmp
 
 echo connecting through ssh...
+connected=
 for _ in {1..120}; do
 	if timeout 5 ./dctrl shell "grep -q demolinux /etc/os-release" 2>/dev/null; then
+		connected=y
 		break
 	fi
 	sleep 1
 done
-./dctrl shell "cat /version >/dev/null"
-./dctrl shell "grep -Eq '(^| )btrfs_snapshot=[^ ]*/snapshot-[0-9]{8}-[0-9]{6}( |$)' /proc/cmdline"
-./dctrl shell "sudo poweroff" || :
+[ -n "$connected" ] || { echo snapshot did not boot >&2; exit 1; }
+timeout 10 ./dctrl shell "cat /version >/dev/null"
+timeout 10 ./dctrl shell "grep -Eq '(^| )btrfs_snapshot=[^ ]*/snapshot-[0-9]{8}-[0-9]{6}( |$)' /proc/cmdline"
+timeout 10 ./dctrl shell "sudo poweroff" || :

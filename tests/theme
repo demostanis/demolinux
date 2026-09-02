@@ -24,7 +24,7 @@ kdeconnect-app >/dev/null 2>&1 &
 sleep 3
 modkeypress w
 expectfocus "KDE Connect"
-expect_middle_color "srgb(38,14,65)"
+expect_middle_color "srgb(51,15,65)"
 quitwin
 
 modkeypress Enter

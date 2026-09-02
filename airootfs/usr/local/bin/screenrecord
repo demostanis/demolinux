@@ -1,16 +1,52 @@
 #!/bin/bash
 
-: ${XDG_RUNTIME_DIR:=/run/user/$(id -u)}
-fifo=$XDG_RUNTIME_DIR/screenrecord.fifo
+: "${XDG_RUNTIME_DIR:=/run/user/$(id -u)}"
+state_dir=$XDG_RUNTIME_DIR/screenrecord
+fifo=$state_dir/control.fifo
+pid_file=$state_dir/pid
+stopping_file=$state_dir/stopping
+last_file=$state_dir/last-output
+lock_file=$state_dir/lock
+
+mkdir -p "$state_dir"
+chmod 700 "$state_dir"
 
 recording_active() {
-	(( "$(pgrep screenrecord | wc -l)" > 2 ))
+	local recorder_pid recorder_command
+	[ -r "$pid_file" ] || return 1
+	IFS= read -r recorder_pid < "$pid_file"
+	case $recorder_pid in
+		''|*[!0-9]*) return 1 ;;
+	esac
+	kill -0 "$recorder_pid" 2>/dev/null || return 1
+	recorder_command=$(tr '\0' ' ' < "/proc/$recorder_pid/cmdline" 2>/dev/null) || return 1
+	[[ $recorder_command == *screenrecord*start* ]]
+}
+
+clear_stale_state() {
+	recording_active && return
+	rm -f "$pid_file" "$fifo" "$stopping_file"
+}
+
+wait_until_stopped() {
+	for _ in {1..200}; do
+		recording_active || return 0
+		sleep 0.1
+	done
+	echo "timed out while saving screen recording" >&2
+	return 1
 }
 
 action=${1:-start}
 geometry_mode=${2:-full}
 case "$action" in
 	start)
+		exec 9> "$lock_file"
+		if ! flock -n 9; then
+			echo already recording screen >&2
+			exit 1
+		fi
+		clear_stale_state
 		if recording_active; then
 			echo already recording screen >&2
 			exit 1
@@ -35,10 +71,14 @@ case "$action" in
 				;;
 		esac
 
-		rm -f "$fifo"
-		mkfifo "$fifo" || :
-		# fun fact: using < "$fifo" makes the recording stop after 1 second???????????
-		cat "$fifo" | ffmpeg \
+		mkdir -p "$(dirname "$filename")"
+		rm -f "$fifo" "$stopping_file"
+		mkfifo "$fifo"
+		exec 8<> "$fifo"
+		printf '%s\n' "$$" > "$pid_file"
+		printf '%s\n' "$filename" > "$last_file"
+		trap 'rm -f "$pid_file" "$fifo" "$stopping_file"' EXIT
+		ffmpeg \
 			-framerate $framerate \
 			-video_size "$video_size" \
 			-f x11grab \
@@ -48,22 +88,43 @@ case "$action" in
 			-crf 23 \
 			-vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2,format=yuv420p' \
 			-movflags +faststart \
-			"$filename"
-		rm -f "$fifo"
+			"$filename" <&8 9>&-
 		;;
 	status)
+		clear_stale_state
 		if recording_active; then
-			if [ -e "$fifo" ]; then
+			if [ -e "$stopping_file" ]; then
+				echo Saving...
+			elif [ -p "$fifo" ]; then
 				echo Recording...
 			else
-				echo Saving...
+				echo Starting...
 			fi
 		else
 			echo Not recording
 		fi
 		;;
 	stop)
-		echo q > "$fifo"
-		rm -f "$fifo"
+		clear_stale_state
+		recording_active || exit 0
+		IFS= read -r recorder_pid < "$pid_file"
+		touch "$stopping_file"
+		for _ in {1..20}; do
+			[ -p "$fifo" ] && break
+			sleep 0.1
+		done
+		if [ -p "$fifo" ]; then
+			printf 'q\n' > "$fifo"
+		else
+			kill "$recorder_pid" 2>/dev/null || true
+		fi
+		wait_until_stopped
+		;;
+	output)
+		[ -r "$last_file" ] && cat "$last_file"
+		;;
+	*)
+		echo "usage: screenrecord [start [--slop|--full]|stop|status|output]" >&2
+		exit 2
 		;;
 esac

@@ -34,21 +34,48 @@ if [ "$new" != "$orig" ]; then
 	exit 1
 fi
 
-# TODO: safer?
-( rm -f ~/movies/screenrecording-* || : ) 2>/dev/null
+wait_for_recorder_status() {
+	local expected=$1
+	local actual
+	for _ in {1..100}; do
+		actual=$(screenrecord status)
+		[ "$actual" = "$expected" ] && return
+		sleep 0.1
+	done
+	echo "screen recorder did not reach '$expected' state (got '$actual')" >&2
+	return 1
+}
+
+recording=
+cleanup_recording_test() {
+	screenrecord stop >/dev/null 2>&1 || :
+	[ -n "$recording" ] && rm -f "$recording"
+	rm -f record.mp4
+}
+trap cleanup_recording_test EXIT
+
+screenrecord stop
+wait_for_recorder_status "Not recording"
 
 modkeypress p
 xdotool key r
-sleep 5
+wait_for_recorder_status "Recording..."
+sleep 2
 xdotool key r
-sleep 5
+wait_for_recorder_status "Not recording"
 xdotool key Escape
 
-mv ~/movies/screenrecording-* record.mp4
-trap 'rm -f record.mp4' EXIT
+recording=$(screenrecord output)
+[ -n "$recording" ]
+[ -s "$recording" ]
+ffprobe -v error -select_streams v:0 \
+	-show_entries stream=codec_name,width,height \
+	-of default=noprint_wrappers=1 "$recording"
+mv "$recording" record.mp4
+recording=
 xdg-open record.mp4 >/dev/null 2>&1 & sleep 1
 expectwin 'record.mp4 - mpv'
-wait
+quitwin
 
 modkeypress p
 xdotool key c

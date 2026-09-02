@@ -79,8 +79,8 @@ local scrolling_corner_handler_table = {
 }
 
 -- TODO: move to theme.lua
-local margin_before_window_on_focus = 56
-local margin_window_move_on_click = 200
+local margin_before_window_on_focus = dpi(56)
+local margin_window_move_on_click = dpi(200)
 
 function activate(c)
     local raise = c.x > c.screen.geometry.width-margin_window_move_on_click

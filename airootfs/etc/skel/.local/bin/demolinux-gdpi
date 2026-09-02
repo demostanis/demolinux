@@ -1,0 +1,112 @@
+#!/bin/sh
+
+title='Display scaling'
+helper=$HOME/.local/bin/demolinux-dpi
+settings_dir=${XDG_CONFIG_HOME:-$HOME/.config}
+settings_file=$settings_dir/global-dpi
+
+show_error() {
+	message=$1
+	if command -v yad >/dev/null 2>&1 && [ -n "${DISPLAY:-}" ]; then
+		yad --error --title="$title" --text="$message" --button="Close":0
+	else
+		printf '%s: %s\n' "$title" "$message" >&2
+	fi
+	exit 1
+}
+
+[ -n "${DISPLAY:-}" ] || show_error 'No graphical display is available.'
+command -v yad >/dev/null 2>&1 || show_error 'YAD is required to open the scaling dialog.'
+[ -x "$helper" ] || show_error "The DPI helper is missing: $helper"
+
+current_dpi=$(xrdb -get Xft.dpi 2>/dev/null || true)
+if ! awk -v dpi="$current_dpi" 'BEGIN { exit !(dpi ~ /^[0-9]+$/ && dpi >= 96 && dpi <= 192) }'; then
+	current_dpi=
+	[ -r "$settings_file" ] && IFS= read -r current_dpi < "$settings_file"
+fi
+if ! awk -v dpi="$current_dpi" 'BEGIN { exit !(dpi ~ /^[0-9]+$/ && dpi >= 96 && dpi <= 192) }'; then
+	current_dpi=96
+fi
+
+current_percent=$(awk -v dpi="$current_dpi" 'BEGIN {
+	value = int(dpi * 100 / 96 + 0.5)
+	value = int((value + 2) / 5) * 5
+	if (value < 100) value = 100
+	if (value > 200) value = 200
+	print value
+}')
+current_scale=$(awk -v dpi="$current_dpi" 'BEGIN { printf "%.2f", dpi / 96 }')
+
+selection=$(yad --scale \
+	--title="$title" \
+	--class=Yad \
+	--name=demolinux-gdpi \
+	--window-icon=video-display \
+	--width=520 \
+	--height=230 \
+	--center \
+	--fixed \
+	--text="<big><b>Display scaling</b></big>\n\nCurrent: ${current_scale}x (${current_dpi} DPI)\nChoose a scale, then press Apply. Applications may need to be reopened." \
+	--text-align=center \
+	--min-value=100 \
+	--max-value=200 \
+	--step=5 \
+	--enforce-step \
+	--inc-buttons \
+	--value="$current_percent" \
+	--mark="1.00x:100" \
+	--mark="1.25x:125" \
+	--mark="1.50x:150" \
+	--mark="1.75x:175" \
+	--mark="2.00x:200" \
+	--buttons-layout=end \
+	--button="Cancel":1 \
+	--button="Apply":0)
+status=$?
+case $status in
+	0) ;;
+	1|252) exit 0 ;;
+	*) show_error "The scaling dialog failed with status $status." ;;
+esac
+
+percent=$(awk -v value="$selection" 'BEGIN {
+	if (value !~ /^[0-9]+([.][0-9]+)?$/ || value < 100 || value > 200)
+		exit 1
+	print int(value + 0.5)
+}') || show_error 'The selected scale is invalid.'
+dpi=$(awk -v percent="$percent" 'BEGIN { print int(96 * percent / 100 + 0.5) }')
+scale=$(awk -v dpi="$dpi" 'BEGIN { printf "%.4f", dpi / 96 }')
+scale_label=$(awk -v percent="$percent" 'BEGIN { printf "%.2f", percent / 100 }')
+cursor_size=$(awk -v dpi="$dpi" 'BEGIN { print int(24 * dpi / 96 + 0.5) }')
+
+mkdir -p "$settings_dir" || show_error 'Could not create the settings directory.'
+temporary=$(mktemp "$settings_file.tmp.XXXXXX") || show_error 'Could not create the DPI settings file.'
+cleanup() {
+	[ -n "${temporary:-}" ] && rm -f "$temporary"
+}
+trap cleanup 0 HUP INT TERM
+printf '%s\n' "$dpi" > "$temporary" || show_error 'Could not save the selected DPI.'
+chmod 600 "$temporary" || show_error 'Could not secure the DPI settings file.'
+
+DEMOLINUX_DPI=$dpi "$helper" || show_error 'Could not apply the selected DPI.'
+mv "$temporary" "$settings_file" || show_error 'Could not install the DPI settings file.'
+temporary=
+trap - 0 HUP INT TERM
+
+if command -v awesome-client >/dev/null 2>&1; then
+	awesome-client "
+		glib.setenv('DEMOLINUX_DPI', '$dpi', true)
+		glib.setenv('DEMOLINUX_SCALE', '$scale', true)
+		glib.setenv('XCURSOR_SIZE', '$cursor_size', true)
+		awesome.restart()
+	" >/dev/null 2>&1 || true
+fi
+
+sleep 1
+if command -v notify-send >/dev/null 2>&1; then
+	notify-send "$title" \
+		"Applied ${scale_label}x scaling (${dpi} DPI). Reopen applications that did not resize." \
+		>/dev/null 2>&1 || true
+fi
+
+exit 0

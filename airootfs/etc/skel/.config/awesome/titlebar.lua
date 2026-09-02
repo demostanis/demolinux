@@ -106,7 +106,7 @@ local function setup(c)
                 layout  = wibox.layout.fixed.horizontal
             },
             widget = wibox.container.margin,
-            margins = 4
+            margins = dpi(4)
         },
         {
             {

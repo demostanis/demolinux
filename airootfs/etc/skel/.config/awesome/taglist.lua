@@ -16,11 +16,11 @@ function update_shape(background, i)
     local circle = background:get_children_by_id("circle")[1]
     if i == awful.screen.focused().selected_tag.index then
         circle.shape = function(cr)
-            gears.shape.circle(cr, 15, 15, 7.5)
+            gears.shape.circle(cr, dpi(15), dpi(15), dpi(15)/2)
         end
     else
         circle.shape = function(cr)
-            gears.shape.arc(cr, 15, 15, 3.5, 0, math.pi*2)
+            gears.shape.arc(cr, dpi(15), dpi(15), dpi(7)/2, 0, math.pi*2)
         end
     end
     background.bg = gears.color.transparent
@@ -36,14 +36,14 @@ return function(s)
             {
                 {
                     {
-                        margins = 10,
+                        margins = dpi(10),
                         widget = wibox.container.margin
                     },
                     bg     = beautiful.fg_normal,
                     widget = wibox.container.background,
                     id = "circle"
                 },
-                top = 12,
+                top = dpi(12),
                 widget = wibox.container.margin,
             },
             widget = wibox.container.background,

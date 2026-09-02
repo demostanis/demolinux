@@ -14,7 +14,7 @@ function tpopup(text)
             br, br, br, br),
         ontop = true, bg = beautiful.bg_focus,
         shape = rrect(), visible = false,
-        offset = { y = 5 }
+        offset = { y = dpi(5) }
     }
     return {popup, textwidget}
 end

@@ -14,8 +14,8 @@ local mybrightnesswidget = wibox.widget{
 mybrightnesswidget:connect_signal("mouse::enter", function()
     local geo = mouse.current_widget_geometry
     if overview_shown or not geo then return end
-    geo.x = geo.x + 3
-    geo.y = geo.y + 7
+    geo.x = geo.x + dpi(3)
+    geo.y = geo.y + dpi(7)
 
     popup:move_next_to(geo)
     popup.visible = true

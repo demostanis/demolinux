@@ -22,7 +22,7 @@ local grid = wibox.widget{
     layout = wibox.layout.grid,
     forced_num_cols = grid_cols,
     forced_num_rows = grid_rows,
-    spacing = 5,
+    spacing = dpi(5),
 }
 
 local input_command = "xdotool type %s"
@@ -185,13 +185,15 @@ popup = awful.popup{
                 widget = wibox.widget.textbox
             },
             widget = wibox.container.margin,
-            top = 10, left = 10, right = 10,
-            bottom = 5,
+            top = dpi(10), left = dpi(10), right = dpi(10),
+            bottom = dpi(5),
         },
         {
-            wibox.container.margin(grid, 5, 5, 5, 5),
-            -- who didn't miss random margins?
-            wibox.container.margin(no_resultsw, 161.5, 161.5, 179.5, 178),
+            wibox.container.margin(grid, dpi(5), dpi(5), dpi(5), dpi(5)),
+            {
+                no_resultsw,
+                widget = wibox.container.place,
+            },
             layout = wibox.layout.stack,
         },
         {
@@ -208,12 +210,12 @@ popup = awful.popup{
                         widget = wibox.widget.textbox,
                     },
                     widget = wibox.container.margin,
-                    bottom = 1, left = 5
+                    bottom = dpi(1), left = dpi(5)
                 },
                 layout = wibox.layout.align.horizontal,
             },
             widget = wibox.container.margin,
-            margins = 8
+            margins = dpi(8)
         },
         layout = wibox.layout.align.vertical
     }

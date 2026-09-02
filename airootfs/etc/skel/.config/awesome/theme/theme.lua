@@ -1,5 +1,5 @@
-xresources = require"beautiful.xresources"
-dpi = xresources.apply_dpi
+local xresources = require"beautiful.xresources"
+local dpi = xresources.apply_dpi
 
 local theme = {}
 
@@ -50,28 +50,28 @@ theme.app_launcher_app_normal_hover_color = theme.bg_focus
 theme.app_launcher_background = theme.bg_normal
 
 theme.window_switcher_widget_bg = theme.bg_focus
-theme.window_switcher_widget_border_width = 0
-theme.window_switcher_widget_border_radius = 5
-theme.window_switcher_client_width = 250
-theme.window_switcher_client_height = 300
+theme.window_switcher_widget_border_width = dpi(0)
+theme.window_switcher_widget_border_radius = dpi(5)
+theme.window_switcher_client_width = dpi(250)
+theme.window_switcher_client_height = dpi(300)
 theme.window_switcher_name_normal_color = theme.color15
 theme.window_switcher_name_focus_color = theme.color7
 
-theme.notification_spacing = 5
-theme.notification_width = 400
-theme.notification_offset_y = 55
+theme.notification_spacing = dpi(5)
+theme.notification_width = dpi(400)
+theme.notification_offset_y = dpi(55)
 theme.notification_border_color = theme.color11
 theme.notification_bg = theme.color11
 
-theme.wibar_height = 40
+theme.wibar_height = dpi(40)
 theme.wibar_widget_hover_color = theme.color13
-theme.panel_width = 415
-theme.panel_height = 600
+theme.panel_width = dpi(415)
+theme.panel_height = dpi(600)
 theme.opencode_sidecar_width = dpi(640)
-theme.dock_width = 50
-theme.dock_height = 100
+theme.dock_width = dpi(50)
+theme.dock_height = dpi(100)
 theme.dock_indicator_color = theme.color7
-theme.border_radius = 5
+theme.border_radius = dpi(5)
 
 theme.standalone_floating_windows = {name = {"GIMP Startup"}, class = {"iwgtk", "deferedinstall", "Yad", "copyq"}}
 

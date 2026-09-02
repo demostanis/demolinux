@@ -10,7 +10,7 @@ local mycpuwidget = wibox.widget{
 mycpuwidget:connect_signal("mouse::enter", function()
     local geo = mouse.current_widget_geometry
     if overview_shown or not geo then return end
-    geo.y = geo.y + 7
+    geo.y = geo.y + dpi(7)
 
     popup:move_next_to(geo)
     popup.visible = true

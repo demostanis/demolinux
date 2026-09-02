@@ -36,7 +36,7 @@ local function mktabw(text, active)
                     id = "text",
                 },
                 widget = wibox.container.margin,
-                margins = 4,
+                margins = dpi(4),
             },
             bg = bg_color,
             shape = rrect(),
@@ -44,7 +44,7 @@ local function mktabw(text, active)
             id = "background",
         },
         widget = wibox.container.margin,
-        margins = 2,
+        margins = dpi(2),
     }
     local textw = tabw:get_children_by_id("text")[1]
     tabw:connect_signal("mouse::enter", function()

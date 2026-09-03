@@ -65,6 +65,14 @@ theme.notification_bg = theme.color11
 
 theme.wibar_height = dpi(40)
 theme.wibar_widget_hover_color = theme.color13
+theme.window_preview_height = dpi(30)
+theme.window_preview_refresh_interval = 0.5
+theme.window_preview_zoom_height = dpi(260)
+theme.window_preview_zoom_max_width = dpi(520)
+theme.window_preview_bg = theme.bg_normal
+theme.window_preview_hover_bg = theme.color8
+theme.window_preview_focus_bg = theme.color8
+theme.window_preview_focus_color = theme.color1
 theme.panel_width = dpi(415)
 theme.panel_height = dpi(600)
 theme.opencode_sidecar_width = dpi(640)

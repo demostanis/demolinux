@@ -21,6 +21,7 @@ return function(s)
     local myvolwidget = optional"wibarwidgets/volwidget"
     local mybatwidget = optional"wibarwidgets/batwidget"
     local mytimewidget = optional"wibarwidgets/timewidget"
+    local mywindowpreviews = require"windowpreviews"(s)
 
     local function marginify(w)
         if w == nil then return nil end
@@ -33,7 +34,14 @@ return function(s)
     mywibar:setup {
         {
             require"panel"(s),
-            nil,
+            {
+                mywindowpreviews,
+                top = 4,
+                bottom = 4,
+                left = 10,
+                right = 10,
+                widget = wibox.container.margin,
+            },
             {
                 {
                     {
@@ -56,7 +64,7 @@ return function(s)
                 widget = wibox.container.margin
             },
             layout = wibox.layout.align.horizontal,
-            expand = "none"
+            expand = "inside"
         },
         widget = wibox.container.background,
         shape = rrect(),

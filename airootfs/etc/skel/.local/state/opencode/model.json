@@ -2,13 +2,13 @@
   "recent": [
     {
       "providerID": "openai",
-      "modelID": "gpt-5.6-sol"
+      "modelID": "gpt-6-astra"
     }
   ],
   "favorite": [
     {
       "providerID": "openai",
-      "modelID": "gpt-5.6-sol"
+      "modelID": "gpt-6-astra"
     },
     {
       "providerID": "opencode-go",

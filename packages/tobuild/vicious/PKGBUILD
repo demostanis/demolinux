@@ -4,7 +4,7 @@
 
 pkgname=vicious
 pkgver=2.6.0
-pkgrel=2
+pkgrel=3
 pkgdesc='Widgets for the Awesome window manager'
 url="https://github.com/Mic92/$pkgname"
 arch=(any)
@@ -15,8 +15,15 @@ optdepends=('alsa-utils: for the Volume widget type'
             'hddtemp: for the HDD Temp widget type'
             'wireless_tools: for the Wireless widget type')
 _archive="$pkgname-$pkgver"
-source=("$url/archive/v$pkgver/$_archive.tar.gz")
-sha256sums=('444280d6c96c27a0c523b5f0a5e933a3f6dbf473c0a53bf4a8bce43a9b3dd537')
+source=("$url/archive/v$pkgver/$_archive.tar.gz"
+        '0001-Recognize-not-charging-batteries.patch')
+sha256sums=('444280d6c96c27a0c523b5f0a5e933a3f6dbf473c0a53bf4a8bce43a9b3dd537'
+            '8c4a3dcbc7e3c16ff622914561d9f61c4aa400b472d4e7b74885ee8dab3307d1')
+
+prepare() {
+  cd "$_archive"
+  patch -Np1 -i "$srcdir/0001-Recognize-not-charging-batteries.patch"
+}
 
 package() {
   cd "$_archive"
@@ -25,4 +32,3 @@ package() {
   install -Dm0644 -t "$pkgdir/usr/share/lua/5.4/$pkgname/widgets/" widgets/*.lua
   install -Dm0644 -t "$pkgdir/usr/share/doc/$pkgname/" README.md
 }
-

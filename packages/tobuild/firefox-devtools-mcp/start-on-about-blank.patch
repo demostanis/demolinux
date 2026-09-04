@@ -1,0 +1,66 @@
+--- src/firefox-devtools-mcp-0.7.4/src/cli.ts
++++ src/firefox-devtools-mcp-0.7.4/src/cli.ts
+@@ -52,8 +52,8 @@
+   },
+   startUrl: {
+     type: 'string',
+-    description: 'URL to open when Firefox starts (default: about:home)',
+-    default: process.env.START_URL ?? 'about:home',
++    description: 'URL to open when Firefox starts (default: about:blank)',
++    default: process.env.START_URL ?? 'about:blank',
+   },
+ } satisfies Record<string, YargsOptions>;
+ 
+--- src/firefox-devtools-mcp-0.7.4/README.md
++++ src/firefox-devtools-mcp-0.7.4/README.md
+@@ -54,7 +54,7 @@
+       "command": "npx",
+       "args": ["-y", "firefox-devtools-mcp@latest", "--headless", "--viewport", "1280x720"],
+       "env": {
+-        "START_URL": "about:home"
++        "START_URL": "about:blank"
+       }
+     }
+   }
+--- /dev/null
++++ src/firefox-devtools-mcp-0.7.4/tests/cli.test.ts
+@@ -0,0 +1,39 @@
++import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
++
++describe('startup URL', () => {
++  beforeEach(() => {
++    vi.resetModules();
++    vi.stubEnv('START_URL', undefined);
++  });
++
++  afterEach(() => {
++    vi.unstubAllEnvs();
++    vi.resetModules();
++  });
++
++  it('defaults to a page Firefox WebDriver allows navigating to', async () => {
++    const { parseArguments, cliOptions } = await import('../src/cli.js');
++    const args = parseArguments('test', ['node', 'firefox-devtools-mcp']);
++
++    expect(args.startUrl).toBe('about:blank');
++    expect(cliOptions.startUrl.description).toContain('default: about:blank');
++  });
++
++  it('preserves the START_URL environment override', async () => {
++    vi.stubEnv('START_URL', 'https://example.com/from-env');
++    const { parseArguments } = await import('../src/cli.js');
++
++    expect(parseArguments('test', ['node', 'firefox-devtools-mcp']).startUrl)
++      .toBe('https://example.com/from-env');
++  });
++
++  it('prefers an explicit start URL over the environment', async () => {
++    vi.stubEnv('START_URL', 'https://example.com/from-env');
++    const { parseArguments } = await import('../src/cli.js');
++    const args = parseArguments('test', [
++      'node', 'firefox-devtools-mcp', '--start-url', 'https://example.com/from-cli',
++    ]);
++
++    expect(args.startUrl).toBe('https://example.com/from-cli');
++  });
++});

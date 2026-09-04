@@ -106,12 +106,27 @@ function sidecar.is_user_activation(context)
     return context == "mouse_click" or context == "cycle_window_focus"
 end
 
+function sidecar.is_pending_host(c)
+    if not is_valid(c) then
+        return false
+    end
+    for _, state in pairs(states) do
+        for _, tab in ipairs(state.tabs) do
+            if not tab.removed and tab.launching and tab.launch_matcher
+                and tab.launch_matcher(c) then
+                return true
+            end
+        end
+    end
+    return false
+end
+
 function sidecar.activation_filter(c, context)
     -- Rules request focus before the manage handler attaches a hosted client.
     local image_viewer = is_valid(c) and type(c.instance) == "string"
         and c.instance:sub(1, #image_viewer_instance_prefix)
             == image_viewer_instance_prefix
-    if sidecar.is_hosted(c) or image_viewer then
+    if sidecar.is_hosted(c) or image_viewer or sidecar.is_pending_host(c) then
         if not sidecar.is_user_activation(context) or not client_is_visible(c) then
             return false
         end
@@ -534,6 +549,7 @@ end
 
 local function clear_launch_watch(tab)
     tab.launch_watch_generation = (tab.launch_watch_generation or 0) + 1
+    tab.launch_matcher = nil
     if tab.launch_handler then
         client.disconnect_signal("manage", tab.launch_handler)
         tab.launch_handler = nil
@@ -612,6 +628,7 @@ local function make_tab(state, name, role)
         focus_restore_generation = 0,
         launch_handler = nil,
         launch_timer = nil,
+        launch_matcher = nil,
         launch_watch_generation = 0,
         removed = false,
     }
@@ -892,6 +909,9 @@ local function watch_for_hosted(tab, matcher, kind, expand_on_attach)
     local known = {}
     for _, candidate in ipairs(client.get()) do
         known[candidate] = true
+    end
+    tab.launch_matcher = function(candidate)
+        return not known[candidate] and matcher(candidate)
     end
 
     local function consider(candidate)

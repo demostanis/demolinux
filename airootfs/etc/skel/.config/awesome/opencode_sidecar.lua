@@ -102,6 +102,24 @@ local function client_is_visible(c)
     return ok and visible
 end
 
+function sidecar.is_user_activation(context)
+    return context == "mouse_click" or context == "cycle_window_focus"
+end
+
+function sidecar.activation_filter(c, context)
+    -- Rules request focus before the manage handler attaches a hosted client.
+    local image_viewer = is_valid(c) and type(c.instance) == "string"
+        and c.instance:sub(1, #image_viewer_instance_prefix)
+            == image_viewer_instance_prefix
+    if sidecar.is_hosted(c) or image_viewer then
+        if not sidecar.is_user_activation(context) or not client_is_visible(c) then
+            return false
+        end
+    end
+end
+
+awful.permissions.add_activate_filter(sidecar.activation_filter)
+
 local function owner_is_visible(c)
     if not client_is_visible(c) or c.fullscreen then
         return false
@@ -801,7 +819,7 @@ local function attach_hosted(tab, hosted, kind, expand_on_attach)
         end
         local visible = active_tab(state) == tab
             and state.expanded and owner_is_visible(state.client)
-        if visible and context == "mouse_click" then
+        if visible and sidecar.is_user_activation(context) then
             tab.focus_restore_generation = tab.focus_restore_generation + 1
             tab.focus_before_launch = nil
             tab.restore_focus_pending = false

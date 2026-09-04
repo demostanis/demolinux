@@ -293,7 +293,7 @@ local function cycle_window_focus()
 				target_index = i+1
 			end
 			local target = focus_sequence[target_index]
-			target:activate { context = "mouse_enter", raise = false }
+			target:activate { context = "cycle_window_focus", raise = false }
 			return
 		end
 	end
@@ -336,7 +336,10 @@ client.connect_signal("property::minimized", function(c)
 	end
 end)
 -- sometimes "raised" event is not called, but request::activate is...
-client.connect_signal("request::activate", function(c, _, o)
+client.connect_signal("request::activate", function(c, context, o)
+	if require"opencode_sidecar".activation_filter(c, context) == false then
+		return
+	end
 	if o.raise then
 		on_window_appearance_change(c, true)
 	end

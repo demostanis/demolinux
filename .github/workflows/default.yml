@@ -2,57 +2,117 @@ name: default
 
 on:
   push:
-    branches:
-      - master
-      - trigger
+    branches: [master, trigger]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  nightly:
-    if: github.ref == 'refs/heads/trigger'
-    permissions: write-all # for releasing
+  image:
+    name: ${{ github.ref_name == 'trigger' && 'nightly' || 'release' }}
+    permissions:
+      contents: write
     runs-on: ubuntu-24.04
+    # Cold dependency builds are intentionally allowed to seed the caches.
+    timeout-minutes: 90
+    env:
+      DEMOLINUX_NETWORK_BACKEND: user
+      DEMOLINUX_ROOTFS_CACHE: ${{ github.workspace }}/.ci/rootfs
+      DEMOLINUX_PACMAN_CACHE: ${{ github.workspace }}/.ci/pacman
+      DEMOLINUX_SSH_KEY: ${{ github.workspace }}/.ci/test-key
     steps:
-      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e # v1
-      - name: Set up pacman
-        run: ./.github/setup-pacman.sh
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Check CI helpers and compute cache keys
+        id: inputs
+        run: |
+          python3 .github/test-ci.py
+          {
+            echo "started=$(date +%s)"
+            echo "base=$(python3 bin/build-inputs base)"
+            echo "packages=$(python3 bin/build-inputs packages)"
+            echo "rootfs=$(python3 bin/build-inputs rootfs)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Restore installed root filesystem
+        id: rootfs
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: .ci/rootfs
+          key: rootfs-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.inputs.outputs.rootfs }}
+
+      - name: Restore compiled packages and downloads
+        id: packages
+        if: steps.rootfs.outputs.cache-hit != 'true'
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            packages/db
+            packages/nvimcache
+            packages/zshcache
+            .ci/pacman
+          key: packages-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.inputs.outputs.base }}-${{ steps.inputs.outputs.packages }}
+          restore-keys: |
+            packages-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.inputs.outputs.base }}-
+
+      - name: Set up build tools
+        run: bash .github/setup-pacman.sh
 
       - name: Generate a temporary SSH key for tests
-        run: yes | ssh-keygen -f ~/.ssh/id_ed25519 -q -N ''
+        run: |
+          mkdir -p .ci
+          ssh-keygen -t ed25519 -f "$DEMOLINUX_SSH_KEY" -q -N ''
 
       - name: Build an image
         run: ./demolinux build
 
-      - name: Run tests
-        run: |
-          sudo rm -rf work packages
-          # we make a copy so the released image isn't one that has
-          # been tampered with
-          sudo cp -a out/demolinux*.img out/test-demolinux.img
-          sudo truncate -s 10G out/test-demolinux.img
-          ./demolinux tests
-          sudo rm out/test-demolinux.img
+      # Save before testing so a VM failure does not force another cold build.
+      - name: Save compiled packages and downloads
+        if: steps.rootfs.outputs.cache-hit != 'true' && steps.packages.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            packages/db
+            packages/nvimcache
+            packages/zshcache
+            .ci/pacman
+          key: ${{ steps.packages.outputs.cache-primary-key }}
+
+      - name: Save installed root filesystem
+        if: steps.rootfs.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: .ci/rootfs
+          key: ${{ steps.rootfs.outputs.cache-primary-key }}
+
+      - name: Free build space for VM overlays and release chunks
+        run: sudo rm -rf work packages .ci/rootfs .ci/pacman
+
+      - name: Run all tests in isolated VMs
+        run: bash .github/run-tests.sh out/demolinux*.img
 
       - name: Delete the temporary SSH key
-        run: rm -f  ~/.ssh/id_ed25519{,.pub}
+        if: always()
+        run: rm -f -- "$DEMOLINUX_SSH_KEY" "$DEMOLINUX_SSH_KEY.pub"
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        name: Upload screenshot
+      - name: Upload test diagnostics
         if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: screenshot
-          path: screenshot.png
+          name: test-diagnostics
+          path: .ci/tests
+          retention-days: 7
 
-      - name: Split image into chunks
+      - name: Split image and generate checksums
         run: |
           split -b 2GB out/demolinux*.img demolinux-
-
-      - name: Generate checksums file
-        run: |
           sha256sum demolinux-* out/demolinux*.img > sha256sums.txt
 
-      - name: Publish release
-        uses: andelf/nightly-release@5834076edc55cc05975561c9722043f072ac5c26 # main
-        id: create_release
+      - name: Publish nightly release
+        if: github.ref == 'refs/heads/trigger'
+        uses: andelf/nightly-release@5834076edc55cc05975561c9722043f072ac5c26
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -60,67 +120,32 @@ jobs:
           tag_name: nightly
           name: Nightly release
           body: |
-            Automatically built from GitHub actions, from the master branch.
+            Automatically built and tested from the trigger branch.
             Probably unstable.
-            The image was split into smaller chunks to fit in GitHub releases, you can reassemble it with cat:
-              cat demolinux-* > demolinux.img
+            Reassemble the image with: cat demolinux-* > demolinux.img
           files: |
             ./demolinux-*
             ./sha256sums.txt
 
-  release:
-    if: github.ref == 'refs/heads/master'
-    permissions: write-all # for releasing
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e # v1
-      - name: Set up pacman
-        run: ./.github/setup-pacman.sh
-
-      - name: Generate a temporary SSH key for tests
-        run: yes | ssh-keygen -f ~/.ssh/id_ed25519 -q -N ''
-
-      - name: Build an image
-        run: ./demolinux build
-
-      - name: Run tests
-        run: |
-          sudo rm -rf work packages
-          # we make a copy so the released image isn't one that has
-          # been tampered with
-          sudo cp -a out/demolinux*.img out/test-demolinux.img
-          sudo truncate -s 10G out/test-demolinux.img
-          ./demolinux tests
-          sudo rm out/test-demolinux.img
-
-      - name: Delete the temporary SSH key
-        run: rm -f  ~/.ssh/id_ed25519{,.pub}
-
-      - name: Split image into chunks
-        run: |
-          split -b 2GB out/demolinux*.img demolinux-
-
-      - name: Generate checksums file
-        run: |
-          sha256sum demolinux-* out/demolinux*.img > sha256sums.txt
-
       - name: Publish release
-        uses: actions/create-release@0cb9c9b65d5d1901c1f53e5e66eaf4afd303e70e # v1
-        id: create_release
+        if: github.ref == 'refs/heads/master'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          prerelease: true
-          tag_name: refs/tags/master-${{ github.sha }}
-          release_name: Release build
-          body: |
-            Automatically built from GitHub actions, from the master branch.
-            Shouldn't be unstable.
-            The image was split into smaller chunks to fit in GitHub releases, you can reassemble it with cat:
-              cat demolinux-* > demolinux.img
-      - uses: xresloader/upload-to-github-release@7c5757a90c0bcf0c0e1741da8f2abd7b85e675d0 # main
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "master-$GITHUB_SHA" demolinux-* sha256sums.txt \
+            --target "$GITHUB_SHA" --prerelease --title 'Release build' \
+            --notes 'Automatically built and tested from master. Reassemble with: cat demolinux-* > demolinux.img'
+
+      - name: Report execution time and cache hits
+        if: always() && steps.inputs.outputs.started != ''
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          file: "demolinux-*;sha256sums.txt"
-          release_id: ${{ steps.create_release.outputs.id }}
+          STARTED: ${{ steps.inputs.outputs.started }}
+          ROOTFS_HIT: ${{ steps.rootfs.outputs.cache-hit }}
+          PACKAGES_HIT: ${{ steps.packages.outputs.cache-hit }}
+        run: |
+          {
+            echo "Execution time (excluding runner queue): $(($(date +%s) - STARTED)) seconds"
+            echo "Installed-root cache hit: ${ROOTFS_HIT:-false}"
+            echo "Exact package cache hit: ${PACKAGES_HIT:-not restored}"
+            echo 'Warm-cache target: under 300 seconds, including all tests and publication.'
+          } >> "$GITHUB_STEP_SUMMARY"

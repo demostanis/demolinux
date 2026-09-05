@@ -5,7 +5,7 @@ set -ex
 echo rebooting to check created snapshot..
 
 qmp(){
-	nc -q0 localhost 4444 >/dev/null
+	nc -q0 localhost "${DEMOLINUX_QMP_PORT:-4444}" >/dev/null
 }
 cap(){
 	echo '{"execute":"qmp_capabilities"}'

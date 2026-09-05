@@ -1,20 +1,11 @@
 #!/bin/bash
 
-# this script used to be in the default.yml workflow.
-# however, i needed to duplicate it to use it for
-# the nightly builds workflow. so i thought about yaml
-# anchors! turns out that's complete shit. even when
-# i managed to get something ugly working, turns out
-# GITHUB ACTIONS DOES NOT SUPPORT ANCHORS!!!!!!! fuck
-# it.
+set -euo pipefail
 
 sudo apt-get update
-sudo apt-get install pacman-package-manager \
+sudo apt-get install -y --no-install-recommends pacman-package-manager \
                       archlinux-keyring libarchive-tools \
-                      systemd-container qemu-system zsh
-
-# Let Arch's passt create the namespaces used by its own sandbox.
-sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+                      systemd-container qemu-system-x86 qemu-utils zsh zstd
 
 sudo mkdir -p /etc/pacman.d
 cat <<-EOF | sudo tee -a /etc/pacman.conf >/dev/null
@@ -24,9 +15,9 @@ cat <<-EOF | sudo tee -a /etc/pacman.conf >/dev/null
   [extra]
   Include = /etc/pacman.d/mirrorlist
 EOF
+# shellcheck disable=SC2016 # Pacman expands these placeholders.
 echo Server = 'https://geo.mirror.pkgbuild.com/$repo/os/$arch' | sudo tee /etc/pacman.d/mirrorlist >/dev/null
 
-sudo cp /bin/bash /bin/sh
 sudo cp /usr/share/keyrings /usr/share/pacman/keyrings -r
 
 sudo pacman-key --init
@@ -43,19 +34,16 @@ sudo pacman-key --populate archlinux
 
 # we don't let ./demolinux install these packages
 # since it'd overwrite existing files
-sudo apt-get install arch-install-scripts \
+sudo apt-get install -y --no-install-recommends arch-install-scripts \
   btrfs-progs dosfstools erofs-utils \
-  git gdisk grub-pc libxml2 pv squashfs-tools \
+  git gdisk grub-pc-bin grub-efi-amd64-bin libxml2 pv squashfs-tools \
   unzip xfsprogs memtest86+
 
-sudo mkdir /boot/memtest86+
+sudo mkdir -p /boot/memtest86+
 sudo cp /boot/memtest86+x64.bin /boot/memtest86+/memtest.bin
 sudo cp /boot/memtest86+x64.efi /boot/memtest86+/memtest.efi
 
-sudo pacman -Sddw --noconfirm devtools grub ipxe passt
-sudo bsdtar -C / -xf /var/cache/pacman/pkg/passt-*.zst \
-  usr/bin/passt \
-  usr/bin/passt.avx2
+sudo pacman -Sddw --noconfirm devtools grub ipxe
 
 sudo bsdtar -C / -xf /var/cache/pacman/pkg/devtools-*.zst \
   usr/bin/makechrootpkg \
@@ -82,6 +70,3 @@ sudo bsdtar -C / \
 echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
 sudo udevadm control --reload-rules
 sudo udevadm trigger --name-match=kvm
-
-# add a ssh keypair so we can connect to the VM for tests
-ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519

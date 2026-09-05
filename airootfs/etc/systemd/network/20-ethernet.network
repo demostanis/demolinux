@@ -6,7 +6,8 @@ Name=en*
 Name=eth*
 
 [Network]
-DHCP=yes
+# Only virbr0 requests a lease. A second lease breaks VM port forwarding.
+DHCP=no
 IPv6PrivacyExtensions=yes
 Bridge=virbr0
 

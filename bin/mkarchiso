@@ -163,7 +163,9 @@ _cleanup_pacstrap_dir() {
 # $1: function name
 _run_once() {
     if [[ ! -e "${work_dir}/${run_once_mode}.${1}" ]]; then
+        local started=$SECONDS
         "$1"
+        _msg_info "Timing: ${1} took $((SECONDS - started))s."
         touch "${work_dir}/${run_once_mode}.${1}"
     fi
 }
@@ -171,11 +173,16 @@ _run_once() {
 # Set up custom pacman.conf with custom cache and pacman hook directories.
 _make_pacman_conf() {
     local _cache_dirs _system_cache_dirs _profile_cache_dirs
-    _system_cache_dirs="$(pacman-conf CacheDir| tr '\n' ' ')"
+    _system_cache_dirs="${DEMOLINUX_PACMAN_CACHE:-$(pacman-conf CacheDir| tr '\n' ' ')}"
+    if [[ -n "${DEMOLINUX_PACMAN_CACHE:-}" ]]; then
+        mkdir -p "$DEMOLINUX_PACMAN_CACHE"
+    fi
     _profile_cache_dirs="$(pacman-conf --config "${pacman_conf}" CacheDir| tr '\n' ' ')"
 
     # Only use the profile's CacheDir, if it is not the default and not the same as the system cache dir.
-    if [[ "${_profile_cache_dirs}" != "/var/cache/pacman/pkg" ]] && \
+    if [[ -n "${DEMOLINUX_PACMAN_CACHE:-}" ]]; then
+        _cache_dirs="$DEMOLINUX_PACMAN_CACHE"
+    elif [[ "${_profile_cache_dirs% }" != "/var/cache/pacman/pkg" ]] && \
         [[ "${_system_cache_dirs}" != "${_profile_cache_dirs}" ]]; then
         _cache_dirs="${_profile_cache_dirs}"
     else
@@ -341,75 +348,86 @@ _wait_for_background_jobs() {
     return "$failed"
 }
 
+_package_is_cached() {
+    local pkg="$1" inputs="$2" stored file
+    local manifest="${profile}/packages/db/.inputs/${pkg}"
+    [[ -s "$manifest" && -s "${profile}/packages/db/packages.db.tar.gz" ]] || return 1
+    {
+        read -r stored
+        [[ "$stored" == "$inputs" ]] || return 1
+        local count=0
+        while IFS= read -r file; do
+            [[ "$file" != */* && -s "${profile}/packages/db/$file" ]] || return 1
+            count=$((count + 1))
+        done
+        (( count > 0 ))
+    } < "$manifest"
+}
+
 # Creates and builds packages in a chroot
 _make_chroot() {
-    local chroot_dir pkg cachepkgpath pkgname url path
+    local chroot_dir pkg cachepkgpath pkgname url path inputs recipe_inputs
     local -a clone_pids=()
 
-    chroot_dir="${profile}/packages/chroot" 
-    if [ ! -e "${chroot_dir}" ]; then
-        mkdir -p "${chroot_dir}"
-        _msg_info "Creating build chroot..."
-        mkarchroot -C "${work_dir}/chroot.pacman.conf" "${chroot_dir}/root" base-devel
-        sed -i 's/ debug / !debug /g' "${chroot_dir}/root/etc/makepkg.conf"
-    fi
+    chroot_dir="${profile}/packages/chroot"
+    inputs=$(python3 "${profile}/bin/build-inputs" base)
 
     buildpkg() {
         local pkgdir="$1"
-        local source_commit="${2:-}"
-        local mypkgver mypkgrel pkg commit_stamp needs_build file
+        local inputs="$2"
+        local pkg file
         local -a additional_opts=()
+        local -a archives=()
 
         cd "${pkgdir}"
-        mypkgver=$(grep -m1 '^pkgver=' PKGBUILD)
-        mypkgver=${mypkgver##pkgver=}
-        mypkgrel=$(grep -m1 '^pkgrel=' PKGBUILD)
-        mypkgrel=${mypkgrel##pkgrel=}
         pkg="${pkgdir##*/}"
-        commit_stamp="${profile}/packages/aurcache/.commits/${pkg}"
-        needs_build=n
-        if ! tar tf "${profile}/packages/db/packages.db.tar.gz" 2>/dev/null | grep "$pkg-$mypkgver-$mypkgrel" >/dev/null 2>&1; then
-            needs_build=y
-        elif [[ -n "$source_commit" ]] && \
-            { [[ ! -e "$commit_stamp" ]] || [[ "$(<"$commit_stamp")" != "$source_commit" ]]; }; then
-            needs_build=y
+        if [[ ! -d "${chroot_dir}/root" ]]; then
+            mkdir -p "${chroot_dir}"
+            _msg_info "Creating build chroot..."
+            mkarchroot -C "${work_dir}/chroot.pacman.conf" "${chroot_dir}/root" base-devel
+            sed -i 's/ debug / !debug /g' "${chroot_dir}/root/etc/makepkg.conf"
+            printf '\nMAKEFLAGS="-j%s"\n' "$(nproc)" >> "${chroot_dir}/root/etc/makepkg.conf"
         fi
-        if [[ "$needs_build" = "y" ]]; then
-            chown -R "$SUDO_USER:$SUDO_USER" "${pkgdir}"
+        chown -R "$SUDO_USER:$SUDO_USER" "${pkgdir}"
 
-            realpkgname() {
-                tar -xOf "$1" .PKGINFO 2>/dev/null | \
-                    awk -F"[= ]" '/pkgname/{print$4}'
-            }
+        realpkgname() {
+            tar -xOf "$1" .PKGINFO 2>/dev/null | \
+                awk -F"[= ]" '/^pkgname =/{print$4}'
+        }
 
-            if compgen -G "${profile}"/packages/db/*"$pkg"-*pkg.tar* >/dev/null; then
-                file="${profile}"/packages/db/*"$pkg"-*pkg.tar*
-                if [ "$(realpkgname "$file")" = "$pkg" ]; then
-                    rm "$file"
+        # Remove every previous output of a split package before collecting -I.
+        if [[ -f "${profile}/packages/db/.inputs/${pkg}" ]]; then
+            while IFS= read -r file; do
+                [[ "$file" != */* && "$file" == *.pkg.tar.* ]] || continue
+                rm -f -- "${profile}/packages/db/$file"
+            done < "${profile}/packages/db/.inputs/${pkg}"
+        fi
+        if compgen -G "${profile}"/packages/db/*pkg.tar* >/dev/null; then
+            for file in "${profile}"/packages/db/*pkg.tar*; do
+                if [[ "$(realpkgname "$file")" == "$pkg" ]]; then
+                    rm -- "$file"
+                else
+                    additional_opts+=( -I "$file" )
                 fi
-            fi
-
-            if compgen -G "${profile}"/packages/db/*pkg.tar* >/dev/null; then
-                for file in "${profile}"/packages/db/*pkg.tar*; do
-                    if [[ "${additional_opts[@]}" != *"$(realpkgname "$file")"* ]]; then
-                        additional_opts+=( -I "$file" )
-                    fi
-                done
-            fi
-            "$correct_makechrootpkg" -U "$SUDO_USER" -r "${chroot_dir}" "${additional_opts[@]}"
-            repo-add "${profile}"/packages/db/packages.db.tar.gz *pkg.tar*
-            mv *pkg.tar* "${profile}"/packages/db/
-            if [[ -n "$source_commit" ]]; then
-                printf '%s\n' "$source_commit" > "$commit_stamp"
-            fi
-            _msg_info "Done!"
+            done
         fi
-        pkg_list+=("$pkg")
+        "$correct_makechrootpkg" -U "$SUDO_USER" -r "${chroot_dir}" "${additional_opts[@]}"
+        archives=(*pkg.tar*)
+        repo-add "${profile}"/packages/db/packages.db.tar.gz "${archives[@]}"
+        mv "${archives[@]}" "${profile}"/packages/db/
+        printf '%s\n' "$inputs" "${archives[@]}" > "${profile}/packages/db/.inputs/${pkg}"
+        _msg_info "Done!"
     }
 
     mkdir -p "${profile}"/packages/{aurcache,db,nvimcache,zshcache}/
-    mkdir -p "${profile}/packages/aurcache/.commits"
+    mkdir -p "${profile}/packages/db/.inputs"
     for pkg in "${aur_pkg_list[@]}"; do
+        inputs=$(printf '%s\n' "$inputs" "$pkg" "${locked_commits["aur:${pkg}"]}" | sha256sum | cut -d' ' -f1)
+        pkg_list+=("$pkg")
+        if _package_is_cached "$pkg" "$inputs"; then
+            _msg_info "Using cached AUR package $pkg."
+            continue
+        fi
         _msg_info "Building AUR package $pkg..."
         cachepkgpath="${profile}/packages/aurcache/$pkg"
         _cache_locked_commit \
@@ -417,11 +435,19 @@ _make_chroot() {
             "https://aur.archlinux.org/$pkg.git" \
             "https://github.com/archlinux/aur.git"
         _checkout_locked_commit aur "$pkg" "$cachepkgpath"
-        buildpkg "$cachepkgpath" "${locked_commits["aur:${pkg}"]}"
+        buildpkg "$cachepkgpath" "$inputs"
     done
     for pkg in "${local_pkg_list[@]}"; do
+        recipe_inputs=$(python3 "${profile}/bin/build-inputs" paths "packages/tobuild/$pkg")
+        # Rebuild subsequent packages too: they may link against this package.
+        inputs=$(printf '%s\n' "$inputs" "$pkg" "$recipe_inputs" | sha256sum | cut -d' ' -f1)
+        pkg_list+=("$pkg")
+        if _package_is_cached "$pkg" "$inputs"; then
+            _msg_info "Using cached package $pkg."
+            continue
+        fi
         _msg_info "Building package $pkg..."
-        buildpkg "${profile}/packages/tobuild/$pkg"
+        buildpkg "${profile}/packages/tobuild/$pkg" "$inputs"
     done
 
     for pkg in "${nvim_pkg_list[@]}"; do
@@ -479,6 +505,40 @@ _make_packages() {
     _msg_info "Done! Packages installed successfully."
 }
 
+_make_disk_root() {
+    local cache="${DEMOLINUX_ROOTFS_CACHE:-}" inputs
+    if [[ -n "$cache" ]]; then
+        inputs=$(python3 "${profile}/bin/build-inputs" rootfs)
+        if [[ -s "$cache/rootfs.tar.zst" && -f "$cache/rootfs.key" ]] && \
+            [[ "$(<"$cache/rootfs.key")" == "$inputs" ]]; then
+            _msg_info "Restoring installed root filesystem (exact input match)..."
+            mkdir -p "${work_dir}/root-cache" "${work_dir}/${arch}" "${profile}/packages/db"
+            tar --zstd --xattrs --xattrs-include='*' --acls --numeric-owner \
+                -xpf "$cache/rootfs.tar.zst" -C "${work_dir}/root-cache"
+            mv "${work_dir}/root-cache/airootfs" "$pacstrap_dir"
+            cp -a "${work_dir}/root-cache/db/." "${profile}/packages/db/"
+            rm -rf "${work_dir}/root-cache"
+            pkg_list+=("${aur_pkg_list[@]}" "${local_pkg_list[@]}")
+            buildmode_pkg_list=("${pkg_list[@]}")
+            return
+        fi
+    fi
+
+    _make_custom_airootfs
+    _make_chroot
+    buildmode_pkg_list=("${pkg_list[@]}")
+    _make_packages
+
+    if [[ -n "$cache" ]]; then
+        _msg_info "Caching installed root filesystem before customization and SSH keys..."
+        mkdir -p "$cache"
+        tar --xattrs --acls --numeric-owner -I 'zstd -T0 -1' -cpf "$cache/rootfs.tar.zst.tmp" \
+            -C "${work_dir}/${arch}" airootfs -C "${profile}/packages" db
+        mv "$cache/rootfs.tar.zst.tmp" "$cache/rootfs.tar.zst"
+        printf '%s\n' "$inputs" > "$cache/rootfs.key"
+    fi
+}
+
 # Customize installation.
 _make_customize_airootfs() {
     local passwd=()
@@ -496,10 +556,11 @@ _make_customize_airootfs() {
     eval -- env -u TMPDIR arch-chroot "${pacstrap_dir}" "/usr/share/oomox/run_oomox.sh"
 
     # Copy SSH public key
-    if [[ "$ssh_access" = y* ]] && [ -e ~/.ssh/id_ed25519.pub ]; then
+    local ssh_public_key="${DEMOLINUX_SSH_KEY:-$HOME/.ssh/id_ed25519}.pub"
+    if [[ "$ssh_access" = y* ]] && [ -e "$ssh_public_key" ]; then
         _msg_info "Adding your id_ed25519.pub to ~/.ssh/authorized_keys..."
         mkdir -p "${pacstrap_dir}/etc/skel/.ssh/"
-        cat ~/.ssh/id_ed25519.pub >> "${pacstrap_dir}/etc/skel/.ssh/authorized_keys"
+        cat "$ssh_public_key" >> "${pacstrap_dir}/etc/skel/.ssh/authorized_keys"
         _msg_info "Enabling sshd.service..."
         ln -sf /usr/lib/systemd/system/sshd.service "${pacstrap_dir}/etc/systemd/system/multi-user.target.wants/sshd.service"
         _msg_info "Done!"
@@ -1050,11 +1111,7 @@ _build_disk_image_base() {
 
     [[ "${quiet}" == "y" ]] || _show_config
     _run_once _make_pacman_conf
-    _run_once _make_custom_airootfs
-    _run_once _make_chroot
-    # Building packages might update $pkg_list
-    buildmode_pkg_list=("${pkg_list[@]}")
-    _run_once _make_packages
+    _run_once _make_disk_root
     _run_once _make_version
     _run_once _make_customize_airootfs
     _run_once _make_pkglist

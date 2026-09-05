@@ -1,23 +1,30 @@
-#!/bin/sh
+#!/bin/bash
 # demolinux VM control script
 #  Usage: ./dctrl [shell|pull{,nvim,awesome}|push] [src [dest]]
 
-common_opts=( 60022 -o StrictHostKeyChecking=no -o LogLevel=quiet )
+common_opts=( "${DEMOLINUX_SSH_PORT:-60022}" -o StrictHostKeyChecking=no -o LogLevel=quiet )
+if [[ -n "${DEMOLINUX_SSH_CONTROL_PATH:-}" ]]; then
+	common_opts+=( -o ControlMaster=auto -o ControlPersist=30 -o "ControlPath=$DEMOLINUX_SSH_CONTROL_PATH"
+		-o "UserKnownHostsFile=$DEMOLINUX_SSH_CONTROL_PATH.known_hosts" )
+fi
+if [[ -n "${DEMOLINUX_SSH_KEY:-}" ]]; then
+	common_opts+=( -i "$DEMOLINUX_SSH_KEY" -o IdentitiesOnly=yes -o BatchMode=yes )
+fi
 
 shell(){
 	if [ -n "$1" ]; then
-		ssh -p ${common_opts[@]} demostanis@localhost "$*"
+		ssh -p "${common_opts[@]}" demostanis@localhost "$*"
 	else
-		ssh -p ${common_opts[@]} demostanis@localhost
+		ssh -p "${common_opts[@]}" demostanis@localhost
 	fi
 }
 
 pull(){
-	scp -rP ${common_opts[@]} demostanis@localhost:"$1" "${2:-.}"
+	scp -rP "${common_opts[@]}" demostanis@localhost:"$1" "${2:-.}"
 }
 
 push(){
-	scp -rP ${common_opts[@]} "$1" demostanis@localhost:"${2:-.}"
+	scp -rP "${common_opts[@]}" "$1" demostanis@localhost:"${2:-.}"
 }
 
 case $1 in

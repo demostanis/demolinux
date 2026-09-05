@@ -2,37 +2,56 @@
 
 stop_vm() {
 	echo stopping demolinux...
-	pkill archiso_0 2>/dev/null
-	rm -f .demolinux_out.log
+	if [[ -n "$vm_pid" ]]; then
+		kill "$vm_pid" 2>/dev/null || :
+		wait "$vm_pid" 2>/dev/null || :
+		vm_pid=
+	fi
+	ssh -p "${DEMOLINUX_SSH_PORT:-60022}" -S "$DEMOLINUX_SSH_CONTROL_PATH" -O exit demostanis@localhost 2>/dev/null || :
+	rm -rf -- "$control_dir"
 }
 
 die() {
 	[ $# != 0 ] && echo "$*" >&2
+	timeout 5 python3 .github/qmp-screenshot.py "$log_dir/boot.png" || :
 	echo awesome log:
-	timeout 2 ./dctrl shell "cat ~/.awesome.log"
-	timeout 3 ./dctrl pull /data/screenshot.png
-	stop_vm
+	timeout 2 ./dctrl shell "cat ~/.awesome.log" | tee "$log_dir/awesome.log"
+	timeout 3 ./dctrl pull /data/screenshot.png "$log_dir/screenshot.png"
 	echo tests failed
 	exit 1
 }
 
 cd "$(dirname "$(realpath "$0")")"/..
+set -o pipefail
+log_dir=${DEMOLINUX_TEST_LOG_DIR:-.}
+mkdir -p -- "$log_dir"
+vm_log="$log_dir/console.log"
+control_dir=$(mktemp -d)
+export DEMOLINUX_SSH_CONTROL_PATH="$control_dir/ssh"
+vm_pid=
+trap stop_vm EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
-run() {
-	set +o pipefail
-	(./demolinux __headless | cat -v | tee .demolinux_out.log) || kill -USR1 $$
-}
-
-trap 'die failed to run demolinux. did you run ./demolinux build first\?' USR1
-run &
+image=${DEMOLINUX_TEST_IMAGE:-}
+if [[ -z "$image" ]]; then
+	images=(out/demolinux*.img(Nom))
+	(( ${#images} )) || die 'No image found. Run ./demolinux build first.'
+	image=$images[1]
+fi
+./bin/run_archiso -S -T 10G -H -i "$image" > >(cat -v | tee "$vm_log") 2>&1 &
+vm_pid=$!
 
 # can't use timeout 60 zsh -c ... since signal
 # handlers won't be called...
 start=$(date +%s)
 while :; do
 	now=$(date +%s)
-	if (( now - start >= 240 )); then
-		die VM did not start after 4 minutes.
+	if ! kill -0 "$vm_pid" 2>/dev/null; then
+		die 'VM process exited before SSH became available.'
+	fi
+	if (( now - start >= ${DEMOLINUX_BOOT_TIMEOUT:-240} )); then
+		die "VM did not start after ${DEMOLINUX_BOOT_TIMEOUT:-240} seconds."
 	fi
 
 	[ -t ] && reset
@@ -62,9 +81,12 @@ echo changing display resolution...
 # for the screen to refresh
 sleep 5
 
-./dctrl shell "mkdir /tmp/tests"
-( cd tests; for t in ${*:-*}; do ../dctrl push "$t" /tmp/tests >/dev/null; done )
-./dctrl push tests/utils /tmp/tests >/dev/null
+selected=("$@")
+if (( $# == 0 )); then
+	selected=(${${(f)"$(find tests -mindepth 1 -maxdepth 1 ! -name run ! -name utils)"}#tests/})
+fi
+# One connection and one stream instead of an scp handshake for every test.
+tar -C tests -cf - -- "${selected[@]}" utils | ./dctrl shell 'mkdir -p /tmp/tests && tar -xf - -C /tmp/tests' || die 'Could not transfer tests.'
 
 ./dctrl shell <<'EOC' || die
 
@@ -109,7 +131,7 @@ if [[ $# == 0 || "$*" == *sysupdate* ]]; then
 	tries=120
 	found=
 	for i in {1..$tries}; do
-		if grep -q 'sysupdate test succeeded' .demolinux_out.log; then
+		if grep -q 'sysupdate test succeeded' "$vm_log"; then
 			found=y
 			break
 		fi
@@ -126,4 +148,3 @@ if [[ $# == 0 || "$*" == *sysupdate* ]]; then
 fi
 
 echo all tests succeeded
-stop_vm

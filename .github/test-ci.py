@@ -979,6 +979,18 @@ class PublisherTests(TemporaryTest):
         self.publish(client)
         self.assertTrue(all(event[0] == "GET" for event in client.events))
 
+    def test_full_benchmark_can_republish_an_unchanged_commit(self):
+        client = self.GitHub(sha="new")
+        client.release["assets"] = [
+            {"id": i, "name": path.name, "size": path.stat().st_size}
+            for i, path in enumerate(self.files)
+        ]
+        publisher.publish(
+            client, "nightly", "new", "Title", "Body", self.files, force=True
+        )
+        self.assertTrue(any(event[0] == "UPLOAD" for event in client.events))
+        self.assertFalse(client.release["draft"])
+
     def test_incomplete_unchanged_release_is_repaired(self):
         client = self.GitHub(sha="new")
         self.publish(client)

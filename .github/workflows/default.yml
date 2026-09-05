@@ -4,6 +4,11 @@ on:
   push:
     branches: [master, trigger]
   workflow_dispatch:
+    inputs:
+      publish_unchanged:
+        description: Upload assets even when this commit is already published (full timing benchmark)
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -164,6 +169,7 @@ jobs:
         if: github.ref == 'refs/heads/trigger' || github.ref == 'refs/heads/master'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEMOLINUX_PUBLISH_UNCHANGED: ${{ inputs.publish_unchanged && '1' || '0' }}
         run: python3 .github/publish-release.py
 
       - name: Report execution time and cache hits

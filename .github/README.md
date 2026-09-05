@@ -16,9 +16,15 @@ guarantee: cache transfer, runner contention, VPN tests, and multi-GB release
 uploads depend on external services. The first run seeds caches; subsequent
 test-only changes keep the build caches warm. Publication is skipped when the
 tag and complete assets already match the commit, so a full publication
-benchmark needs a new commit, not just a rerun of an already-published one.
+benchmark needs a new commit or the `publish_unchanged` workflow-dispatch option.
 Do not enforce the target by skipping tests or killing a valid cold build
 after five minutes.
+
+Repeat a complete warm benchmark, including publication:
+
+```sh
+gh workflow run default.yml --ref trigger -f publish_unchanged=true
+```
 
 ## Caches
 

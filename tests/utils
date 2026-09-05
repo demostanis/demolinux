@@ -34,4 +34,27 @@ quitwin() {
 	modkeypress q
 }
 
+expectawesome() {
+	local actual deadline=$((SECONDS + ${2:-10}))
+	while (( SECONDS < deadline )); do
+		actual=$(awesome-client "$1")
+		[[ "$actual" == *'boolean true' ]] && return
+		sleep 0.1
+	done
+	echo "AwesomeWM condition did not become true: $1 ($actual)" >&2
+	awesome-client 'local state = {}
+		for _, c in ipairs(screen.primary.clients) do
+			table.insert(state, string.format("%s: x=%d width=%d focus=%s floating=%s",
+				c.name or "unnamed", c.x, c.width, tostring(c == client.focus), tostring(c.floating)))
+		end
+		return table.concat(state, "\n")' >&2
+	exit 1
+}
+
+expectviewport() {
+	expectawesome 'local c = client.focus
+		return c and require"layout".leftmost_window() == c
+			and c.x >= 0 and c.x <= require"beautiful.xresources".apply_dpi(64)'
+}
+
 # vim:set ft=bash:

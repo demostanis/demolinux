@@ -10,16 +10,7 @@ ffmpeg -f lavfi \
 
 mpv-hardened --loop-file=inf /tmp/output.mp4 >/tmp/mpv.log 2>&1 &
 player=$!
-sleep 3
-if ! kill -0 "$player" 2>/dev/null; then
-	if wait "$player"; then
-		status=0
-	else
-		status=$?
-	fi
-	echo "mpv exited unexpectedly ($status)" >&2
-	cat /tmp/mpv.log >&2
-	exit 1
-fi
-kill "$player"
-wait "$player" || :
+expectwin 'output.mp4 - mpv' 20
+expectfocus 'output.mp4 - mpv'
+quitwin
+wait "$player"

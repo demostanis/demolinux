@@ -19,26 +19,32 @@ expect_middle_color() {
 	exit 1
 }
 
-yad &
-sleep 1
+yad --title='GTK theme test' &
+expectwin 'GTK theme test'
+expectfocus 'GTK theme test'
 expect_middle_color "srgb(26,9,45)"
 quitwin
 
 kdeconnect-app >/dev/null 2>&1 &
-sleep 3
-modkeypress w
+expectwin 'KDE Connect'
 expectfocus "KDE Connect"
+expectviewport
+modkeypress w
+expectawesome 'return client.focus.width > client.focus.screen.geometry.width * 0.85'
 expect_middle_color "srgb(51,15,65)"
 quitwin
 
 urxvt -title 'theme left' -e sleep infinity &
 expectwin 'theme left'
 expectfocus 'theme left'
+expectviewport
 urxvt -title 'theme right' -e sleep infinity &
 expectwin 'theme right'
 expectfocus 'theme right'
+expectviewport
 modkeypress h
 expectfocus 'theme left'
+expectviewport
 modkeypress minus
 
 resize_focused_window() {

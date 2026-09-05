@@ -64,6 +64,7 @@ while :; do
 done
 
 echo running demolinux tests...
+echo "VM SSH ready after $((now - start)) seconds"
 if ! timeout 30 ./dctrl shell <<EOC; then
 while :; do
 	if grep 'awesomeWM started' ~/.awesome.log 2>/dev/null; then
@@ -91,11 +92,13 @@ tar -C tests -cf - -- "${selected[@]}" utils | ./dctrl shell 'mkdir -p /tmp/test
 ./dctrl shell <<'EOC' || die
 
 export DISPLAY=:0
+setup_started=$SECONDS
 cd /tmp/tests
 . ./utils
 
 # wait for pacman to work
 sudo systemctl start pacman-init
+echo "Guest package-key setup took $((SECONDS - setup_started)) seconds"
 
 # A descheduled xdotool process can otherwise turn a single key into repeats.
 xset r off
@@ -103,7 +106,7 @@ xset r off
 while read -r test; do
 	if [ "$test" != ./run -a "$test" != ./utils \
 		-a "$test" != ./sysupdate -a "$test" != ./sysupdate_snapshot ]; then
-		echo running $test...
+		echo "running $test at guest +${SECONDS}s..."
 		(
 			set -ex
 			trap '

@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from typing import Any
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -107,6 +108,33 @@ class InputTests(TemporaryTest):
         link.unlink()
         link.symlink_to("two")
         self.assertNotEqual(old, self.key())
+
+    def test_image_assembly_changes_do_not_invalidate_compiled_packages(self):
+        source = (ROOT / "bin/mkarchiso").read_text()
+        builder = self.write("bin/mkarchiso", source)
+        before = inputs.compiler_fingerprint()
+        root_before = inputs.fingerprint(["bin/mkarchiso"])
+        builder.write_text(
+            source.replace("Configuring grub...", "Configuring the boot loader...")
+        )
+        self.assertEqual(before, inputs.compiler_fingerprint())
+        self.assertNotEqual(root_before, inputs.fingerprint(["bin/mkarchiso"]))
+
+    def test_compiler_and_dependency_validation_changes_invalidate_packages(self):
+        source = (ROOT / "bin/mkarchiso").read_text()
+        builder = self.write("bin/mkarchiso", source)
+        before = inputs.compiler_fingerprint()
+        for old, new in (
+            ("Creating build chroot...", "Creating another chroot..."),
+            ("duplicate dependency lock entry", "changed dependency validation"),
+        ):
+            builder.write_text(source.replace(old, new))
+            self.assertNotEqual(before, inputs.compiler_fingerprint())
+
+    def test_unknown_compiler_structure_fails_closed(self):
+        self.write("bin/mkarchiso", "unknown implementation")
+        with self.assertRaises(ValueError):
+            inputs.compiler_fingerprint()
 
 
 class PackageCacheTests(TemporaryTest):
@@ -250,6 +278,265 @@ class RootCacheTests(TemporaryTest):
             (self.path / "installations").read_text(), "installed\ninstalled\n"
         )
         self.assertEqual((self.root / "input").read_text(), "second")
+
+    def test_warm_restore_supports_a_precreated_image_root(self):
+        self.build("first")
+        shutil.rmtree(self.work)
+        self.root.mkdir(parents=True)
+        self.build("first")
+        self.assertEqual((self.root / "input").read_text(), "first")
+        self.assertFalse((self.root / "airootfs").exists())
+
+
+class DiskLifecycleTests(TemporaryTest):
+    def test_cleanup_only_releases_owned_mounts(self):
+        command = (
+            function("_close_hybrid_disk")
+            + r"""
+        umount() { printf 'umount %s\n' "$*" >> "$LOG"; }
+        losetup() { printf 'losetup %s\n' "$*" >> "$LOG"; }
+        _close_hybrid_disk
+        [[ ! -e "$LOG" ]]
+        disk_boot_mounted=y disk_root_mounted=y disk_loop_owned=y
+        _close_hybrid_disk
+        _close_hybrid_disk
+        """
+        )
+        log = self.path / "commands"
+        subprocess.run(
+            ["bash", "-eu", "-c", command],
+            check=True,
+            env={**os.environ, "LOG": str(log)},
+        )
+        self.assertEqual(
+            log.read_text().splitlines(),
+            [
+                "umount /mnt/demolinux/boot",
+                "umount --recursive /mnt/demolinux/root",
+                "losetup -d /dev/loop0",
+            ],
+        )
+
+    def test_busy_mount_or_loop_is_rejected_before_writing(self):
+        for busy in ("mount", "loop"):
+            command = (
+                function("_prepare_hybrid_disk")
+                + r"""
+            _msg_error() { exit 77; }
+            mountpoint() { [[ "$BUSY" == mount ]]; }
+            losetup() { [[ "$BUSY" == loop ]]; }
+            truncate() { exit 99; }
+            _prepare_hybrid_disk
+            """
+            )
+            result = subprocess.run(
+                ["bash", "-eu", "-c", command], env={**os.environ, "BUSY": busy}
+            )
+            self.assertEqual(result.returncode, 77)
+
+
+@unittest.skipUnless(
+    os.geteuid() == 0 and os.environ.get("DEMOLINUX_DISK_TESTS") == "1",
+    "requires opt-in root access to an unused loop device",
+)
+class DiskIntegrationTests(TemporaryTest):
+    def test_cached_root_stays_a_subvolume_and_resumes_without_reformatting(self):
+        self.write("profile/bin/build-inputs", 'print("key")\n')
+        source = self.write("seed/airootfs/payload", "cached root")
+        source.chmod(0o751)
+        os.setxattr(source, "user.fixture", b"preserved")
+        (source.parent / "link").symlink_to("payload")
+        database = self.write("seed/db/packages.db.tar.gz", "cached repository")
+        os.chown(database, 1001, 1001)
+        self.write("profile/cache/rootfs.key", "key\n")
+        self.write("profile/grub/splash.png", "fixture")
+        self.write("fake-grub", '#!/bin/bash\nprintf "fixture config\\n" > "$2"\n')
+        work = self.path / "work"
+        work.mkdir()
+        archive = self.path / "profile/cache/rootfs.tar.zst"
+        subprocess.run(
+            [
+                "tar",
+                "--zstd",
+                "--xattrs",
+                "--acls",
+                "-cpf",
+                str(archive),
+                "-C",
+                str(self.path / "seed"),
+                "airootfs",
+                "db",
+            ],
+            check=True,
+        )
+        program = "\n".join(
+            function(name)
+            for name in (
+                "_prepare_hybrid_disk",
+                "_make_disk_root",
+                "_make_bootmode_hybrid.grub.gpt",
+            )
+        )
+        program += "\n" + function("_close_hybrid_disk").replace(
+            "_close_hybrid_disk", "_really_close", 1
+        )
+        program += r"""
+        trap '_really_close' EXIT
+        _close_hybrid_disk() { :; }
+        _msg_info() { :; }
+        _msg_error() { printf '%s\n' "$1" >&2; exit 1; }
+        copy_boot_files() {
+            mkdir -p "$pacstrap_dir/boot"
+            printf 'kernel fixture' > "$pacstrap_dir/boot/vmlinuz-linux"
+        }
+        grub-install() { mkdir -p /mnt/demolinux/boot/grub; }
+        which() { printf '%s\n' "$FAKE_GRUB"; }
+        pkg_list=(base) aur_pkg_list=(aur) local_pkg_list=(local)
+        disk_root_in_place=y
+        _prepare_hybrid_disk
+        pacstrap_dir=/mnt/demolinux/root/system/airootfs
+        _make_disk_root
+        btrfs subvolume show "$pacstrap_dir" >/dev/null
+        [[ "$(<"$pacstrap_dir/payload")" == 'cached root' ]]
+        [[ "$(stat -c %a "$pacstrap_dir/payload")" == 751 ]]
+        [[ -L "$pacstrap_dir/link" && ! -d "$pacstrap_dir/airootfs" ]]
+        python3 -c 'import os,sys; assert os.getxattr(sys.argv[1], "user.fixture") == b"preserved"' "$pacstrap_dir/payload"
+        _make_bootmode_hybrid.grub.gpt
+        [[ "$(<"$pacstrap_dir/packages/packages.db.tar.gz")" == 'cached repository' ]]
+        [[ "$(btrfs property get "$pacstrap_dir" ro)" == 'ro=true' ]]
+        original_uuid=$(blkid -s UUID -o value /dev/loop0p3)
+        printf 'key\n' > "$work_dir/direct-root.key"
+        _really_close
+        _prepare_hybrid_disk
+        _make_bootmode_hybrid.grub.gpt
+        [[ ! -d "$pacstrap_dir/packages/db" ]]
+        [[ "$(stat -c %u "$pacstrap_dir/packages/packages.db.tar.gz")" == 0 ]]
+        touch "$work_dir/base._make_bootmode_hybrid.grub.gpt"
+        _really_close
+        _prepare_hybrid_disk
+        [[ "$(blkid -s UUID -o value /dev/loop0p3)" == "$original_uuid" ]]
+        [[ "$(btrfs property get "$pacstrap_dir" ro)" == 'ro=true' ]]
+        [[ "$(<"$pacstrap_dir/boot/vmlinuz-linux")" == 'kernel fixture' ]]
+        _really_close
+        """
+        subprocess.run(
+            ["bash", "-eu", "-c", program],
+            check=True,
+            timeout=90,
+            env={
+                **os.environ,
+                "profile": str(self.path / "profile"),
+                "work_dir": str(work),
+                "arch": "x86_64",
+                "FAKE_GRUB": str(self.path / "fake-grub"),
+                "DEMOLINUX_ROOTFS_CACHE": str(archive.parent),
+            },
+        )
+        self.assertNotEqual(
+            subprocess.run(["losetup", "/dev/loop0"], capture_output=True).returncode, 0
+        )
+
+
+class InPlaceBuildTests(TemporaryTest):
+    def setUp(self):
+        super().setUp()
+        self.write("bin/build-inputs", 'print("key")\n')
+        self.write("cache/rootfs.tar.zst", "archive")
+        self.write("cache/rootfs.key", "key\n")
+        (self.path / "work").mkdir()
+
+    def build(self, multiple=False):
+        command = (
+            function("_build_disk_image_base")
+            + r"""
+        pkg_list=(base)
+        buildmodes=(disk_image)
+        [[ -z "$MULTIPLE" ]] || buildmodes+=(iso)
+        bootmodes=(hybrid.grub.gpt)
+        _msg_info() { :; }
+        _msg_error() { printf '%s\n' "$1" >&2; exit 1; }
+        _run_once() { "$1"; }
+        _make_pacman_conf() { :; }
+        _prepare_hybrid_disk() { printf 'prepare\n' >> "$LOG"; }
+        _make_disk_root() { printf 'root %s\n' "$pacstrap_dir" >> "$LOG"; }
+        _make_version() { :; }
+        _make_customize_airootfs() { :; }
+        _make_pkglist() { :; }
+        _move_boot_to_temp_location() { :; }
+        _make_bootmodes() { printf 'boot\n' >> "$LOG"; }
+        _cleanup_pacstrap_dir() { printf 'cleanup\n' >> "$LOG"; }
+        _build_disk_image_base
+        """
+        )
+        return subprocess.run(
+            ["bash", "-eu", "-c", command],
+            capture_output=True,
+            text=True,
+            env={
+                **os.environ,
+                "LOG": str(self.path / "commands"),
+                "profile": str(self.path),
+                "work_dir": str(self.path / "work"),
+                "arch": "x86_64",
+                "packages": "packages",
+                "SOURCE_DATE_EPOCH": "1",
+                "MULTIPLE": "1" if multiple else "",
+                "quiet": "y",
+                "DEMOLINUX_ROOTFS_CACHE": str(self.path / "cache"),
+            },
+        )
+
+    def test_exact_cache_restores_directly_into_the_image(self):
+        result = self.build()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            (self.path / "commands").read_text().splitlines(),
+            [
+                "prepare",
+                "root /mnt/demolinux/root/system/airootfs",
+                "boot",
+            ],
+        )
+        self.assertEqual((self.path / "work/direct-root.key").read_text(), "key\n")
+
+    def test_cache_miss_keeps_the_legacy_build_path(self):
+        self.write("cache/rootfs.key", "different\n")
+        result = self.build()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            (self.path / "commands").read_text().splitlines(),
+            [
+                f"root {self.path}/work/x86_64/airootfs",
+                "boot",
+                "cleanup",
+            ],
+        )
+
+    def test_multiple_output_modes_keep_the_shared_staging_root(self):
+        result = self.build(multiple=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            (self.path / "commands").read_text().splitlines(),
+            [
+                f"root {self.path}/work/x86_64/airootfs",
+                "boot",
+                "cleanup",
+            ],
+        )
+
+    def test_resume_rejects_changed_inputs(self):
+        self.write("work/direct-root.key", "different\n")
+        result = self.build()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("inputs changed", result.stderr)
+        self.assertFalse((self.path / "commands").exists())
+
+    def test_incomplete_resume_requires_the_matching_root_cache(self):
+        self.write("work/direct-root.key", "key\n")
+        (self.path / "cache/rootfs.tar.zst").unlink()
+        result = self.build()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("root cache is unavailable", result.stderr)
 
 
 class LauncherTests(TemporaryTest):
@@ -522,9 +809,14 @@ class ReleaseTests(TemporaryTest):
 class PublisherTests(TemporaryTest):
     class GitHub:
         def __init__(
-            self, existing=True, draft=False, sha="old", lookup=True, fail=False
+            self,
+            existing=True,
+            draft=False,
+            sha: str | None = "old",
+            lookup=True,
+            fail=False,
         ):
-            self.release = (
+            self.release: Any = (
                 {
                     "id": 77,
                     "tag_name": "nightly",
@@ -538,7 +830,7 @@ class PublisherTests(TemporaryTest):
             self.sha, self.lookup, self.fail = sha, lookup, fail
             self.events = []
 
-        def api(self, method, path, data=None, missing_ok=False):
+        def api(self, method, path, data: Any = None, missing_ok=False):
             self.events.append((method, path, data))
             if method == "GET" and path.startswith("releases/tags/"):
                 return self.release if self.lookup else None

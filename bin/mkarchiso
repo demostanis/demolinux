@@ -262,7 +262,9 @@ machine_name() {\
 }
 ' "$(which makechrootpkg)" > "$correct_makechrootpkg"
 chmod +x "$correct_makechrootpkg"
-trap 'rm "$correct_makechrootpkg"' EXIT
+trap '_close_hybrid_disk || :; rm -f "$correct_makechrootpkg"' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 # Ensures the commit locked for a Git-backed package is cached locally.
 _cache_locked_commit() {
@@ -512,12 +514,10 @@ _make_disk_root() {
         if [[ -s "$cache/rootfs.tar.zst" && -f "$cache/rootfs.key" ]] && \
             [[ "$(<"$cache/rootfs.key")" == "$inputs" ]]; then
             _msg_info "Restoring installed root filesystem (exact input match)..."
-            mkdir -p "${work_dir}/root-cache" "${work_dir}/${arch}" "${profile}/packages/db"
+            mkdir -p "$(dirname "$pacstrap_dir")" "${profile}/packages"
             tar --zstd --xattrs --xattrs-include='*' --acls --numeric-owner \
-                -xpf "$cache/rootfs.tar.zst" -C "${work_dir}/root-cache"
-            mv "${work_dir}/root-cache/airootfs" "$pacstrap_dir"
-            cp -a "${work_dir}/root-cache/db/." "${profile}/packages/db/"
-            rm -rf "${work_dir}/root-cache"
+                -xpf "$cache/rootfs.tar.zst" \
+                -C "$(dirname "$pacstrap_dir")" airootfs -C "${profile}/packages" db
             pkg_list+=("${aur_pkg_list[@]}" "${local_pkg_list[@]}")
             buildmode_pkg_list=("${pkg_list[@]}")
             return
@@ -533,7 +533,7 @@ _make_disk_root() {
         _msg_info "Caching installed root filesystem before customization and SSH keys..."
         mkdir -p "$cache"
         tar --xattrs --acls --numeric-owner -I 'zstd -T0 -1' -cpf "$cache/rootfs.tar.zst.tmp" \
-            -C "${work_dir}/${arch}" airootfs -C "${profile}/packages" db
+            -C "$(dirname "$pacstrap_dir")" airootfs -C "${profile}/packages" db
         mv "$cache/rootfs.tar.zst.tmp" "$cache/rootfs.tar.zst"
         printf '%s\n' "$inputs" > "$cache/rootfs.key"
     fi
@@ -776,8 +776,36 @@ _validate_requirements_bootmode_hybrid.grub.gpt() {
     fi
 }
 
-# Allow booting from both BIOS and UEFI
-_make_bootmode_hybrid.grub.gpt() {
+_close_hybrid_disk() {
+    if [[ "${disk_boot_mounted:-n}" == y ]]; then
+        umount /mnt/demolinux/boot || return
+        disk_boot_mounted=n
+    fi
+    if [[ "${disk_root_mounted:-n}" == y ]]; then
+        umount --recursive /mnt/demolinux/root || return
+        disk_root_mounted=n
+    fi
+    if [[ "${disk_loop_owned:-n}" == y ]]; then
+        losetup -d /dev/loop0 || return
+        disk_loop_owned=n
+    fi
+}
+
+_prepare_hybrid_disk() {
+    [[ "${disk_loop_owned:-n}" == y ]] && return
+    if mountpoint -q /mnt/demolinux/root || mountpoint -q /mnt/demolinux/boot || \
+        losetup /dev/loop0 &>/dev/null; then
+        _msg_error "Disk build mount points or /dev/loop0 are already in use." 1
+    fi
+    local reuse=n
+    if [[ "${disk_root_in_place:-n}" == y && -f "${work_dir}/direct-root.key" ]]; then
+        reuse=y
+        [[ -s "${work_dir}/disk.img" ]] || _msg_error "Missing in-place disk image; clean the work directory." 1
+    fi
+    disk_boot_mounted=n
+    disk_root_mounted=n
+    disk_loop_owned=n
+
     # we used to calculate manually the size of the system partition.
     # since we now use Btrfs with zstd compression, instead of calculating
     # an incorrect size (since the size will greatly shrink after being
@@ -788,30 +816,46 @@ _make_bootmode_hybrid.grub.gpt() {
     disk_size=$( echo $(( "$(numfmt --from=iec --field=1,3,5 <<< "$system_size + 1M + 200M")" )) | numfmt --to=none --to-unit=1000000 --format=%.0f )M
     imgpath="${work_dir}/disk.img"
 
-    _msg_info "Partitioning disk..."
-    # Create the disk image partitions
-    truncate -s $disk_size "$imgpath"
-    sgdisk \
-        -n 1:0:+1M -t 1:ef02 -c 1:legacyboot \
-        -n 2:0:+20M -t 2:ef00 -c 2:boot \
-        -n 3:0:+$system_size -t 3:8300 -c 3:system \
-        -p "$imgpath"
+    if [[ "$reuse" == n ]]; then
+        _msg_info "Partitioning disk..."
+        # Create the disk image partitions
+        truncate -s $disk_size "$imgpath"
+        sgdisk \
+            -n 1:0:+1M -t 1:ef02 -c 1:legacyboot \
+            -n 2:0:+20M -t 2:ef00 -c 2:boot \
+            -n 3:0:+$system_size -t 3:8300 -c 3:system \
+            -p "$imgpath"
+    fi
 
     losetup -P /dev/loop0 "$imgpath"
+    disk_loop_owned=y
 
-    _msg_info "Creating file systems..."
-    # boot
-    mkfs.vfat /dev/loop0p2
-    # system, swap, persist, data
-    mkfs.btrfs /dev/loop0p3
+    if [[ "$reuse" == n ]]; then
+        _msg_info "Creating file systems..."
+        # boot
+        mkfs.vfat /dev/loop0p2
+        # system, swap, persist, data
+        mkfs.btrfs /dev/loop0p3
+    fi
 
     mkdir -p /mnt/demolinux/root
     mount -o compress=zstd,noatime /dev/loop0p3 /mnt/demolinux/root
-    btrfs subvolume create /mnt/demolinux/root/system
-    btrfs subvolume create /mnt/demolinux/root/system/airootfs
+    disk_root_mounted=y
+    if [[ "$reuse" == n ]]; then
+        btrfs subvolume create /mnt/demolinux/root/system
+        btrfs subvolume create /mnt/demolinux/root/system/airootfs
+    elif [[ ! -f "${work_dir}/base._make_bootmode_hybrid.grub.gpt" ]]; then
+        btrfs property set /mnt/demolinux/root/system/airootfs ro false
+    fi
 
     mkdir -p /mnt/demolinux/boot
     mount /dev/loop0p2 /mnt/demolinux/boot
+    disk_boot_mounted=y
+}
+
+# Allow booting from both BIOS and UEFI
+_make_bootmode_hybrid.grub.gpt() {
+    _prepare_hybrid_disk
     copy_boot_files
 
     # the copying files operation causes the CI to fail
@@ -821,9 +865,12 @@ _make_bootmode_hybrid.grub.gpt() {
         rm -rf "${profile}/packages/chroot"
     fi
 
-    _msg_info "Copying files to the disk image..."
-    cp -a "${pacstrap_dir}"/* /mnt/demolinux/root/system/airootfs
-    cp -r "${profile}/packages/db" /mnt/demolinux/root/system/airootfs/packages
+    if [[ "${disk_root_in_place:-n}" != y ]]; then
+        _msg_info "Copying files to the disk image..."
+        cp -a "${pacstrap_dir}"/* /mnt/demolinux/root/system/airootfs
+    fi
+    mkdir -p /mnt/demolinux/root/system/airootfs/packages
+    cp -r "${profile}/packages/db/." /mnt/demolinux/root/system/airootfs/packages/
     btrfs property set /mnt/demolinux/root/system/airootfs ro true
 
     _msg_info "Installing grub..."
@@ -856,8 +903,7 @@ _make_bootmode_hybrid.grub.gpt() {
     configfile "\$prefix"/grub.cfg
 EOF
 
-    umount /mnt/demolinux/{b,r}oot
-    losetup -d /dev/loop0
+    _close_hybrid_disk
 
     _msg_info "Done!"
 }
@@ -1111,6 +1157,29 @@ _build_disk_image_base() {
 
     [[ "${quiet}" == "y" ]] || _show_config
     _run_once _make_pacman_conf
+    disk_root_in_place=n
+    if [[ "${buildmodes[*]}" == disk_image && "${bootmodes[*]}" == hybrid.grub.gpt && -n "${DEMOLINUX_ROOTFS_CACHE:-}" ]]; then
+        local root_inputs cache_ready=n
+        root_inputs=$(python3 "${profile}/bin/build-inputs" rootfs)
+        if [[ -s "$DEMOLINUX_ROOTFS_CACHE/rootfs.tar.zst" && -f "$DEMOLINUX_ROOTFS_CACHE/rootfs.key" ]] && \
+            [[ "$(<"$DEMOLINUX_ROOTFS_CACHE/rootfs.key")" == "$root_inputs" ]]; then
+            cache_ready=y
+        fi
+        if [[ -f "${work_dir}/direct-root.key" ]] && \
+            [[ "$(<"${work_dir}/direct-root.key")" != "$root_inputs" ]]; then
+            _msg_error "In-place build inputs changed; clean the work directory." 1
+        fi
+        if [[ -f "${work_dir}/direct-root.key" || "$cache_ready" == y ]]; then
+            if [[ ! -f "${work_dir}/base._make_disk_root" && "$cache_ready" != y ]]; then
+                _msg_error "In-place root cache is unavailable; restore it or clean the work directory." 1
+            fi
+            disk_root_in_place=y
+            _msg_info "Preparing an in-place cached root filesystem..."
+            _prepare_hybrid_disk
+            pacstrap_dir=/mnt/demolinux/root/system/airootfs
+            printf '%s\n' "$root_inputs" > "${work_dir}/direct-root.key"
+        fi
+    fi
     _run_once _make_disk_root
     _run_once _make_version
     _run_once _make_customize_airootfs
@@ -1118,11 +1187,13 @@ _build_disk_image_base() {
     _run_once _move_boot_to_temp_location
     #_run_once _prepare_airootfs_image
     _make_bootmodes
-    _run_once _cleanup_pacstrap_dir
+    # In-place roots are already finalized and read-only, not temporary trees.
+    [[ "$disk_root_in_place" == y ]] || _run_once _cleanup_pacstrap_dir
 }
 
 
 _finalize_disk_image() {
+    _close_hybrid_disk
     _msg_info "Moving disk image to ${out_dir}/$image_name..."
     local image_name="${iso_name}-${iso_version}-${arch}.img"
     mkdir -p "${out_dir}"

@@ -82,6 +82,9 @@ jobs:
           mkdir -p .ci
           ssh-keygen -t ed25519 -f "$DEMOLINUX_SSH_KEY" -q -N ''
 
+      - name: Validate image-cache filesystem integrity
+        run: sudo env DEMOLINUX_DISK_TESTS=1 python3 .github/test-ci.py DiskIntegrationTests
+
       - name: Build an image
         run: ./demolinux build
 

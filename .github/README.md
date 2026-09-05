@@ -26,10 +26,16 @@ after five minutes.
   compatible builds. Recipe content, patches, file modes, AUR commits, and
   build environment inputs determine reuse, not just `pkgver`/`pkgrel`.
   Changing a recipe also rebuilds subsequent packages, which may depend on it.
+  Package fingerprints cover compiler setup and dependency validation separately
+  from image assembly, so image-layout changes do not force recompilation.
 - An exact-match installed-root cache bypasses compilation and pacstrap.
   All `airootfs` files and package inputs are in its key; configuration changes
   cannot silently retain stale files. Those changes take the package-cache
   path and regenerate the installed-root cache instead.
+- Warm single-image builds restore directly into the final Btrfs subvolume,
+  avoiding a second copy of the installed filesystem. Cold and multi-output
+  builds retain their staging path. The builder refuses occupied mount points
+  and cleans up only the image mounts it owns.
 - The installed-root archive preserves ownership, permissions, ACLs, xattrs,
   and symlinks. It is captured **before** customization, source checkout,
   version generation, or SSH key injection. Those steps always run again.
@@ -56,6 +62,7 @@ Run checks locally:
 ```sh
 python3 .github/test-ci.py
 actionlint .github/workflows/default.yml
+sudo env DEMOLINUX_DISK_TESTS=1 python3 .github/test-ci.py DiskIntegrationTests
 bash .github/run-tests.sh out/demolinux-YYYY.MM.DD-x86_64.img
 ```
 

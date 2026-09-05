@@ -124,9 +124,7 @@ jobs:
           retention-days: 7
 
       - name: Split image and generate checksums
-        run: |
-          split -b 2GB out/demolinux*.img demolinux-
-          sha256sum demolinux-* out/demolinux*.img > sha256sums.txt
+        run: python3 .github/prepare-release.py out/demolinux*.img
 
       - name: Publish nightly release
         if: github.ref == 'refs/heads/trigger'

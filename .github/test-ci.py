@@ -31,6 +31,12 @@ protocol_spec = importlib.util.spec_from_file_location(
 assert protocol_spec is not None and protocol_spec.loader is not None
 protocol = importlib.util.module_from_spec(protocol_spec)
 protocol_spec.loader.exec_module(protocol)
+release_spec = importlib.util.spec_from_file_location(
+    "prepare_release", ROOT / ".github/prepare-release.py"
+)
+assert release_spec is not None and release_spec.loader is not None
+release = importlib.util.module_from_spec(release_spec)
+release_spec.loader.exec_module(release)
 
 
 def function(name):
@@ -282,8 +288,10 @@ sys.exit(int(os.environ.get('QEMU_EXIT', '0')))
         self.assertIn("user,id=net0,hostfwd=tcp:127.0.0.1:60100-:22", args)
         self.assertIn("tcp:127.0.0.1:4500,server=on,wait=off", args)
         drive = args[args.index("-drive") + 1]
-        self.assertTrue(drive.startswith("format=qcow2,file="), drive)
-        self.assertFalse(Path(drive.split("file=", 1)[1]).exists())
+        drive_options = dict(option.split("=", 1) for option in drive.split(","))
+        self.assertEqual(drive_options["format"], "qcow2")
+        self.assertEqual(drive_options["if"], "virtio")
+        self.assertFalse(Path(drive_options["file"]).exists())
         self.assertEqual(before, hashlib.sha256(self.image.read_bytes()).digest())
         self.assertIn("resize -q", (self.path / "image.log").read_text())
 
@@ -429,6 +437,41 @@ class GuestInputTests(TemporaryTest):
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("second test executed", result.stdout)
+
+
+class ReleaseTests(TemporaryTest):
+    def test_chunks_reassemble_with_matching_checksums(self):
+        image = self.path / "input image.img"
+        data = bytes(range(256)) * 5
+        image.write_bytes(data)
+        release.prepare_release(image, self.path, chunk_size=500)
+        parts = sorted(self.path.glob("demolinux-*"))
+        self.assertEqual([part.stat().st_size for part in parts], [500, 500, 280])
+        self.assertEqual(b"".join(part.read_bytes() for part in parts), data)
+        expected = [
+            f"{hashlib.sha256(part.read_bytes()).hexdigest()}  {part.name}\n"
+            for part in parts
+        ]
+        expected.append(f"{hashlib.sha256(data).hexdigest()}  {image}\n")
+        self.assertEqual((self.path / "sha256sums.txt").read_text(), "".join(expected))
+        self.assertEqual(image.read_bytes(), data)
+
+    def test_exact_boundary_does_not_create_an_empty_chunk(self):
+        image = self.write("image.img", "abcdef")
+        release.prepare_release(image, self.path, chunk_size=3)
+        self.assertEqual(len(list(self.path.glob("demolinux-*"))), 2)
+
+    def test_empty_image_is_rejected(self):
+        image = self.write("image.img", "")
+        with self.assertRaises(ValueError):
+            release.prepare_release(image, self.path)
+
+    def test_existing_chunks_are_not_overwritten(self):
+        image = self.write("image.img", "new")
+        part = self.write("demolinux-aa", "existing")
+        with self.assertRaises(FileExistsError):
+            release.prepare_release(image, self.path)
+        self.assertEqual(part.read_text(), "existing")
 
 
 class FirefoxProtocolTests(unittest.TestCase):

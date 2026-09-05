@@ -1,6 +1,8 @@
 #!/bin/bash
 
 modkeypress space
+expectawesome 'local launcher = screen.primary.app_launcher
+    return launcher and launcher.visible'
 
 # it used to break that easily...
 for i in {0..20}; do
@@ -10,8 +12,10 @@ for i in {0..20}; do
 	xdotool key Left
 done
 xdotool type nemo
-# being to fast breaks it...
-sleep 0.5
+expectawesome 'local launcher = screen.primary.app_launcher
+    if not launcher or not launcher.visible then return false end
+    local names = launcher.widget:get_children_by_id("name")
+    return #names == 1 and names[1].text == "Files"'
 xdotool key Enter
 
 # nemo

@@ -106,6 +106,7 @@ while read -r test; do
 	if [ "$test" != ./run -a "$test" != ./utils \
 		-a "$test" != ./sysupdate -a "$test" != ./sysupdate_snapshot ]; then
 		echo "running $test at guest +${SECONDS}s..."
+		test_started=$SECONDS
 		(
 			set -ex
 			trap '
@@ -119,6 +120,7 @@ while read -r test; do
 			echo $test failed 2>&1
 			exit 1
 		fi
+		echo "PASS test $test in $((SECONDS - test_started)) seconds"
 	fi
 done < <(find . -type f -executable | sort)
 

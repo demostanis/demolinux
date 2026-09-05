@@ -95,6 +95,7 @@ activatewin 'record.mp4 - mpv'
 quitwin
 
 modkeypress p
+sudo systemctl start pacman-init
 xdotool key c
 sleep 1
 xdotool click 1

@@ -1,9 +1,5 @@
 #!/bin/bash
 
-started=$SECONDS
-sudo systemctl start pacman-init
-echo "Package-key setup wait took $((SECONDS - started)) seconds"
-
 failed=$(systemctl --failed -q)
 
 if [ -n "$failed" ]; then

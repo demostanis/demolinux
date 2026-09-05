@@ -22,11 +22,12 @@ expectmusic() {
 
 expectmusic "Not playing"
 
-ffmpeg -f lavfi -y -i sine=frequency=440:duration=3 \
+# Avoid automatic track changes while waiting for MPRIS metadata under load.
+ffmpeg -f lavfi -y -i sine=frequency=440:duration=60 \
 	-metadata title='demolinux song' \
 	-metadata artist='demostanis' \
 	~/music/test1.mp3 >/dev/null 2>&1
-ffmpeg -f lavfi -y -i sine=frequency=440:duration=3 \
+ffmpeg -f lavfi -y -i sine=frequency=440:duration=60 \
 	-metadata title='demolinoox song' \
 	-metadata artist='demostanus' \
 	~/music/test2.mp3 >/dev/null 2>&1

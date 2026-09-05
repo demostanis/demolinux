@@ -95,6 +95,11 @@ export DISPLAY=:0
 cd /tmp/tests
 . ./utils
 
+# persistfs package operations and deferred desktop tools need this keyring.
+setup_started=$SECONDS
+sudo systemctl start pacman-init || exit 1
+echo "Guest package-key setup took $((SECONDS - setup_started)) seconds"
+
 # A descheduled xdotool process can otherwise turn a single key into repeats.
 xset r off
 

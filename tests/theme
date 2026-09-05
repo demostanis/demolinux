@@ -27,24 +27,36 @@ expectfocus "KDE Connect"
 expect_middle_color "srgb(51,15,65)"
 quitwin
 
-modkeypress Enter
-modkeypress Enter
+urxvt -title 'theme left' -e sleep infinity &
+expectwin 'theme left'
+expectfocus 'theme left'
+urxvt -title 'theme right' -e sleep infinity &
+expectwin 'theme right'
+expectfocus 'theme right'
 modkeypress h
+expectfocus 'theme left'
 modkeypress minus
 
+resize_focused_window() {
+	local x y
+	read -r x y < <(awesome-client '
+		local c = client.focus
+		return string.format("%d %d", c.x + c.width - 20, math.floor(c.y + c.height / 2))
+	' | cut -d '"' -f 2)
+	# The screen midpoint can be outside the terminal after a viewport scroll.
+	xdotool mousemove --sync "$x" "$y" sleep 0.2 \
+		keydown Super_L mousedown 3 sleep 0.2 \
+		mousemove_relative -- "$1" 0 sleep 0.2 \
+		mouseup 3 keyup Super_L
+}
+
 # resizes window to the right (bigger)
-xdotool mousemove $(xdotool getdisplaygeometry | awk '{printf("%d %d", $1/2, $2/2)}') sleep 1 \
-	keydown Super_L mousedown 3 sleep 1 \
-	mousemove_relative 200 0 sleep 1 \
-	mouseup 3 keyup Super_L
+resize_focused_window 200
 # focused terminal
 expect_middle_color "srgb(30,5,40)"
 
 # resizes window to the left (smaller)
-xdotool mousemove $(xdotool getdisplaygeometry | awk '{printf("%d %d", $1/2-100, $2/2)}') sleep 1 \
-	keydown Super_L mousedown 3 sleep 1 \
-	mousemove_relative -- -500 0 sleep 1 \
-	mouseup 3 keyup Super_L
+resize_focused_window -500
 # unfocused terminal
 expect_middle_color "srgb(21,4,28)"
 

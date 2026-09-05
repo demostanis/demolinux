@@ -7,51 +7,54 @@ sorted_windows() {
 		' | sort -n | cut -d' ' -f2-
 }
 
-modkeypress Enter
-modkeypress Enter
-modkeypress Enter
+for win in {1..3}; do
+	urxvt -title "layout window $win" -e sleep infinity &
+	expectwin "layout window $win"
+	expectfocus "layout window $win"
+done
 
 modkeypress h
+expectfocus "layout window 2"
 modkeypress h
+expectfocus "layout window 1"
 modkeypress equal
 
-for win in {1..3}; do
-	xdotool type 'echo window '$win'; sleep infinity'
-	xdotool key Enter
-
+for win in 2 3 1; do
 	modkeypress Tab
+	expectfocus "layout window $win"
 done
 
 assert_windows() {
-	actual="$(sorted_windows)"
 	expected=$1
-
-	if [ "$actual" != "$expected" ]; then
-		echo expected window list to be $expected, but got $actual
-		exit 1
-	fi
+	for _ in {1..100}; do
+		actual="$(sorted_windows)"
+		[ "$actual" = "$expected" ] && return
+		sleep 0.1
+	done
+	echo expected window list to be $expected, but got $actual
+	exit 1
 }
 
-assert_windows 'echo window 1; sleep infinity
-echo window 2; sleep infinity
-echo window 3; sleep infinity'
+assert_windows 'layout window 1
+layout window 2
+layout window 3'
 
 modkeypress L
-assert_windows 'echo window 2; sleep infinity
-echo window 1; sleep infinity
-echo window 3; sleep infinity'
+assert_windows 'layout window 2
+layout window 1
+layout window 3'
 
 modkeypress H
-assert_windows 'echo window 1; sleep infinity
-echo window 2; sleep infinity
-echo window 3; sleep infinity'
+assert_windows 'layout window 1
+layout window 2
+layout window 3'
 
 modkeypress l
 modkeypress l
-expectfocus "echo window 3; sleep infinity "
+expectfocus "layout window 3"
 
 modkeypress h
-expectfocus "echo window 2; sleep infinity "
+expectfocus "layout window 2"
 
 quitwin
 quitwin

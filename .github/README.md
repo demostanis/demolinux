@@ -41,6 +41,10 @@ after five minutes.
   version generation, or SSH key injection. Those steps always run again.
 - Caches are saved before VM tests, so test failures do not discard a completed
   dependency build. Chroots, test disks, and SSH private keys are never cached.
+- Interrupted builds save a separate partial package cache. Missing packages
+  still rebuild, and the complete cache key is only saved after a successful
+  image build. Recognized dependency-download failures retry at most three
+  times; compiler and package-script failures are not retried.
 
 ## VM tests
 

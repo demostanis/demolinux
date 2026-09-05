@@ -66,6 +66,7 @@ jobs:
             .ci/pacman
           key: packages-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.inputs.outputs.base }}-${{ steps.inputs.outputs.packages }}
           restore-keys: |
+            packages-partial-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.inputs.outputs.base }}-${{ steps.inputs.outputs.packages }}-
             packages-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.inputs.outputs.base }}-
 
       - name: Set up build tools
@@ -86,7 +87,19 @@ jobs:
         run: sudo env DEMOLINUX_DISK_TESTS=1 python3 .github/test-ci.py DiskIntegrationTests
 
       - name: Build an image
+        id: build
         run: ./demolinux build
+
+      - name: Preserve completed packages after a failed build
+        if: failure() && steps.build.conclusion == 'failure'
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            packages/db
+            packages/nvimcache
+            packages/zshcache
+            .ci/pacman
+          key: packages-partial-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.inputs.outputs.base }}-${{ steps.inputs.outputs.packages }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       # Save before testing so a VM failure does not force another cold build.
       - name: Save compiled packages and downloads
@@ -136,6 +149,7 @@ jobs:
             .ci/tests
             .ci/setup.log
             .ci/release.log
+            work/build-*.log
           retention-days: 7
 
       - name: Await prepared release files

@@ -366,6 +366,26 @@ _package_is_cached() {
     } < "$manifest"
 }
 
+_run_build_with_download_retries() {
+    local log="$1" attempt result=0
+    shift
+    for attempt in 1 2 3; do
+        if (set -o pipefail; "$@" 2>&1 | tee "$log"); then
+            return 0
+        else
+            result=$?
+        fi
+        if (( attempt == 3 )) || \
+            grep -Eq '==> ERROR: A failure occurred in (prepare|build|check|package)' "$log" || \
+            ! grep -Eq 'error: failed (retrieving file|to synchronize all databases)|fatal: unable to access .*Could not resolve host' "$log"; then
+            return "$result"
+        fi
+        _msg_info "Retrying after a transient dependency download failure (${attempt}/3)..."
+        sleep 5
+    done
+    return "$result"
+}
+
 # Creates and builds packages in a chroot
 _make_chroot() {
     local chroot_dir pkg cachepkgpath pkgname url path inputs recipe_inputs
@@ -413,7 +433,8 @@ _make_chroot() {
                 fi
             done
         fi
-        "$correct_makechrootpkg" -U "$SUDO_USER" -r "${chroot_dir}" "${additional_opts[@]}"
+        _run_build_with_download_retries "${work_dir}/build-${pkg}.log" \
+            "$correct_makechrootpkg" -U "$SUDO_USER" -r "${chroot_dir}" "${additional_opts[@]}"
         archives=(*pkg.tar*)
         repo-add "${profile}"/packages/db/packages.db.tar.gz "${archives[@]}"
         mv "${archives[@]}" "${profile}"/packages/db/

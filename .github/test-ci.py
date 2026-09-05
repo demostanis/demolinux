@@ -137,6 +137,65 @@ class InputTests(TemporaryTest):
             inputs.compiler_fingerprint()
 
 
+class BuildRetryTests(TemporaryTest):
+    def attempt(self, mode):
+        target = self.write(
+            "command",
+            """#!/bin/bash
+n=0
+[[ ! -f "$STATE" ]] || read -r n < "$STATE"
+n=$((n + 1))
+printf '%s\\n' "$n" > "$STATE"
+if [[ "$MODE" == compiler ]]; then
+    printf '%s\\n' 'compiler error'
+    exit 7
+fi
+if [[ "$MODE" == mixed ]]; then
+    printf '%s\\n' 'error: failed retrieving file' '==> ERROR: A failure occurred in build().'
+    exit 7
+fi
+if [[ "$MODE" == always || "$n" == 1 ]]; then
+    printf '%s\\n' 'error: failed retrieving file'
+    exit 23
+fi
+""",
+            True,
+        )
+        command = (
+            function("_run_build_with_download_retries")
+            + r"""
+        _msg_info() { :; }
+        sleep() { :; }
+        _run_build_with_download_retries "$LOG" "$TARGET"
+        """
+        )
+        result = subprocess.run(
+            ["bash", "-eu", "-c", command],
+            capture_output=True,
+            text=True,
+            env={
+                **os.environ,
+                "MODE": mode,
+                "STATE": str(self.path / "attempts"),
+                "LOG": str(self.path / "build.log"),
+                "TARGET": str(target),
+            },
+        )
+        return result.returncode, int((self.path / "attempts").read_text())
+
+    def test_transient_download_is_retried(self):
+        self.assertEqual(self.attempt("once"), (0, 2))
+
+    def test_download_retries_are_bounded(self):
+        self.assertEqual(self.attempt("always"), (23, 3))
+
+    def test_compiler_errors_are_not_retried(self):
+        self.assertEqual(self.attempt("compiler"), (7, 1))
+
+    def test_prior_network_message_does_not_hide_a_compiler_error(self):
+        self.assertEqual(self.attempt("mixed"), (7, 1))
+
+
 class PackageCacheTests(TemporaryTest):
     def setUp(self):
         super().setUp()

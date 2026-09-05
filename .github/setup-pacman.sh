@@ -3,9 +3,9 @@
 set -euo pipefail
 
 sudo apt-get update
-sudo apt-get install -y --no-install-recommends pacman-package-manager \
+sudo apt-get install -y --no-install-recommends pacman-package-manager makepkg \
                       archlinux-keyring libarchive-tools \
-                      systemd-container qemu-system-x86 qemu-utils zsh zstd
+                      systemd-container qemu-system-x86 qemu-utils libslirp0 zsh zstd
 
 sudo mkdir -p /etc/pacman.d
 cat <<-EOF | sudo tee -a /etc/pacman.conf >/dev/null
@@ -18,7 +18,8 @@ EOF
 # shellcheck disable=SC2016 # Pacman expands these placeholders.
 echo Server = 'https://geo.mirror.pkgbuild.com/$repo/os/$arch' | sudo tee /etc/pacman.d/mirrorlist >/dev/null
 
-sudo cp /usr/share/keyrings /usr/share/pacman/keyrings -r
+sudo mkdir -p /usr/share/pacman/keyrings
+sudo cp -a /usr/share/keyrings/. /usr/share/pacman/keyrings/
 
 sudo pacman-key --init
 sudo pacman-key --populate archlinux

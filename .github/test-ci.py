@@ -770,6 +770,26 @@ sys.exit(int(sys.argv[1] == os.environ.get('FAIL_SHARD')))
 
 @unittest.skipUnless(shutil.which("zsh"), "guest harness requires Zsh")
 class GuestInputTests(TemporaryTest):
+    def test_modifier_chords_are_sent_in_one_command(self):
+        command = (
+            f"source {shlex.quote(str(ROOT / 'tests/utils'))}\n"
+            + """
+        xdotool() { printf '%s\\n' "$@" >> "$ARGS_LOG"; }
+        sleep() { :; }
+        modkeypress L
+        """
+        )
+        log = self.path / "arguments"
+        subprocess.run(
+            ["zsh", "-f", "-c", command],
+            check=True,
+            env={**os.environ, "ARGS_LOG": str(log)},
+        )
+        self.assertEqual(
+            log.read_text().splitlines(),
+            ["key", "--clearmodifiers", "--delay", "0", "Super_L+L"],
+        )
+
     def test_activation_waits_for_a_mapped_window(self):
         command = (
             f"source {shlex.quote(str(ROOT / 'tests/utils'))}\n"
@@ -815,6 +835,8 @@ class GuestInputTests(TemporaryTest):
         stubs = """
         sudo() { :; }
         xset() { :; }
+        xdotool() { :; }
+        awesome-client() { print '   boolean true'; }
         xrefresh() { :; }
         import() { :; }
         find() { print -l ./a_consumer ./z_marker; }

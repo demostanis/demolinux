@@ -1,9 +1,5 @@
 modkeypress() {
-	xdotool keydown Super_L
-	sleep 0.2
-	xdotool key $1
-	sleep 0.1
-	xdotool keyup Super_L
+	xdotool key --clearmodifiers --delay 0 "Super_L+$1"
 	sleep 1
 }
 

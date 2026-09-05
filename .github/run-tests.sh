@@ -55,6 +55,7 @@ for index in "${!pids[@]}"; do
         cat ".ci/tests/${names[$index]}/tests.log"
         failed=1
     fi
+    grep '^VM harness took' ".ci/tests/${names[$index]}/tests.log" || true
 done
 pids=()
 exit "$failed"

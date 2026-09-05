@@ -9,6 +9,7 @@ stop_vm() {
 	fi
 	ssh -p "${DEMOLINUX_SSH_PORT:-60022}" -S "$DEMOLINUX_SSH_CONTROL_PATH" -O exit demostanis@localhost 2>/dev/null || :
 	rm -rf -- "$control_dir"
+	echo "VM harness took $SECONDS seconds"
 }
 
 die() {

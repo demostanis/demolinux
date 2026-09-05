@@ -34,11 +34,11 @@ expectawesome 'return client.focus.width > client.focus.screen.geometry.width * 
 expect_middle_color "srgb(51,15,65)"
 quitwin
 
-urxvt -title 'theme left' -e sleep infinity &
+urxvt -title 'theme left' -e bash --noprofile --norc &
 expectwin 'theme left'
 expectfocus 'theme left'
 expectviewport
-urxvt -title 'theme right' -e sleep infinity &
+urxvt -title 'theme right' -e bash --noprofile --norc &
 expectwin 'theme right'
 expectfocus 'theme right'
 expectviewport
@@ -58,6 +58,8 @@ resize_focused_window() {
 		keydown Super_L mousedown 3 sleep 0.2 \
 		mousemove_relative -- "$1" 0 sleep 0.2 \
 		mouseup 3 keyup Super_L
+	# Readline repaints the enlarged terminal area, including its background.
+	xdotool key --clearmodifiers ctrl+l
 }
 
 # resizes window to the right (bigger)

@@ -14,7 +14,12 @@ done
 xdotool type nemo
 expectawesome 'local launcher = screen.primary.app_launcher
     if not launcher or not launcher.visible then return false end
-    local names = launcher.widget:get_children_by_id("name")
+    local apps = {}
+    for _, child in ipairs(launcher.widget:get_all_children()) do
+        if type(child.spawn) == "function" then table.insert(apps, child) end
+    end
+    if #apps ~= 1 or not apps[1].selected then return false end
+    local names = apps[1]:get_children_by_id("name")
     return #names == 1 and names[1].text == "Files"'
 xdotool key Enter
 

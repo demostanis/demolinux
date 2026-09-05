@@ -142,31 +142,11 @@ jobs:
           cat .ci/release.log
           exit "$(<.ci/release.status)"
 
-      - name: Publish nightly release
-        if: github.ref == 'refs/heads/trigger'
-        uses: andelf/nightly-release@5834076edc55cc05975561c9722043f072ac5c26
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          prerelease: true
-          tag_name: nightly
-          name: Nightly release
-          body: |
-            Automatically built and tested from the trigger branch.
-            Probably unstable.
-            Reassemble the image with: cat demolinux-* > demolinux.img
-          files: |
-            ./demolinux-*
-            ./sha256sums.txt
-
       - name: Publish release
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/trigger' || github.ref == 'refs/heads/master'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release create "master-$GITHUB_SHA" demolinux-* sha256sums.txt \
-            --target "$GITHUB_SHA" --prerelease --title 'Release build' \
-            --notes 'Automatically built and tested from master. Reassemble with: cat demolinux-* > demolinux.img'
+        run: python3 .github/publish-release.py
 
       - name: Report execution time and cache hits
         if: always() && steps.inputs.outputs.started != ''

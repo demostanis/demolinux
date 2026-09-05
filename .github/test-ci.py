@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.dont_write_bytecode = True
@@ -37,6 +38,12 @@ release_spec = importlib.util.spec_from_file_location(
 assert release_spec is not None and release_spec.loader is not None
 release = importlib.util.module_from_spec(release_spec)
 release_spec.loader.exec_module(release)
+publisher_spec = importlib.util.spec_from_file_location(
+    "publish_release", ROOT / ".github/publish-release.py"
+)
+assert publisher_spec is not None and publisher_spec.loader is not None
+publisher = importlib.util.module_from_spec(publisher_spec)
+publisher_spec.loader.exec_module(publisher)
 
 
 def function(name):
@@ -510,6 +517,165 @@ class ReleaseTests(TemporaryTest):
         with self.assertRaises(FileExistsError):
             release.prepare_release(image, self.path)
         self.assertEqual(part.read_text(), "existing")
+
+
+class PublisherTests(TemporaryTest):
+    class GitHub:
+        def __init__(
+            self, existing=True, draft=False, sha="old", lookup=True, fail=False
+        ):
+            self.release = (
+                {
+                    "id": 77,
+                    "tag_name": "nightly",
+                    "draft": draft,
+                    "html_url": "release-url",
+                    "assets": [{"id": 88, "name": "old", "size": 1}],
+                }
+                if existing
+                else None
+            )
+            self.sha, self.lookup, self.fail = sha, lookup, fail
+            self.events = []
+
+        def api(self, method, path, data=None, missing_ok=False):
+            self.events.append((method, path, data))
+            if method == "GET" and path.startswith("releases/tags/"):
+                return self.release if self.lookup else None
+            if method == "GET" and path.startswith("releases?"):
+                return [self.release] if self.release else []
+            if method == "GET" and path.startswith("git/ref/"):
+                return {"object": {"sha": self.sha}} if self.sha else None
+            if method == "POST" and path == "releases":
+                self.release = {
+                    "id": 77,
+                    "assets": [],
+                    "html_url": "release-url",
+                    **data,
+                }
+                return self.release
+            if method == "PATCH" and path == "releases/77":
+                self.release.update(data)
+                return self.release
+            if method in ("POST", "PATCH") and path.startswith("git/refs"):
+                self.sha = data["sha"]
+                return {"object": {"sha": self.sha}}
+            if method == "DELETE" and path.startswith("releases/assets/"):
+                return None
+            raise AssertionError((method, path, data))
+
+        def upload(self, tag, files):
+            self.events.append(("UPLOAD", tag, list(files)))
+            if self.fail:
+                raise RuntimeError("upload failed")
+            self.release["assets"] = [
+                {"id": i, "name": Path(path).name, "size": Path(path).stat().st_size}
+                for i, path in enumerate(files)
+            ]
+
+    def setUp(self):
+        super().setUp()
+        self.files = [
+            self.write("demolinux-aa", "abc"),
+            self.write("sha256sums.txt", "checksums"),
+        ]
+
+    def publish(self, client, tag="nightly"):
+        return publisher.publish(client, tag, "new", "Title", "Body", self.files)
+
+    def test_upload_finishes_before_publication_and_preserves_release_id(self):
+        client = self.GitHub()
+        self.assertEqual(self.publish(client), "release-url")
+        upload = next(
+            i for i, event in enumerate(client.events) if event[0] == "UPLOAD"
+        )
+        published = next(
+            i
+            for i, event in enumerate(client.events)
+            if event[0] == "PATCH" and event[2].get("draft") is False
+        )
+        self.assertLess(upload, published)
+        self.assertEqual(client.release["id"], 77)
+        self.assertEqual(client.sha, "new")
+        self.assertFalse(client.release["draft"])
+        self.assertFalse(
+            any(
+                event[2] and "force" in event[2]
+                for event in client.events
+                if event[0] != "UPLOAD"
+            )
+        )
+
+    def test_upload_failure_never_publishes_or_moves_the_tag(self):
+        client = self.GitHub(fail=True)
+        with self.assertRaisesRegex(RuntimeError, "upload failed"):
+            self.publish(client)
+        self.assertTrue(client.release["draft"])
+        self.assertEqual(client.sha, "old")
+        self.assertFalse(
+            any(
+                event[0] == "PATCH" and event[2].get("draft") is False
+                for event in client.events
+            )
+        )
+
+    def test_complete_unchanged_release_skips_upload(self):
+        client = self.GitHub(sha="new")
+        client.release["assets"] = [
+            {"id": i, "name": path.name, "size": path.stat().st_size}
+            for i, path in enumerate(self.files)
+        ]
+        self.publish(client)
+        self.assertTrue(all(event[0] == "GET" for event in client.events))
+
+    def test_incomplete_unchanged_release_is_repaired(self):
+        client = self.GitHub(sha="new")
+        self.publish(client)
+        self.assertTrue(any(event[0] == "UPLOAD" for event in client.events))
+        self.assertFalse(client.release["draft"])
+
+    def test_existing_draft_is_reused_after_failure(self):
+        client = self.GitHub(draft=True, lookup=False)
+        self.publish(client)
+        self.assertFalse(
+            any(event[:2] == ("POST", "releases") for event in client.events)
+        )
+        self.assertEqual(client.release["id"], 77)
+
+    def test_first_release_creates_the_tag_after_upload(self):
+        client = self.GitHub(existing=False, sha=None)
+        self.publish(client, "master-new")
+        upload = next(
+            i for i, event in enumerate(client.events) if event[0] == "UPLOAD"
+        )
+        create = next(
+            i
+            for i, event in enumerate(client.events)
+            if event[:2] == ("POST", "git/refs")
+        )
+        self.assertLess(upload, create)
+        self.assertEqual(client.release["tag_name"], "master-new")
+
+    def test_missing_assets_cannot_modify_a_release(self):
+        client = self.GitHub()
+        with self.assertRaises(ValueError):
+            publisher.publish(client, "nightly", "new", "Title", "Body", [])
+        self.assertEqual(client.events, [])
+
+    def test_permission_errors_are_not_treated_as_missing_releases(self):
+        client = publisher.GitHub("owner/repo")
+        for status in (403, 404):
+            result = subprocess.CompletedProcess(
+                [], 1, "", f"gh: error (HTTP {status})"
+            )
+            with patch.object(publisher.subprocess, "run", return_value=result):
+                if status == 404:
+                    self.assertIsNone(
+                        client.api("GET", "releases/tags/nightly", missing_ok=True)
+                    )
+                else:
+                    with self.assertRaises(RuntimeError):
+                        client.api("GET", "releases/tags/nightly", missing_ok=True)
 
 
 class FirefoxProtocolTests(unittest.TestCase):

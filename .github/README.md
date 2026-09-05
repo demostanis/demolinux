@@ -13,9 +13,12 @@ checksumming, and publishing the image.
 The five-minute target applies to **warm-cache execution**, not a fresh build
 of all dependencies or GitHub's runner queue. It is a target, not a measured
 guarantee: cache transfer, runner contention, VPN tests, and multi-GB release
-uploads depend on external services. Compare two runs on the same commit:
-the first seeds caches, the second measures the warm path. Do not enforce the
-target by skipping tests or killing a valid cold build after five minutes.
+uploads depend on external services. The first run seeds caches; subsequent
+test-only changes keep the build caches warm. Publication is skipped when the
+tag and complete assets already match the commit, so a full publication
+benchmark needs a new commit, not just a rerun of an already-published one.
+Do not enforce the target by skipping tests or killing a valid cold build
+after five minutes.
 
 ## Caches
 
@@ -65,3 +68,12 @@ timeouts. Cleanup targets only the processes owned by that shard.
 MPV uses its software X11 renderer inside the test overlays, since the CI VMs
 do not have GPU acceleration. Release-image renderer settings are unchanged;
 GPU-specific rendering is not covered by this headless suite.
+
+## Release preparation
+
+Release chunks and SHA-256 checksums are generated together in one streaming
+pass, concurrently with VM testing. The existing 2 GB chunk names and checksum
+format are preserved. Publication uses GitHub CLI's concurrent streaming uploads
+rather than buffering the whole image in memory. The release ID is retained,
+and the release stays draft until all uploads succeed. Failed uploads can be
+retried without treating an incomplete draft as a completed publication.

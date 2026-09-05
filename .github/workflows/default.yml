@@ -150,6 +150,7 @@ jobs:
             .ci/setup.log
             .ci/release.log
             work/build-*.log
+            work/install-packages.log
           retention-days: 7
 
       - name: Await prepared release files

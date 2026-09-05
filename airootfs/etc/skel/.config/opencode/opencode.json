@@ -5,8 +5,10 @@
     "firefox": {
       "type": "local",
       "command": [
-        "firefox-devtools-mcp", "--firefox-path",
-        "/usr/local/bin/firefox-hardened", "--profile-path",
+        "firefox-devtools-mcp",
+        "--firefox-path",
+        "/usr/local/bin/firefox-hardened",
+        "--profile-path",
         "/home/demostanis/.mozilla/firefox/default.profile"
       ]
     }
@@ -19,6 +21,7 @@
   },
   "agent": {
     "browser": {
+      "ultra_mode_allowed": true,
       "subagent_model": "lightweight_model",
       "description": "Agent with Firefox browser access. Use when the user needs visual verification/testing of a web app, to check correct HTML elements/classes, to troubleshoot performance, or any other context that requires a web page to be rendered.",
       "prompt": "You are a browser agent specialized in integration testing/QA and scraping. You must use Firefox MCP tools at your disposal for your task.",

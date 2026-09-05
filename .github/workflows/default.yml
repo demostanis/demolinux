@@ -43,7 +43,8 @@ jobs:
           nohup bash -c '
             result=0
             bash .github/setup-pacman.sh || result=$?
-            printf "%s\n" "$result" > .ci/setup.status
+            printf "%s\n" "$result" > .ci/setup.status.tmp
+            mv .ci/setup.status.tmp .ci/setup.status
           ' > .ci/setup.log 2>&1 < /dev/null &
 
       - name: Restore installed root filesystem
@@ -106,6 +107,16 @@ jobs:
       - name: Free build space for VM overlays and release chunks
         run: sudo rm -rf work packages .ci/rootfs .ci/pacman
 
+      - name: Prepare release files while testing
+        run: |
+          # shellcheck disable=SC2016
+          nohup bash -c '
+            result=0
+            python3 .github/prepare-release.py out/demolinux*.img || result=$?
+            printf "%s\n" "$result" > .ci/release.status.tmp
+            mv .ci/release.status.tmp .ci/release.status
+          ' > .ci/release.log 2>&1 < /dev/null &
+
       - name: Run all tests in isolated VMs
         run: bash .github/run-tests.sh out/demolinux*.img
 
@@ -121,10 +132,15 @@ jobs:
           path: |
             .ci/tests
             .ci/setup.log
+            .ci/release.log
           retention-days: 7
 
-      - name: Split image and generate checksums
-        run: python3 .github/prepare-release.py out/demolinux*.img
+      - name: Await prepared release files
+        timeout-minutes: 5
+        run: |
+          until [[ -f .ci/release.status ]]; do sleep 0.2; done
+          cat .ci/release.log
+          exit "$(<.ci/release.status)"
 
       - name: Publish nightly release
         if: github.ref == 'refs/heads/trigger'

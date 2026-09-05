@@ -56,7 +56,7 @@ actionlint .github/workflows/default.yml
 bash .github/run-tests.sh out/demolinux-YYYY.MM.DD-x86_64.img
 ```
 
-The parallel suite needs KVM, QEMU with libslirp, Zsh, and approximately 12 GiB
+The parallel suite needs KVM, QEMU with libslirp, Zsh, and approximately 8 GiB
 of guest RAM. `DEMOLINUX_SSH_KEY` can select a key authorized in the image.
 Logs and failure screenshots are under `.ci/tests/<shard>/`; CI uploads them
 on failure. Tests stop immediately if QEMU dies and have bounded boot/suite

@@ -373,7 +373,8 @@ class CoordinatorTests(TemporaryTest):
             f"""#!{sys.executable}
 import json, os, sys
 print(json.dumps({{name: os.environ[name] for name in (
-    'DEMOLINUX_SSH_PORT', 'DEMOLINUX_QMP_PORT', 'DEMOLINUX_TEST_IMAGE')}}))
+    'DEMOLINUX_SSH_PORT', 'DEMOLINUX_QMP_PORT', 'DEMOLINUX_TEST_IMAGE',
+    'DEMOLINUX_VM_MEMORY', 'DEMOLINUX_VM_CPUS')}}))
 sys.exit(int(sys.argv[1] == os.environ.get('FAIL_SHARD')))
 """,
             True,
@@ -399,6 +400,12 @@ sys.exit(int(sys.argv[1] == os.environ.get('FAIL_SHARD')))
             self.assertEqual(len({setting[name] for setting in settings}), 4)
         self.assertTrue(
             all(setting["DEMOLINUX_TEST_IMAGE"] == "base.img" for setting in settings)
+        )
+        self.assertTrue(
+            all(setting["DEMOLINUX_VM_MEMORY"] == "2048" for setting in settings)
+        )
+        self.assertTrue(
+            all(setting["DEMOLINUX_VM_CPUS"] == "1" for setting in settings)
         )
 
     def test_one_failed_shard_fails_the_suite(self):

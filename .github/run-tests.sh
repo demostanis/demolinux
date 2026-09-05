@@ -5,7 +5,8 @@ image=${1:?Usage: run-tests.sh IMAGE}
 export DEMOLINUX_TEST_IMAGE="$image"
 export DEMOLINUX_NETWORK_BACKEND=user
 export DEMOLINUX_BOOT_TIMEOUT=120
-export DEMOLINUX_VM_MEMORY=3072
+# The initramfs sizes swap from RAM, so extra memory also adds first-boot I/O.
+export DEMOLINUX_VM_MEMORY=2048
 export DEMOLINUX_VM_CPUS=1
 printf 'Host CPUs: %s\n' "$(nproc)"
 free -h

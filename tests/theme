@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Pixel assertions need this workaround; other shards do not need full-screen
+# redraws every second on the software-rendered QEMU display.
+while true; do xrefresh; sleep 1; done >/dev/null 2>&1 &
+
 expect_middle_color() {
 	mc=
 	tries=${2:-10}

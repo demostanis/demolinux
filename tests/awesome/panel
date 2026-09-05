@@ -85,7 +85,9 @@ recording=$(screenrecord output)
 ffprobe -v error -select_streams v:0 \
 	-show_entries stream=codec_name,width,height \
 	-of default=noprint_wrappers=1 "$recording"
-mv "$recording" record.mp4
+# Keep the recorded clip visible long enough to inspect the xdg-open result.
+ffmpeg -v error -stream_loop -1 -i "$recording" -t 30 -c copy record.mp4
+rm -f "$recording"
 recording=
 xdg-open record.mp4 >/dev/null 2>&1 & sleep 1
 expectwin 'record.mp4 - mpv'

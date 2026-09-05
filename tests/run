@@ -97,8 +97,8 @@ cd /tmp/tests
 # wait for pacman to work
 sudo systemctl start pacman-init
 
-# picom xrender backend doesn't refresh the whole screen correctly in QEMU
-while true; do xrefresh; sleep 1; done >/dev/null 2>&1 &
+# A descheduled xdotool process can otherwise turn a single key into repeats.
+xset r off
 
 while read -r test; do
 	if [ "$test" != ./run -a "$test" != ./utils \
@@ -107,6 +107,7 @@ while read -r test; do
 		(
 			set -ex
 			trap '
+				xrefresh
 				import -window root png:- > /data/screenshot.png
 				kill ${${(v)jobstates##*:*:}%=*} 2>/dev/null || :
 			' EXIT

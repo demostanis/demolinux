@@ -7,6 +7,8 @@ export DEMOLINUX_NETWORK_BACKEND=user
 export DEMOLINUX_BOOT_TIMEOUT=120
 export DEMOLINUX_VM_MEMORY=2048
 export DEMOLINUX_VM_CPUS=1
+printf 'Host CPUs: %s\n' "$(nproc)"
+free -h
 pids=()
 names=()
 

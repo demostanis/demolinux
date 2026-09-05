@@ -417,8 +417,38 @@ sys.exit(int(sys.argv[1] == os.environ.get('FAIL_SHARD')))
 
 @unittest.skipUnless(shutil.which("zsh"), "guest harness requires Zsh")
 class GuestInputTests(TemporaryTest):
+    def test_activation_waits_for_a_mapped_window(self):
+        command = (
+            f"source {shlex.quote(str(ROOT / 'tests/utils'))}\n"
+            + """
+        timeout() { shift; "$@"; }
+        xdotool() { printf '%s\\n' "$@" > "$ARGS_LOG"; }
+        expectfocus() { [[ "$1" == 'demo title' ]]; }
+        activatewin 'demo title'
+        """
+        )
+        log = self.path / "arguments"
+        subprocess.run(
+            ["zsh", "-f", "-c", command],
+            check=True,
+            env={**os.environ, "ARGS_LOG": str(log)},
+        )
+        self.assertEqual(
+            log.read_text().splitlines(),
+            [
+                "search",
+                "--sync",
+                "--onlyvisible",
+                "--name",
+                "demo title",
+                "windowactivate",
+                "--sync",
+            ],
+        )
+
     def test_child_cannot_consume_the_remaining_test_list(self):
         self.write("utils", (ROOT / "tests/utils").read_text())
+        self.write(".config/mpv/mpv.conf", "")
         self.write("a_consumer", 'read -r stolen || :\n[[ -z "$stolen" ]]\n', True)
         self.write("z_marker", 'print "second test executed"\n', True)
         source = (ROOT / "tests/run").read_text()
@@ -438,6 +468,7 @@ class GuestInputTests(TemporaryTest):
         """
         result = subprocess.run(
             ["zsh", "-f", "-c", stubs + program],
+            env={**os.environ, "HOME": str(self.path)},
             capture_output=True,
             text=True,
             timeout=10,

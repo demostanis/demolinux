@@ -11,7 +11,6 @@ ffmpeg -f lavfi \
 mpv-hardened --loop-file=inf /tmp/output.mp4 >/tmp/mpv.log 2>&1 &
 player=$!
 expectwin 'output.mp4 - mpv' 20
-timeout 10 xdotool search --onlyvisible --name 'output.mp4 - mpv' windowactivate --sync
-expectfocus 'output.mp4 - mpv'
+activatewin 'output.mp4 - mpv'
 quitwin
 wait "$player"

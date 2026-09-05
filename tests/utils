@@ -34,6 +34,11 @@ quitwin() {
 	modkeypress q
 }
 
+activatewin() {
+	timeout 20 xdotool search --sync --onlyvisible --name "$1" windowactivate --sync
+	expectfocus "$1"
+}
+
 expectawesome() {
 	local actual deadline=$((SECONDS + ${2:-10}))
 	while (( SECONDS < deadline )); do

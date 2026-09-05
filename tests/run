@@ -16,7 +16,7 @@ die() {
 	[ $# != 0 ] && echo "$*" >&2
 	timeout 5 python3 .github/qmp-screenshot.py "$log_dir/boot.png" || :
 	echo awesome log:
-	timeout 2 ./dctrl shell "cat ~/.awesome.log" | tee "$log_dir/awesome.log"
+	timeout 2 ./dctrl shell 'cat ~/.awesome.log /tmp/mpv.log /tmp/record-playback.log 2>/dev/null' | tee "$log_dir/awesome.log"
 	timeout 3 ./dctrl pull /data/screenshot.png "$log_dir/screenshot.png"
 	echo tests failed
 	exit 1
@@ -103,6 +103,9 @@ echo "Guest package-key setup took $((SECONDS - setup_started)) seconds"
 
 # A descheduled xdotool process can otherwise turn a single key into repeats.
 xset r off
+
+# These headless VMs have no accelerated GPU; keep rendering deterministic.
+printf '\nvo=x11\n' >> ~/.config/mpv/mpv.conf || exit 1
 
 while read -r test; do
 	if [ "$test" != ./run -a "$test" != ./utils \

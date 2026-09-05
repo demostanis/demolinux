@@ -61,3 +61,7 @@ of guest RAM. `DEMOLINUX_SSH_KEY` can select a key authorized in the image.
 Logs and failure screenshots are under `.ci/tests/<shard>/`; CI uploads them
 on failure. Tests stop immediately if QEMU dies and have bounded boot/suite
 timeouts. Cleanup targets only the processes owned by that shard.
+
+MPV uses its software X11 renderer inside the test overlays, since the CI VMs
+do not have GPU acceleration. Release-image renderer settings are unchanged;
+GPU-specific rendering is not covered by this headless suite.

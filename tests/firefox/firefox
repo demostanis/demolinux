@@ -6,7 +6,7 @@ echo starting firefox...
 exec 2> >( sed '/Exiting due to channel error/d' ) || :
 
 # we must redirect all streams to /dev/null so ssh doesn't stay on..
-firefox-hardened --start-debugger-server >/dev/null 2>&1 &
+firefox-hardened --start-debugger-server about:blank >/dev/null 2>&1 &
 p=$!
 
 for _ in {1..120}; do
@@ -27,7 +27,7 @@ fi
 # wait for the browser to initialize a bit..
 sleep 5
 
-python firefox/browsereval.py
+timeout 30 python firefox/browsereval.py
 ret=$?
 
 # move the mouse elsewhere than the tab tooltip,

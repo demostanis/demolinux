@@ -92,13 +92,8 @@ tar -C tests -cf - -- "${selected[@]}" utils | ./dctrl shell 'mkdir -p /tmp/test
 ./dctrl shell <<'EOC' || die
 
 export DISPLAY=:0
-setup_started=$SECONDS
 cd /tmp/tests
 . ./utils
-
-# wait for pacman to work
-sudo systemctl start pacman-init
-echo "Guest package-key setup took $((SECONDS - setup_started)) seconds"
 
 # A descheduled xdotool process can otherwise turn a single key into repeats.
 xset r off

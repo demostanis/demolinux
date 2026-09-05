@@ -4,6 +4,7 @@
 import hashlib
 import importlib.machinery
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -24,6 +25,12 @@ spec = importlib.util.spec_from_loader(loader.name, loader)
 assert spec is not None
 inputs = importlib.util.module_from_spec(spec)
 loader.exec_module(inputs)
+protocol_spec = importlib.util.spec_from_file_location(
+    "firefox_protocol", ROOT / "tests/firefox/protocol.py"
+)
+assert protocol_spec is not None and protocol_spec.loader is not None
+protocol = importlib.util.module_from_spec(protocol_spec)
+protocol_spec.loader.exec_module(protocol)
 
 
 def function(name):
@@ -391,6 +398,66 @@ sys.exit(int(sys.argv[1] == os.environ.get('FAIL_SHARD')))
         self.assertEqual(result.returncode, 1, result.stderr)
         self.assertIn("FAIL: media", result.stdout)
         self.assertEqual(result.stdout.count("PASS:"), 4)
+
+
+class FirefoxProtocolTests(unittest.TestCase):
+    class Socket:
+        def __init__(self, data):
+            self.data = io.BytesIO(data)
+            self.sent = []
+
+        def recv(self, length):
+            return self.data.read(min(length, 2))
+
+        def sendall(self, data):
+            self.sent.append(data)
+
+    def socket(self, *packets):
+        return self.Socket(
+            b"".join(protocol.encode_packet(packet) for packet in packets)
+        )
+
+    def result(self):
+        return {
+            "type": "evaluationResult",
+            "resultID": "42",
+            "result": {
+                "preview": {"ownProperties": {"<value>": {"value": '["enabled"]'}}}
+            },
+        }
+
+    def test_fragmented_utf8_packet(self):
+        packet = {"message": "caf\u00e9"}
+        self.assertEqual(protocol.receive_packet(self.socket(packet)), packet)
+
+    def test_truncated_packet_fails_instead_of_hanging(self):
+        for data in (b"", b"2", b"4:{}"):
+            with self.assertRaises(EOFError):
+                protocol.receive_packet(self.Socket(data))
+
+    def test_unrelated_events_are_not_evaluation_results(self):
+        sock = self.socket(
+            {"resultID": "42"},
+            {"type": "frameUpdate"},
+            {"type": "consoleAPICall"},
+            self.result(),
+        )
+        self.assertEqual(protocol.evaluate(sock, "console", "[]"), ["enabled"])
+
+    def test_result_before_acknowledgement_is_consumed(self):
+        sock = self.socket(self.result(), {"resultID": "42"})
+        self.assertEqual(protocol.evaluate(sock, "console", "[]"), ["enabled"])
+        self.assertEqual(sock.recv(1), b"")
+
+    def test_mismatched_result_id_is_ignored(self):
+        other = {**self.result(), "resultID": "previous"}
+        sock = self.socket({"resultID": "42"}, other, self.result())
+        self.assertEqual(protocol.evaluate(sock, "console", "[]"), ["enabled"])
+
+    def test_browser_exception_is_not_swallowed(self):
+        failure = {**self.result(), "exceptionMessage": "evaluation failed"}
+        with self.assertRaisesRegex(RuntimeError, "evaluation failed"):
+            protocol.evaluate(self.socket({"resultID": "42"}, failure), "console", "[]")
 
 
 class ShardTests(unittest.TestCase):

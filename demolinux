@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # demolinux build&run script
 #  Usage: ./demolinux [run|clean|build|tests|all|flash|schemes]
 

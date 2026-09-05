@@ -1,5 +1,6 @@
 work/
 out/
+.ci/
 packages/tobuild/*/src
 packages/tobuild/*/pkg
 packages/tobuild/*/*.tar.gz

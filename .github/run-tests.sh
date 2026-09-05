@@ -5,7 +5,7 @@ image=${1:?Usage: run-tests.sh IMAGE}
 export DEMOLINUX_TEST_IMAGE="$image"
 export DEMOLINUX_NETWORK_BACKEND=user
 export DEMOLINUX_BOOT_TIMEOUT=120
-export DEMOLINUX_VM_MEMORY=2048
+export DEMOLINUX_VM_MEMORY=3072
 export DEMOLINUX_VM_CPUS=1
 printf 'Host CPUs: %s\n' "$(nproc)"
 free -h
@@ -40,11 +40,10 @@ shard() {
 }
 
 # GUI tests share input/focus, so parallelism needs separate VMs, not shells.
-shard windows awesome/layout awesome/overview
-shard desktop awesome/emoji awesome/launcher awesome/panel dpi
-shard applications firefox nvim opencode
-shard media imv mpv music theme urxvt
-shard system dataize persistfs resized systemd xorg sysupdate sysupdate_snapshot
+shard windows awesome/layout awesome/overview imv music
+shard desktop awesome/emoji awesome/panel dpi urxvt
+shard applications awesome/launcher dataize firefox mpv nvim opencode persistfs resized systemd xorg
+shard system theme sysupdate sysupdate_snapshot
 
 failed=0
 for index in "${!pids[@]}"; do

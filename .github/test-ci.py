@@ -393,19 +393,19 @@ sys.exit(int(sys.argv[1] == os.environ.get('FAIL_SHARD')))
         result = self.run_shards()
         self.assertEqual(result.returncode, 0, result.stderr)
         logs = list((self.path / ".ci/tests").glob("*/tests.log"))
-        self.assertEqual(len(logs), 5)
+        self.assertEqual(len(logs), 4)
         settings = [json.loads(path.read_text()) for path in logs]
         for name in ("DEMOLINUX_SSH_PORT", "DEMOLINUX_QMP_PORT"):
-            self.assertEqual(len({setting[name] for setting in settings}), 5)
+            self.assertEqual(len({setting[name] for setting in settings}), 4)
         self.assertTrue(
             all(setting["DEMOLINUX_TEST_IMAGE"] == "base.img" for setting in settings)
         )
 
     def test_one_failed_shard_fails_the_suite(self):
-        result = self.run_shards("imv")
+        result = self.run_shards("theme")
         self.assertEqual(result.returncode, 1, result.stderr)
-        self.assertIn("FAIL: media", result.stdout)
-        self.assertEqual(result.stdout.count("PASS:"), 4)
+        self.assertIn("FAIL: system", result.stdout)
+        self.assertEqual(result.stdout.count("PASS:"), 3)
 
 
 @unittest.skipUnless(shutil.which("zsh"), "guest harness requires Zsh")

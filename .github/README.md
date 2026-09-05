@@ -42,7 +42,7 @@ DHCP runs on `virbr0`, not its enslaved Ethernet interface. Requesting leases
 on both interfaces consumes two addresses and leaves SSH forwarding pointing
 at the abandoned first lease.
 
-Five shards each have their own qcow2 overlay, SSH/QMP ports, SSH control socket,
+Four shards each have their own qcow2 overlay, SSH/QMP ports, SSH control socket,
 process lifetime, and logs. The release image is never copied or modified by
 tests. GUI tests run sequentially within each VM to avoid focus/input races;
 the system-update and snapshot-reboot tests stay together. The host-side tests
@@ -56,7 +56,7 @@ actionlint .github/workflows/default.yml
 bash .github/run-tests.sh out/demolinux-YYYY.MM.DD-x86_64.img
 ```
 
-The parallel suite needs KVM, QEMU with libslirp, Zsh, and approximately 10 GiB
+The parallel suite needs KVM, QEMU with libslirp, Zsh, and approximately 12 GiB
 of guest RAM. `DEMOLINUX_SSH_KEY` can select a key authorized in the image.
 Logs and failure screenshots are under `.ci/tests/<shard>/`; CI uploads them
 on failure. Tests stop immediately if QEMU dies and have bounded boot/suite

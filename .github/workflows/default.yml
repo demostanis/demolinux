@@ -72,7 +72,9 @@ jobs:
         run: |
           until [[ -f .ci/setup.status ]]; do sleep 0.2; done
           cat .ci/setup.log
-          exit "$(<.ci/setup.status)"
+          result=$(<.ci/setup.status)
+          [[ "$result" == 0 ]] || exit "$result"
+          python3 .github/test-ci.py
 
       - name: Generate a temporary SSH key for tests
         run: |

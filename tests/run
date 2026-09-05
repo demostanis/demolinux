@@ -115,7 +115,7 @@ while read -r test; do
 				kill ${${(v)jobstates##*:*:}%=*} 2>/dev/null || :
 			' EXIT
 			. "$test"
-		)
+		) </dev/null
 		if [ $? != 0 ]; then
 			echo $test failed 2>&1
 			exit 1

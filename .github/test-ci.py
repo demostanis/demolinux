@@ -400,6 +400,37 @@ sys.exit(int(sys.argv[1] == os.environ.get('FAIL_SHARD')))
         self.assertEqual(result.stdout.count("PASS:"), 4)
 
 
+@unittest.skipUnless(shutil.which("zsh"), "guest harness requires Zsh")
+class GuestInputTests(TemporaryTest):
+    def test_child_cannot_consume_the_remaining_test_list(self):
+        self.write("utils", (ROOT / "tests/utils").read_text())
+        self.write("a_consumer", 'read -r stolen || :\n[[ -z "$stolen" ]]\n', True)
+        self.write("z_marker", 'print "second test executed"\n', True)
+        source = (ROOT / "tests/run").read_text()
+        program = source.split("./dctrl shell <<'EOC' || die\n", 1)[1].split(
+            "\nEOC", 1
+        )[0]
+        program = program.replace("cd /tmp/tests", f"cd {shlex.quote(str(self.path))}")
+        program = program.replace(
+            "/data/screenshot.png", str(self.path / "screenshot.png")
+        )
+        stubs = """
+        sudo() { :; }
+        xset() { :; }
+        xrefresh() { :; }
+        import() { :; }
+        find() { print -l ./a_consumer ./z_marker; }
+        """
+        result = subprocess.run(
+            ["zsh", "-f", "-c", stubs + program],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("second test executed", result.stdout)
+
+
 class FirefoxProtocolTests(unittest.TestCase):
     class Socket:
         def __init__(self, data):

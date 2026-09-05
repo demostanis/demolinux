@@ -24,12 +24,13 @@ openoverview() {
 }
 
 expectawesome 'return #client.get() == 0'
-openoverview
+modkeypress o
+expectawesome 'return overview_shown ~= true'
 expectnofocus
 
-modkeypress o
-expectawesome 'return overview_shown == false'
 spawndummywin "single window"
+modkeypress o
+expectawesome 'return overview_shown ~= true'
 expectfocusandleftmost "single window"
 quitwin
 

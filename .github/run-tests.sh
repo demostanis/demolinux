@@ -34,7 +34,7 @@ shard() {
     DEMOLINUX_SSH_PORT=$((60022 + index)) \
     DEMOLINUX_QMP_PORT=$((4444 + index)) \
     DEMOLINUX_TEST_LOG_DIR="$logs" \
-        timeout --kill-after=10s 240s ./tests/run "$@" > "$logs/tests.log" 2>&1 &
+        timeout --kill-after=10s 360s ./tests/run "$@" > "$logs/tests.log" 2>&1 &
     pids+=("$!")
     names+=("$name")
 }

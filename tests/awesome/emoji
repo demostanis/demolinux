@@ -1,21 +1,36 @@
 #!/bin/bash
 
-# term
+rm -f /tmp/emoji-result
 modkeypress Enter
 expectwin Untitled
-xdotool type 'sleep 5 && '
+expectfocus Untitled
+xdotool type 'read -rk1 emoji; printf "%s" "$emoji" > /tmp/emoji-result; sleep infinity'
+xdotool key Enter
+expectwin 'read -rk1 emoji'
 
-# emoji picker
+# Inspect the existing widget, without adding a test-only API to the desktop.
+picker_widget='local popup
+for i = 1, 100 do
+    local name, value = debug.getupvalue(require"emojipicker", i)
+    if not name then break end
+    if name == "popup" then popup = value; break end
+end'
 modkeypress e
+expectawesome "$picker_widget
+return popup and popup.visible"
 xdotool type pleading
-# TODO: not sleep 1?
-sleep 1
+expectawesome "$picker_widget
+return popup and popup.widget:get_children_by_id('name')[1].text == 'pleading face'"
 xdotool key Enter
 
-# term
-sleep 1
-xdotool key Enter
-
-expectwin 'sleep 5 && 🥺'
+actual=
+for _ in {1..100}; do
+	if [[ -f /tmp/emoji-result ]]; then
+		actual=$(</tmp/emoji-result)
+		[[ "$actual" == '🥺' ]] && break
+	fi
+	sleep 0.1
+done
+[[ "$actual" == '🥺' ]] || { echo "Wrong inserted emoji: $actual" >&2; exit 1; }
 
 quitwin

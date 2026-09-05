@@ -6,14 +6,21 @@ expectwin iwgtk
 quitwin
 
 modkeypress p
-orig=$(curl -4 icanhazip.com)
+ip() {
+	curl -4 --fail --silent --show-error --connect-timeout 5 --max-time 10 icanhazip.com
+}
+
+orig=$(ip) || {
+	echo "could not determine the public IP before connecting RiseupVPN" >&2
+	exit 1
+}
 xdotool key v
 
-tries=10
+tries=12
 success=
-for i in {1..$tries}; do
-	sleep 5
-	new=$(curl -4 icanhazip.com) || continue
+for ((i = 1; i <= tries; i++)); do
+	sleep 3
+	new=$(ip) || continue
 	if [ "$orig" != "$new" ]; then
 		success=y
 		break
@@ -26,10 +33,17 @@ fi
 
 modkeypress p
 xdotool key v
-sleep 5
 
-new=$(curl -4 icanhazip.com)
-if [ "$new" != "$orig" ]; then
+success=
+for ((i = 1; i <= tries; i++)); do
+	sleep 3
+	new=$(ip) || continue
+	if [ "$new" = "$orig" ]; then
+		success=y
+		break
+	fi
+done
+if [ -z "$success" ]; then
 	echo RiseupVPN is broken, can\'t disconnect >&2
 	exit 1
 fi

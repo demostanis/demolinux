@@ -8,8 +8,18 @@ ffmpeg -f lavfi \
 	-pix_fmt yuv420p \
 	/tmp/output.mp4 >/dev/null 2>&1
 
-# CI is very slow
-if ! timeout 10 mpv-hardened /tmp/output.mp4 >/dev/null 2>&1; then
-	echo mpv failed to run properly "($?)" >&2
+mpv-hardened --loop-file=inf /tmp/output.mp4 >/tmp/mpv.log 2>&1 &
+player=$!
+sleep 3
+if ! kill -0 "$player" 2>/dev/null; then
+	if wait "$player"; then
+		status=0
+	else
+		status=$?
+	fi
+	echo "mpv exited unexpectedly ($status)" >&2
+	cat /tmp/mpv.log >&2
 	exit 1
 fi
+kill "$player"
+wait "$player" || :

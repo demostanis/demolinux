@@ -9,9 +9,20 @@ exec 2> >( sed '/Exiting due to channel error/d' ) || :
 firefox-hardened --start-debugger-server >/dev/null 2>&1 &
 p=$!
 
-while ! nc -z localhost 6000 2>/dev/null; do
+for _ in {1..120}; do
+	if nc -z localhost 6000 2>/dev/null; then
+		break
+	fi
+	if ! kill -0 "$p" 2>/dev/null; then
+		echo "firefox exited before its debugger server became available" >&2
+		exit 1
+	fi
 	sleep 0.5
 done
+if ! nc -z localhost 6000 2>/dev/null; then
+	echo "firefox debugger server did not become available" >&2
+	exit 1
+fi
 
 # wait for the browser to initialize a bit..
 sleep 5
@@ -25,15 +36,15 @@ xdotool mousemove 0 0
 sleep 1
 xdotool key Escape
 sleep 1
-xdotool key o
+xdotool key ctrl+l
 sleep 1
-xdotool type https://github.com/demostanis/
+xdotool type 'data:text/html,%3Ctitle%3EDemolinux%20browser%20test%3C/title%3E'
 sleep 1
 xdotool key Enter
-expectfocus 'demostanis · GitHub — Mozilla Firefox' 180
+expectfocus 'Demolinux browser test — Mozilla Firefox' 30
 xdotool key ctrl+w # remapped to deleteWordBackward in .vimfx/config.js
 sleep 1
-expectfocus 'demostanis · GitHub — Mozilla Firefox'
+expectfocus 'Demolinux browser test — Mozilla Firefox'
 
 quitwin
 pkill firefox || :

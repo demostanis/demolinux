@@ -36,10 +36,12 @@ xdotool mousemove 0 0
 sleep 1
 xdotool key Escape
 sleep 1
-xdotool key ctrl+l
-sleep 1
-xdotool type 'data:text/html,%3Ctitle%3EDemolinux%20browser%20test%3C/title%3E'
-sleep 1
+urlbar='Services.wm.getMostRecentWindow("navigator:browser").gURLBar'
+target='data:text/html,%3Ctitle%3EDemolinux%20browser%20test%3C/title%3E'
+xdotool key --clearmodifiers ctrl+l
+timeout 20 python firefox/browsereval.py --wait "$urlbar.focused && $urlbar.inputField.selectionStart === 0 && $urlbar.inputField.selectionEnd === $urlbar.inputField.value.length"
+xdotool type --clearmodifiers "$target"
+timeout 20 python firefox/browsereval.py --wait "$urlbar.value === '$target'"
 xdotool key Enter
 expectfocus 'Demolinux browser test — Mozilla Firefox' 30
 xdotool key ctrl+w # remapped to deleteWordBackward in .vimfx/config.js

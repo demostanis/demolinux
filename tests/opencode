@@ -3,11 +3,17 @@
 prompt="write ONLY yes if you are working correctly"
 
 run_model() {
-	timeout 120 opencode run -m "opencode/$1" "$prompt" 2>&1 </dev/null
+	local result=0
+	timeout 120 opencode run --format json -m "opencode/$1" "$prompt" \
+		</dev/null >"/tmp/opencode-$2.jsonl" || result=$?
+	jq -Rj 'fromjson? | select(.type? == "text") | .part.text? | strings' \
+		"/tmp/opencode-$2.jsonl" || result=$?
+	rm -f "/tmp/opencode-$2.jsonl"
+	return "$result"
 }
 
 model=big-pickle
-out=$(run_model "$model") || :
+out=$(run_model "$model" primary) || :
 
 if ! grep -q yes <<<"$out"; then
 	model=$(curl -fsSL --max-time 30 https://models.dev/api.json | jq -r '
@@ -24,7 +30,7 @@ if ! grep -q yes <<<"$out"; then
 		exit 1
 	fi
 
-	out=$(run_model "$model") || :
+	out=$(run_model "$model" fallback) || :
 fi
 
 if ! grep -q yes <<<"$out"; then

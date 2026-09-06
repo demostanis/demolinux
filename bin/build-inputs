@@ -4,15 +4,16 @@
 import hashlib
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parent.parent
-BASE = ["archive_date", "build_packages", "pacman.conf", "bin/mkarchiso",
+BASE = ["archive_date", "build_packages", "pacman.conf", "profiledef.sh",
         "bin/build-inputs", ".github/setup-pacman.sh"]
 PACKAGES = BASE + ["available_packages", "deps.lock", "packages/tobuild",
                    "nvim_packages", "zsh_plugins"]
-ROOTFS = PACKAGES + ["airootfs", "profiledef.sh"]
+ROOTFS = PACKAGES + ["airootfs", "bin/mkarchiso"]
 
 
 def fingerprint(paths):
@@ -37,9 +38,32 @@ def fingerprint(paths):
     return digest.hexdigest()
 
 
+def compiler_fingerprint():
+    builder = ROOT / "bin/mkarchiso"
+    source = builder.read_text()
+    prefix, marker, _ = source.partition("\n_make_packages() {")
+    if not marker:
+        raise ValueError("Cannot identify the package-build portion of mkarchiso")
+    digest = hashlib.sha256(fingerprint(BASE).encode())
+    digest.update(str(builder.stat().st_mode & 0o777).encode() + b"\0")
+    digest.update(prefix.encode())
+    # These helpers are defined later but also control package compilation.
+    for name in ("_parse_file", "_validate_deps_lock", "_validate_common_requirements_buildmode_all"):
+        match = re.search(rf"^{name}\(\) \{{.*?^}}", source, re.M | re.S)
+        if match is None:
+            raise ValueError(f"Cannot fingerprint required build helper: {name}")
+        digest.update(b"\0" + match[0].encode())
+    return digest.hexdigest()
+
+
 if __name__ == "__main__":
     groups = {"base": BASE, "packages": PACKAGES, "rootfs": ROOTFS}
     if len(sys.argv) < 2:
         sys.exit("usage: build-inputs {base|packages|rootfs|paths PATH...}")
-    paths = sys.argv[2:] if sys.argv[1] == "paths" else groups[sys.argv[1]]
-    print(fingerprint(paths))
+    if sys.argv[1] == "base":
+        print(compiler_fingerprint())
+    elif sys.argv[1] == "packages":
+        print(hashlib.sha256((compiler_fingerprint() + fingerprint(PACKAGES)).encode()).hexdigest())
+    else:
+        paths = sys.argv[2:] if sys.argv[1] == "paths" else groups[sys.argv[1]]
+        print(fingerprint(paths))

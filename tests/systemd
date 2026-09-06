@@ -1,5 +1,7 @@
 #!/bin/bash
 
+sudo systemctl start pacman-init
+
 failed=$(systemctl --failed -q)
 
 if [ -n "$failed" ]; then

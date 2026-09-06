@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Pixel assertions need this workaround; other shards do not need full-screen
+# redraws every second on the software-rendered QEMU display.
+while true; do xrefresh; sleep 1; done >/dev/null 2>&1 &
+
 expect_middle_color() {
 	mc=
 	tries=${2:-10}
@@ -15,26 +19,32 @@ expect_middle_color() {
 	exit 1
 }
 
-yad &
-sleep 1
+yad --title='GTK theme test' &
+expectwin 'GTK theme test'
+expectfocus 'GTK theme test'
 expect_middle_color "srgb(26,9,45)"
 quitwin
 
 kdeconnect-app >/dev/null 2>&1 &
-sleep 3
-modkeypress w
+expectwin 'KDE Connect'
 expectfocus "KDE Connect"
+expectviewport
+modkeypress w
+expectawesome 'return client.focus.width > client.focus.screen.geometry.width * 0.85'
 expect_middle_color "srgb(38,14,65)"
 quitwin
 
-urxvt -title 'theme left' -e sleep infinity &
+urxvt -title 'theme left' -e bash --noprofile --norc &
 expectwin 'theme left'
 expectfocus 'theme left'
-urxvt -title 'theme right' -e sleep infinity &
+expectviewport
+urxvt -title 'theme right' -e bash --noprofile --norc &
 expectwin 'theme right'
 expectfocus 'theme right'
+expectviewport
 modkeypress h
 expectfocus 'theme left'
+expectviewport
 modkeypress minus
 
 resize_focused_window() {
@@ -48,6 +58,9 @@ resize_focused_window() {
 		keydown Super_L mousedown 3 sleep 0.2 \
 		mousemove_relative -- "$1" 0 sleep 0.2 \
 		mouseup 3 keyup Super_L
+	# Explicitly repaint even when the bare shell has no Readline bindings.
+	xdotool type --clearmodifiers "printf '\\033[2J\\033[H'"
+	xdotool key --clearmodifiers Return
 }
 
 # resizes window to the right (bigger)

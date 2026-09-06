@@ -1,11 +1,18 @@
 #!/bin/bash
 
-modkeypress p
+open_panel() {
+	if ! awesome-client 'return screen.primary.mypanel.visible' | grep -q 'boolean true'; then
+		modkeypress p
+	fi
+	expectawesome 'return screen.primary.mypanel.visible'
+}
+
+open_panel
 xdotool key w
 expectwin iwgtk
 quitwin
 
-modkeypress p
+open_panel
 ip() {
 	curl -4 --fail --silent --show-error --connect-timeout 5 --max-time 10 icanhazip.com
 }
@@ -14,6 +21,7 @@ orig=$(ip) || {
 	echo "could not determine the public IP before connecting RiseupVPN" >&2
 	exit 1
 }
+sudo systemctl start riseup-init.service
 xdotool key v
 
 tries=12
@@ -31,7 +39,7 @@ if [ -z "$success" ]; then
 	exit 1
 fi
 
-modkeypress p
+open_panel
 xdotool key v
 
 success=
@@ -71,7 +79,7 @@ trap cleanup_recording_test EXIT
 screenrecord stop
 wait_for_recorder_status "Not recording"
 
-modkeypress p
+open_panel
 xdotool key r
 wait_for_recorder_status "Recording..."
 sleep 2
@@ -85,13 +93,17 @@ recording=$(screenrecord output)
 ffprobe -v error -select_streams v:0 \
 	-show_entries stream=codec_name,width,height \
 	-of default=noprint_wrappers=1 "$recording"
-mv "$recording" record.mp4
+# Keep the recorded clip visible long enough to inspect the xdg-open result.
+ffmpeg -v error -stream_loop -1 -i "$recording" -t 30 -c copy record.mp4
+rm -f "$recording"
 recording=
-xdg-open record.mp4 >/dev/null 2>&1 & sleep 1
+xdg-open record.mp4 >/tmp/record-playback.log 2>&1 &
 expectwin 'record.mp4 - mpv'
+activatewin 'record.mp4 - mpv'
 quitwin
 
-modkeypress p
+open_panel
+sudo systemctl start pacman-init
 xdotool key c
 sleep 1
 xdotool click 1

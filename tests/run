@@ -80,9 +80,6 @@ fi
 echo changing display resolution...
 ./dctrl shell 'DISPLAY=:0 /usr/lib/xrandr.sh >/dev/null 2>&1'
 
-# for the screen to refresh
-sleep 5
-
 selected=("$@")
 if (( $# == 0 )); then
 	selected=(${${(f)"$(find tests -mindepth 1 -maxdepth 1 ! -name run ! -name utils)"}#tests/})
@@ -95,6 +92,11 @@ tar -C tests -cf - -- "${selected[@]}" utils | ./dctrl shell 'mkdir -p /tmp/test
 export DISPLAY=:0
 cd /tmp/tests
 . ./utils
+
+expectawesome 'local s = screen.primary
+    return not awesome.startup and s and s.geometry.width == 1920 and s.geometry.height == 1080
+        and s.mywibar and s.mywibar.visible and s.mydock and s.mydock.visible' 30
+xdotool keyup Control_L Control_R Shift_L Shift_R Alt_L Alt_R Super_L Super_R
 
 # A descheduled xdotool process can otherwise turn a single key into repeats.
 xset r off

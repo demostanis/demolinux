@@ -1,4 +1,5 @@
 import socket
+import sys
 import time
 from subprocess import check_output
 from protocol import encode_packet, evaluate, receive_packet, receive_reply
@@ -20,6 +21,21 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
     def eval(code):
         return evaluate(s, console, code)
+
+    if len(sys.argv) > 1:
+        if len(sys.argv) != 3 or sys.argv[1] != "--wait":
+            sys.exit("usage: browsereval.py [--wait JAVASCRIPT_CONDITION]")
+        deadline = time.monotonic() + 15
+        while time.monotonic() < deadline:
+            if eval(sys.argv[2]) is True:
+                sys.exit(0)
+            time.sleep(0.1)
+        value = eval(
+            'Services.wm.getMostRecentWindow("navigator:browser").gURLBar.value'
+        )
+        raise RuntimeError(
+            f"Browser condition did not become true: {sys.argv[2]} (URL bar: {value!r})"
+        )
 
     enabled_addons = eval("""
             await (async () => {

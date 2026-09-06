@@ -98,7 +98,14 @@ def control_action_code(args):
     if args.command == "clear":
         return "return sidewindow.clear_image(target)"
     if args.command == "capture-firefox":
-        return "return sidewindow.capture_firefox(target)"
+        if (args.id is None) != (args.window_class is None):
+            raise ValueError("--id and --window-class must be provided together")
+        if args.id is None:
+            return "return sidewindow.capture_firefox(target)"
+        return (
+            "return sidewindow.capture_firefox(target, "
+            f"{lua_string(args.id)}, {lua_string(args.window_class)})"
+        )
     if args.command in {"show", "hide", "toggle"}:
         return (
             "if not sidewindow.has_sidewindows(target) then "
@@ -159,10 +166,12 @@ def control_parser():
     remove = commands.add_parser("remove", help="remove a sidewindow")
     remove.add_argument("selector", nargs="?", help="sidewindow name or index")
     commands.add_parser("clear", help="remove the selected image")
-    commands.add_parser(
+    capture = commands.add_parser(
         "capture-firefox",
-        help="capture the next MCP-launched Firefox window",
+        help="capture an MCP-launched Firefox window in its own sidewindow",
     )
+    capture.add_argument("--id", help="Firefox instance ID")
+    capture.add_argument("--window-class", help="unique Firefox launch WM_CLASS")
     commands.add_parser("show", help="expand the sidewindow")
     commands.add_parser("hide", help="collapse the sidewindow")
     commands.add_parser("toggle", help="toggle the sidewindow")

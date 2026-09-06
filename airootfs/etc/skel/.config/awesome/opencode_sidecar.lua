@@ -1242,16 +1242,41 @@ function sidecar.list(c)
     return table.concat(result, " ")
 end
 
-function sidecar.capture_firefox(c)
+function sidecar.capture_firefox(c, id, window_class)
     if not sidecar.is_opencode(c) then
         return "error: target is not an OpenCode window"
     end
+    if id ~= nil and (type(id) ~= "string" or not id:find("%S")) then
+        return "error: Firefox instance ID must be a non-empty string"
+    end
+    if (id == nil) ~= (window_class == nil)
+        or (window_class ~= nil and (type(window_class) ~= "string"
+            or not window_class:match("^opencode%-firefox%-mcp%-[%x%-]+$"))) then
+        return "error: Firefox instance ID and unique window class are required together"
+    end
+
+    local role = "firefox-mcp"
+    local name = "Firefox MCP"
+    if id and id ~= "default" then
+        role = role..":"..id
+        name = name.." ["..id:gsub("%c", " ").."]"
+    end
+    local matcher = sidecar.is_firefox
+    if window_class then
+        matcher = function(candidate)
+            return is_valid(candidate) and candidate.class == window_class
+        end
+    end
 
     local state = get_state(c)
-    local tab, index = find_tab_by_role(state, "firefox-mcp")
+    local tab, index = find_tab_by_role(state, role)
+    -- The post-launch call also recovers windows created after the watch expires.
+    if tab and window_class and is_valid(tab.hosted_client)
+        and matcher(tab.hosted_client) then
+        return sidecar.status(c)
+    end
     if not tab then
-        tab, index = append_tab(state,
-            unique_name(state, "Firefox MCP"), "firefox-mcp")
+        tab, index = append_tab(state, unique_name(state, name), role)
     end
     activate_index(state, index)
 
@@ -1263,7 +1288,15 @@ function sidecar.capture_firefox(c)
     tab.hosted_kind = "firefox-mcp"
     prepare_launch_focus(tab, focus_before_launch)
     set_expanded(state, false, true)
-    watch_for_hosted(tab, sidecar.is_firefox, "firefox-mcp", false)
+    if window_class then
+        for _, candidate in ipairs(client.get()) do
+            if matcher(candidate) and not sidecar.is_hosted(candidate) then
+                attach_hosted(tab, candidate, "firefox-mcp", false)
+                return sidecar.status(c)
+            end
+        end
+    end
+    watch_for_hosted(tab, matcher, "firefox-mcp", false)
     return sidecar.status(c)
 end
 

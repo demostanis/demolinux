@@ -1,0 +1,516 @@
+--- src/firefox-devtools-mcp-0.7.4/src/index.ts
++++ src/firefox-devtools-mcp-0.7.4/src/index.ts
+@@ -19,6 +19,7 @@
+ }
+ 
+ import { version } from 'node:process';
++import { AsyncLocalStorage } from 'node:async_hooks';
+ import { fileURLToPath } from 'node:url';
+ import { resolve } from 'node:path';
+ import { realpathSync } from 'node:fs';
+@@ -53,22 +54,36 @@
+ // Parse CLI arguments
+ export const args = parseArguments(SERVER_VERSION);
+ 
+-// Global context (lazy initialized on first tool call)
+-let firefox: FirefoxDevTools | null = null;
+-let firefoxInitialization: Promise<FirefoxDevTools> | null = null;
++// Request-local selection keeps overlapping tool calls on their own browser.
++const firefoxContext = new AsyncLocalStorage<string>();
++const firefoxInstances = new Map<string, FirefoxDevTools>();
++const firefoxInitializations = new Map<string, Promise<FirefoxDevTools>>();
++
++function resolveFirefoxId(id: unknown): string {
++  if (id === undefined) {
++    return firefoxContext.getStore() ?? 'default';
++  }
++  if (typeof id !== 'string' || id.trim().length === 0) {
++    throw new Error('id must be a non-empty string');
++  }
++  return id;
++}
+ 
+ /**
+  * Reset Firefox instance (used when disconnection is detected)
+  */
+-export function resetFirefox(): void {
++export function resetFirefox(id?: string): void {
++  const instanceId = resolveFirefoxId(id);
++  const firefox = firefoxInstances.get(instanceId);
+   if (firefox) {
+     firefox.reset();
+-    firefox = null;
+-  }
+-  log('Firefox instance reset - will reconnect on next tool call');
+-}
+-
+-async function initializeFirefox(): Promise<FirefoxDevTools> {
++    firefoxInstances.delete(instanceId);
++  }
++  log(`Firefox instance ${instanceId} reset - will reconnect on next tool call`);
++}
++
++async function initializeFirefox(id: string): Promise<FirefoxDevTools> {
++  const firefox = firefoxInstances.get(id);
+   // If we have an existing instance, verify it's still connected
+   if (firefox) {
+     const connected = await firefox.isConnected();
+@@ -77,11 +92,11 @@
+     }
+ 
+     log('Firefox connection lost - browser was closed or disconnected; reconnecting');
+-    resetFirefox();
++    resetFirefox(id);
+   }
+ 
+   // No existing instance - create new connection
+-  log('Initializing Firefox DevTools connection...');
++  log(`Initializing Firefox DevTools connection for ${id}...`);
+ 
+   const options: FirefoxLaunchOptions = {
+     firefoxPath: args.firefoxPath ?? undefined,
+@@ -94,21 +109,31 @@
+   };
+ 
+   const instance = new FirefoxDevTools(options);
+-  await instance.connect();
+-  firefox = instance;
+-  log('Firefox DevTools connection established');
++  try {
++    await instance.connect();
++  } catch (error) {
++    await instance.close().catch((closeError) => {
++      logDebug(`Failed to close Firefox instance ${id}: ${closeError}`);
++    });
++    throw error;
++  }
++  firefoxInstances.set(id, instance);
++  log(`Firefox DevTools connection established for ${id}`);
+ 
+   return instance;
+ }
+ 
+-export function getFirefox(): Promise<FirefoxDevTools> {
+-  if (!firefoxInitialization) {
+-    firefoxInitialization = initializeFirefox().finally(() => {
+-      firefoxInitialization = null;
++export function getFirefox(id?: string): Promise<FirefoxDevTools> {
++  const instanceId = resolveFirefoxId(id);
++  let initialization = firefoxInitializations.get(instanceId);
++  if (!initialization) {
++    initialization = initializeFirefox(instanceId).finally(() => {
++      firefoxInitializations.delete(instanceId);
+     });
+-  }
+-
+-  return firefoxInitialization;
++    firefoxInitializations.set(instanceId, initialization);
++  }
++
++  return initialization;
+ }
+ 
+ // Tool handler mapping
+@@ -156,7 +181,7 @@
+ ]);
+ 
+ // All tool definitions
+-const allTools = [
++export const allTools = [
+   // Pages
+   tools.listPagesTool,
+   tools.newPageTool,
+@@ -197,7 +222,35 @@
+   tools.dismissDialogTool,
+   tools.navigateHistoryTool,
+   tools.setViewportSizeTool,
+-];
++].map((tool) => ({
++  ...tool,
++  inputSchema: {
++    ...tool.inputSchema,
++    properties: {
++      ...tool.inputSchema.properties,
++      id: {
++        type: 'string',
++        minLength: 1,
++        pattern: '\\S',
++        description:
++          'Firefox instance ID (default: "default"). A new ID launches a separate browser. Reuse your unique ID on every tool call to keep tabs, snapshots, console and network state isolated from other agents.',
++      },
++    },
++  },
++}));
++
++export async function executeTool(
++  name: string,
++  input: Record<string, unknown> = {}
++): Promise<McpToolResponse> {
++  const handler = toolHandlers.get(name);
++  if (!handler) {
++    throw new Error(`Unknown tool: ${name}`);
++  }
++
++  const id = resolveFirefoxId(input.id);
++  return firefoxContext.run(id, () => handler(input));
++}
+ 
+ async function main() {
+   log(`Starting ${SERVER_NAME} v${SERVER_VERSION}`);
+@@ -239,13 +292,8 @@
+     const { name, arguments: args } = request.params;
+     log(`Executing tool: ${name}`);
+ 
+-    const handler = toolHandlers.get(name);
+-    if (!handler) {
+-      throw new Error(`Unknown tool: ${name}`);
+-    }
+-
+     try {
+-      return await handler(args);
++      return await executeTool(name, args);
+     } catch (error) {
+       logError(`Error executing tool ${name}`, error);
+       throw error;
+--- src/firefox-devtools-mcp-0.7.4/src/tools/network.ts
++++ src/firefox-devtools-mcp-0.7.4/src/tools/network.ts
+@@ -79,7 +79,7 @@
+   inputSchema: {
+     type: 'object' as const,
+     properties: {
+-      id: {
++      requestId: {
+         type: 'string',
+         description: 'Request ID from list_network_requests',
+       },
+@@ -279,13 +279,13 @@
+ export async function handleGetNetworkRequest(args: unknown): Promise<McpToolResponse> {
+   try {
+     const {
+-      id,
++      requestId,
+       url,
+       format = 'text',
+-    } = args as { id?: string; url?: string; format?: 'text' | 'json' };
+-
+-    if (!id && !url) {
+-      return errorResponse('id or url required');
++    } = args as { requestId?: string; url?: string; format?: 'text' | 'json' };
++
++    if (!requestId && !url) {
++      return errorResponse('requestId or url required');
+     }
+ 
+     const { getFirefox } = await import('../index.js');
+@@ -295,10 +295,10 @@
+     let request = null;
+ 
+     // Primary path: lookup by ID
+-    if (id) {
+-      request = requests.find((req) => req.id === id);
++    if (requestId) {
++      request = requests.find((req) => req.id === requestId);
+       if (!request) {
+-        return errorResponse(`ID ${id} not found`);
++        return errorResponse(`ID ${requestId} not found`);
+       }
+     } else if (url) {
+       // Fallback: lookup by URL (with collision detection)
+@@ -310,7 +310,7 @@
+ 
+       if (matches.length > 1) {
+         const ids = matches.map((req) => req.id).join(', ');
+-        return errorResponse(`Multiple matches, use id: ${ids}`);
++        return errorResponse(`Multiple matches, use requestId: ${ids}`);
+       }
+ 
+       request = matches[0];
+--- src/firefox-devtools-mcp-0.7.4/tests/index.test.ts
++++ src/firefox-devtools-mcp-0.7.4/tests/index.test.ts
+@@ -1,18 +1,9 @@
+-import { afterEach, describe, expect, it, vi } from 'vitest';
+-
+-const connection = vi.hoisted(() => {
+-  let resolveConnection: () => void;
+-  const pendingConnection = new Promise<void>((resolve) => {
+-    resolveConnection = resolve;
+-  });
+-
+-  return {
+-    connect: vi.fn(() => pendingConnection),
+-    isConnected: vi.fn().mockResolvedValue(false),
+-    reset: vi.fn(),
+-    resolve: () => resolveConnection(),
+-  };
+-});
++import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
++
++const connection = vi.hoisted(() => ({
++  connect: vi.fn<() => Promise<void>>(),
++  created: vi.fn(),
++}));
+ 
+ vi.mock('../src/cli.js', () => ({
+   parseArguments: () => ({
+@@ -23,29 +14,213 @@
+ 
+ vi.mock('../src/firefox/index.js', () => ({
+   FirefoxDevTools: class {
++    constructor() {
++      connection.created(this);
++    }
+     connect = connection.connect;
+-    isConnected = connection.isConnected;
+-    reset = connection.reset;
++    isConnected = vi.fn().mockResolvedValue(true);
++    reset = vi.fn();
++    close = vi.fn().mockResolvedValue(undefined);
++    clearSnapshot = vi.fn();
++    clearConsoleMessages = vi.fn();
++    getConsoleMessages = vi.fn().mockResolvedValue([]);
++    refreshTabs = vi.fn().mockResolvedValue(undefined);
++    getTabs = vi.fn().mockReturnValue([{ title: 'Untitled', url: 'about:blank' }]);
++    getSelectedTabIdx = vi.fn().mockReturnValue(0);
++    navigate = vi.fn().mockResolvedValue(undefined);
++    getNetworkRequests = vi.fn().mockResolvedValue([]);
+   },
+ }));
+ 
+-import { getFirefox, resetFirefox } from '../src/index.js';
+-
+-describe('Firefox initialization', () => {
++import { allTools, executeTool, getFirefox, resetFirefox } from '../src/index.js';
++
++function deferred() {
++  let resolve!: () => void;
++  let reject!: (error: Error) => void;
++  const promise = new Promise<void>((res, rej) => {
++    resolve = res;
++    reject = rej;
++  });
++  return { promise, resolve, reject };
++}
++
++describe('Firefox instances', () => {
++  beforeEach(() => {
++    connection.connect.mockReset().mockResolvedValue(undefined);
++    connection.created.mockClear();
++  });
++
+   afterEach(() => {
+-    resetFirefox();
+-  });
+-
+-  it('shares one launch between concurrent tool requests', async () => {
++    for (const id of ['default', 'agent-a', 'agent-b', '__proto__']) {
++      resetFirefox(id);
++    }
++  });
++
++  it('shares one launch between concurrent calls without an ID', async () => {
++    const pending = deferred();
++    connection.connect.mockReturnValueOnce(pending.promise);
+     const first = getFirefox();
+     const second = getFirefox();
+ 
++    expect(first).toBe(second);
+     expect(connection.connect).toHaveBeenCalledTimes(1);
+-
+-    connection.resolve();
++    pending.resolve();
+     const [firstClient, secondClient] = await Promise.all([first, second]);
+ 
+     expect(firstClient).toBe(secondClient);
++    expect(await getFirefox('default')).toBe(firstClient);
+     expect(connection.connect).toHaveBeenCalledTimes(1);
+   });
++
++  it('shares initialization per ID without blocking other IDs', async () => {
++    const pending = deferred();
++    connection.connect.mockReturnValueOnce(pending.promise);
++    const first = getFirefox('agent-a');
++    const second = getFirefox('agent-a');
++    const other = await getFirefox('agent-b');
++
++    expect(first).toBe(second);
++    expect(connection.connect).toHaveBeenCalledTimes(2);
++    pending.resolve();
++    expect(await first).not.toBe(other);
++    expect(await getFirefox('agent-a')).toBe(await first);
++    expect(await getFirefox('agent-b')).toBe(other);
++  });
++
++  it('keeps the default browser separate from named browsers', async () => {
++    const [defaultClient, namedClient] = await Promise.all([getFirefox(), getFirefox('agent-a')]);
++    expect(defaultClient).not.toBe(namedClient);
++    expect(await getFirefox()).toBe(defaultClient);
++  });
++
++  it('supports IDs that match object prototype properties', async () => {
++    const client = await getFirefox('__proto__');
++    expect(await getFirefox('__proto__')).toBe(client);
++    expect(connection.connect).toHaveBeenCalledTimes(1);
++  });
++
++  it('reconnects only the disconnected instance', async () => {
++    const first = await getFirefox('agent-a');
++    const other = await getFirefox('agent-b');
++    vi.mocked(first.isConnected).mockResolvedValue(false);
++
++    const [replacement, sameReplacement] = await Promise.all([
++      getFirefox('agent-a'),
++      getFirefox('agent-a'),
++    ]);
++    expect(replacement).not.toBe(first);
++    expect(replacement).toBe(sameReplacement);
++    expect(first.reset).toHaveBeenCalledOnce();
++    expect(other.reset).not.toHaveBeenCalled();
++    expect(await getFirefox('agent-b')).toBe(other);
++    expect(connection.connect).toHaveBeenCalledTimes(3);
++  });
++
++  it('resets only the selected ID', async () => {
++    const first = await getFirefox('agent-a');
++    const other = await getFirefox('agent-b');
++    resetFirefox('agent-a');
++
++    expect(first.reset).toHaveBeenCalledOnce();
++    expect(await getFirefox('agent-a')).not.toBe(first);
++    expect(await getFirefox('agent-b')).toBe(other);
++  });
++
++  it('cleans up failed launches and allows retry without affecting another ID', async () => {
++    const pending = deferred();
++    connection.connect.mockReturnValueOnce(pending.promise);
++    const first = getFirefox('agent-a');
++    const same = getFirefox('agent-a');
++    const failedClient = connection.created.mock.calls[0]![0];
++    const other = await getFirefox('agent-b');
++    const results = Promise.allSettled([first, same]);
++    pending.reject(new Error('Launch failed'));
++
++    expect((await results).map((result) => result.status)).toEqual(['rejected', 'rejected']);
++    expect(failedClient.close).toHaveBeenCalledOnce();
++    expect(await getFirefox('agent-b')).toBe(other);
++    expect(await getFirefox('agent-a')).not.toBe(failedClient);
++    expect(connection.connect).toHaveBeenCalledTimes(3);
++  });
++
++  it('publishes an optional browser ID on every tool without changing required arguments', () => {
++    for (const tool of allTools) {
++      expect(tool.inputSchema.properties.id).toMatchObject({
++        type: 'string',
++        minLength: 1,
++        pattern: '\\S',
++      });
++      const schema = tool.inputSchema as { required?: string[] };
++      expect(schema.required ?? []).not.toContain('id');
++    }
++    expect(allTools.find((tool) => tool.name === 'navigate_page')?.inputSchema).toMatchObject({
++      required: ['url'],
++    });
++    expect(
++      allTools.find((tool) => tool.name === 'get_network_request')?.inputSchema.properties
++    ).toHaveProperty('requestId');
++  });
++
++  it('routes overlapping asynchronous tool calls to their own instances', async () => {
++    const first = await getFirefox('agent-a');
++    const other = await getFirefox('agent-b');
++    const pending = deferred();
++    vi.mocked(first.isConnected).mockImplementationOnce(async () => {
++      await pending.promise;
++      return true;
++    });
++
++    const firstCall = executeTool('navigate_page', { id: 'agent-a', url: 'https://a.test' });
++    await executeTool('navigate_page', { id: 'agent-b', url: 'https://b.test' });
++    expect(other.navigate).toHaveBeenCalledWith('https://b.test');
++    expect(first.navigate).not.toHaveBeenCalled();
++    pending.resolve();
++    await firstCall;
++    expect(first.navigate).toHaveBeenCalledExactlyOnceWith('https://a.test');
++
++    expect((await executeTool('clear_snapshot', { id: 'agent-a' })).isError).not.toBe(true);
++    expect((await executeTool('clear_console_messages', { id: 'agent-b' })).isError).not.toBe(true);
++    expect(first.clearSnapshot).toHaveBeenCalledOnce();
++    expect(other.clearSnapshot).not.toHaveBeenCalled();
++    expect(other.clearConsoleMessages).toHaveBeenCalledOnce();
++    expect(first.clearConsoleMessages).not.toHaveBeenCalled();
++
++    await executeTool('clear_snapshot');
++    const defaultClient = await getFirefox();
++    expect(defaultClient).not.toBe(first);
++    expect(defaultClient).not.toBe(other);
++    expect(defaultClient.clearSnapshot).toHaveBeenCalledOnce();
++  });
++
++  it('separates browser IDs from network request IDs', async () => {
++    const first = await getFirefox('agent-a');
++    const other = await getFirefox('agent-b');
++    vi.mocked(first.getNetworkRequests).mockResolvedValue([
++      { id: 'request-123', url: 'https://a.test', method: 'GET' },
++    ]);
++    const result = await executeTool('get_network_request', {
++      id: 'agent-a',
++      requestId: 'request-123',
++      format: 'json',
++    });
++    expect(result.isError).not.toBe(true);
++    expect(result.content[0]).toMatchObject({ text: expect.stringContaining('https://a.test') });
++    expect(other.getNetworkRequests).not.toHaveBeenCalled();
++    expect(connection.connect).toHaveBeenCalledTimes(2);
++  });
++
++  it.each(['', '   ', 1, null, false, {}, []])(
++    'rejects invalid ID %j without launching',
++    async (id) => {
++      await expect(executeTool('list_pages', { id })).rejects.toThrow(
++        'id must be a non-empty string'
++      );
++      expect(connection.connect).not.toHaveBeenCalled();
++    }
++  );
++
++  it('rejects unknown tools without launching a browser', async () => {
++    await expect(executeTool('unknown', { id: 'agent-a' })).rejects.toThrow('Unknown tool');
++    expect(connection.connect).not.toHaveBeenCalled();
++  });
+ });
+--- src/firefox-devtools-mcp-0.7.4/README.md
++++ src/firefox-devtools-mcp-0.7.4/README.md
+@@ -79,6 +79,34 @@
+ - `take_snapshot` then `click_by_uid` / `fill_by_uid`
+ - `list_network_requests` (always‑on capture), `get_network_request`
+ - `screenshot_page`, `list_console_messages`
++
++## Multiple Firefox instances
++
++Every MCP tool accepts an optional non-empty string `id`. The first call using a
++new ID launches a separate Firefox browser; subsequent calls reuse that instance.
++Agents sharing an MCP server should each choose a unique ID and pass it on every
++call, for example:
++
++```json
++{"name":"navigate_page","arguments":{"id":"agent-a","url":"https://example.com"}}
++{"name":"take_snapshot","arguments":{"id":"agent-a"}}
++{"name":"navigate_page","arguments":{"id":"agent-b","url":"https://example.org"}}
++```
++
++Omitting `id` selects the shared `default` instance, as does `"id":"default"`.
++Each instance has its own tabs, selected page, snapshots, console and network
++state. Initialization is shared for simultaneous calls using the same ID, while
++different IDs can launch independently. Closing/disconnecting one browser only
++causes that instance to be relaunched on its next call. IDs are local to the MCP
++server process and are not persistent Firefox profile names.
++
++For `get_network_request`, use `requestId` for the network request identifier
++returned by `list_network_requests`; `id` now selects the browser, just as on all
++other tools:
++
++```json
++{"name":"get_network_request","arguments":{"id":"agent-a","requestId":"request-123"}}
++```
+ 
+ ## CLI options
+ 

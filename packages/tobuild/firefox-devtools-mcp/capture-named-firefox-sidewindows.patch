@@ -1,0 +1,193 @@
+--- src/firefox-devtools-mcp-0.7.4/src/index.ts
++++ src/firefox-devtools-mcp-0.7.4/src/index.ts
+@@ -99,6 +99,7 @@
+   log(`Initializing Firefox DevTools connection for ${id}...`);
+ 
+   const options: FirefoxLaunchOptions = {
++    instanceId: id,
+     firefoxPath: args.firefoxPath ?? undefined,
+     headless: args.headless,
+     profilePath: args.profilePath ?? undefined,
+--- src/firefox-devtools-mcp-0.7.4/src/firefox/core.ts
++++ src/firefox-devtools-mcp-0.7.4/src/firefox/core.ts
+@@ -3,26 +3,22 @@
+  */
+ 
+ import { spawnSync } from 'node:child_process';
++import { randomUUID } from 'node:crypto';
+ import { Builder, Browser, WebDriver } from 'selenium-webdriver';
+ import firefox from 'selenium-webdriver/firefox.js';
+ import type { FirefoxLaunchOptions } from './types.js';
+ import { log, logDebug } from '../utils/logger.js';
+ 
+-function captureFirefoxInOpenCodeSidewindow(): void {
+-  if (process.platform !== 'linux' || !process.env.DISPLAY) {
+-    return;
+-  }
+-
+-  const result = spawnSync('opencode-sidewindow-ctl', ['capture-firefox'], {
+-    stdio: 'ignore',
+-    timeout: 2000,
+-  });
++function captureFirefoxInOpenCodeSidewindow(id: string, windowClass: string): void {
++  const result = spawnSync(
++    'opencode-sidewindow-ctl',
++    ['capture-firefox', '--id', id, '--window-class', windowClass],
++    { stdio: 'ignore', timeout: 2000 }
++  );
+   if (result.error) {
+     logDebug(`OpenCode sidewindow capture unavailable: ${result.error.message}`);
+   } else if (result.status !== 0) {
+-    logDebug(
+-      `OpenCode sidewindow capture exited with status ${result.status ?? 'unknown'}`,
+-    );
++    logDebug(`OpenCode sidewindow capture exited with status ${result.status ?? 'unknown'}`);
+   }
+ }
+ 
+@@ -41,6 +37,14 @@
+     // Configure Firefox options
+     const firefoxOptions = new firefox.Options();
+     firefoxOptions.enableBidi();
++
++    const windowClass =
++      !this.options.headless && process.platform === 'linux' && process.env.DISPLAY
++        ? `opencode-firefox-mcp-${randomUUID()}`
++        : undefined;
++    if (windowClass) {
++      firefoxOptions.addArguments('--class', windowClass);
++    }
+ 
+     if (this.options.headless) {
+       firefoxOptions.addArguments('-headless');
+@@ -69,8 +73,8 @@
+       firefoxOptions.setAcceptInsecureCerts(true);
+     }
+ 
+-    if (!this.options.headless) {
+-      captureFirefoxInOpenCodeSidewindow();
++    if (windowClass) {
++      captureFirefoxInOpenCodeSidewindow(this.options.instanceId ?? 'default', windowClass);
+     }
+ 
+     // Build WebDriver instance
+@@ -78,6 +82,10 @@
+       .forBrowser(Browser.FIREFOX)
+       .setFirefoxOptions(firefoxOptions)
+       .build();
++
++    if (windowClass) {
++      captureFirefoxInOpenCodeSidewindow(this.options.instanceId ?? 'default', windowClass);
++    }
+ 
+     log('✅ Firefox launched with BiDi');
+ 
+--- src/firefox-devtools-mcp-0.7.4/src/firefox/types.ts
++++ src/firefox-devtools-mcp-0.7.4/src/firefox/types.ts
+@@ -51,6 +51,7 @@
+  * Firefox launch options
+  */
+ export interface FirefoxLaunchOptions {
++  instanceId?: string | undefined;
+   firefoxPath?: string | undefined;
+   headless: boolean;
+   profilePath?: string | undefined;
+--- /dev/null
++++ src/firefox-devtools-mcp-0.7.4/tests/firefox/sidewindow.test.ts
+@@ -0,0 +1,96 @@
++import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
++
++const mocks = vi.hoisted(() => ({
++  capture: vi.fn(),
++  build: vi.fn(),
++  options: [] as string[][],
++}));
++
++vi.mock('node:child_process', () => ({ spawnSync: mocks.capture }));
++vi.mock('selenium-webdriver', () => ({
++  Browser: { FIREFOX: 'firefox' },
++  Builder: class {
++    forBrowser() {
++      return this;
++    }
++    setFirefoxOptions() {
++      return this;
++    }
++    build = mocks.build;
++  },
++}));
++vi.mock('selenium-webdriver/firefox.js', () => ({
++  default: {
++    Options: class {
++      args: string[] = [];
++      constructor() {
++        mocks.options.push(this.args);
++      }
++      enableBidi() {}
++      addArguments(...args: string[]) {
++        this.args.push(...args);
++      }
++    },
++  },
++}));
++
++import { FirefoxCore } from '../../src/firefox/core.js';
++
++describe.runIf(process.platform === 'linux')('Firefox sidewindow capture', () => {
++  beforeEach(() => {
++    vi.stubEnv('DISPLAY', ':0');
++    mocks.options.length = 0;
++    mocks.capture.mockReset().mockReturnValue({ status: 0 });
++    mocks.build.mockReset().mockResolvedValue({
++      getWindowHandle: vi.fn().mockResolvedValue('context'),
++    });
++  });
++  afterEach(() => vi.unstubAllEnvs());
++
++  it('passes each ID and unique launch class before and after browser creation', async () => {
++    const first = new FirefoxCore({ headless: false, instanceId: 'agent-a' });
++    const second = new FirefoxCore({ headless: false, instanceId: 'agent-b' });
++    await Promise.all([first.connect(), second.connect()]);
++
++    const classes = mocks.options.map((args) => args[args.indexOf('--class') + 1]);
++    expect(classes[0]).toMatch(/^opencode-firefox-mcp-[a-f0-9-]+$/);
++    expect(classes[0]).not.toBe(classes[1]);
++    for (const [index, id] of ['agent-a', 'agent-b'].entries()) {
++      const calls = mocks.capture.mock.calls.filter((call) => call[1][2] === id);
++      expect(calls).toHaveLength(2);
++      expect(calls[0]).toEqual([
++        'opencode-sidewindow-ctl',
++        ['capture-firefox', '--id', id, '--window-class', classes[index]],
++        { stdio: 'ignore', timeout: 2000 },
++      ]);
++      expect(calls[1]).toEqual(calls[0]);
++    }
++    expect(mocks.capture.mock.invocationCallOrder[0]).toBeLessThan(
++      mocks.build.mock.invocationCallOrder[0]!
++    );
++  });
++
++  it('uses the default ID for direct callers', async () => {
++    await new FirefoxCore({ headless: false }).connect();
++    expect(mocks.capture.mock.calls[0]![1][2]).toBe('default');
++  });
++
++  it('does not capture headless browsers', async () => {
++    await new FirefoxCore({ headless: true, instanceId: 'agent-a' }).connect();
++    expect(mocks.capture).not.toHaveBeenCalled();
++    expect(mocks.options[0]).toEqual(['-headless']);
++  });
++
++  it('does not capture when X11 is unavailable', async () => {
++    vi.stubEnv('DISPLAY', '');
++    await new FirefoxCore({ headless: false }).connect();
++    expect(mocks.capture).not.toHaveBeenCalled();
++    expect(mocks.options[0]).toEqual([]);
++  });
++
++  it('still launches when sidewindow controls are unavailable', async () => {
++    mocks.capture.mockReturnValue({ error: new Error('ENOENT'), status: null });
++    await new FirefoxCore({ headless: false }).connect();
++    expect(mocks.build).toHaveBeenCalledOnce();
++  });
++});

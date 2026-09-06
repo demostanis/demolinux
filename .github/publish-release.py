@@ -60,7 +60,7 @@ def find_release(github, tag):
         page += 1
 
 
-def publish(github, tag, sha, title, body, files):
+def publish(github, tag, sha, title, body, files, *, force=False):
     if not files or any(
         not Path(path).is_file() or Path(path).stat().st_size == 0 for path in files
     ):
@@ -74,7 +74,8 @@ def publish(github, tag, sha, title, body, files):
         else {}
     )
     if (
-        release
+        not force
+        and release
         and not release["draft"]
         and ref
         and ref["object"]["sha"] == sha
@@ -138,7 +139,13 @@ if __name__ == "__main__":
     try:
         print(
             publish(
-                GitHub(os.environ["GITHUB_REPOSITORY"]), tag, sha, title, body, files
+                GitHub(os.environ["GITHUB_REPOSITORY"]),
+                tag,
+                sha,
+                title,
+                body,
+                files,
+                force=os.environ.get("DEMOLINUX_PUBLISH_UNCHANGED") == "1",
             )
         )
     except (RuntimeError, ValueError, subprocess.CalledProcessError) as error:

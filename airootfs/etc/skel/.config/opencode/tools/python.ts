@@ -7,16 +7,17 @@ export default tool({
   description: "Execute Python code using uv with optional package dependencies installed via uv --with.",
   args: {
     code: tool.schema.string().describe("The Python code to execute"),
-    packages: tool.schema.array(tool.schema.string()).default([]).describe("List of packages to install via uv --with (e.g., ['requests', 'numpy'])"),
+    packages: tool.schema.array(tool.schema.string()).optional().default([]).describe("List of packages to install via uv --with (e.g., ['requests', 'numpy'])"),
     timeout: tool.schema.number().optional().describe("Optional timeout in milliseconds"),
     description: tool.schema.string().describe("Clear, concise description of what this code does in 5-10 words"),
   },
   async execute(params, ctx) {
+    const packages = params.packages ?? [];
     const timeout = params.timeout ?? DEFAULT_TIMEOUT;
     const cwd = ctx.directory;
 
     const uvArgs = ["run"];
-    for (const pkg of params.packages) {
+    for (const pkg of packages) {
       uvArgs.push("--with", pkg);
     }
     uvArgs.push("python", "-c", params.code);
@@ -53,7 +54,7 @@ export default tool({
       permission: "python",
       patterns: [params.description],
       always: ["python *"],
-      metadata: { code: params.code, packages: params.packages },
+      metadata: { code: params.code, packages },
     });
 
     const displayCmd = `uv ${uvArgs.map(arg => arg.includes(" ") ? `"${arg}"` : arg).join(" ")}`;

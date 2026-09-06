@@ -1,0 +1,418 @@
+--- src/firefox-devtools-mcp-0.7.4/src/firefox/core.ts
++++ src/firefox-devtools-mcp-0.7.4/src/firefox/core.ts
+@@ -7,6 +7,7 @@
+ import { Builder, Browser, WebDriver } from 'selenium-webdriver';
+ import firefox from 'selenium-webdriver/firefox.js';
+ import type { FirefoxLaunchOptions } from './types.js';
++import { TemporaryFirefoxProfile, findMarionettePort } from './profile.js';
+ import { log, logDebug } from '../utils/logger.js';
+ 
+ function captureFirefoxInOpenCodeSidewindow(id: string, windowClass: string): void {
+@@ -25,6 +26,7 @@
+ export class FirefoxCore {
+   private driver: WebDriver | null = null;
+   private currentContextId: string | null = null;
++  private profile: TemporaryFirefoxProfile | null = null;
+ 
+   constructor(private options: FirefoxLaunchOptions) {}
+ 
+@@ -32,6 +34,17 @@
+    * Launch Firefox and establish BiDi connection
+    */
+   async connect(): Promise<void> {
++    try {
++      await this.launch();
++    } catch (error) {
++      await this.close().catch((closeError) => {
++        logDebug(`Failed to clean up Firefox launch: ${closeError}`);
++      });
++      throw error;
++    }
++  }
++
++  private async launch(): Promise<void> {
+     log('🚀 Launching Firefox via Selenium WebDriver BiDi...');
+ 
+     // Configure Firefox options
+@@ -65,8 +78,24 @@
+       firefoxOptions.addArguments(...this.options.args);
+     }
+ 
++    let service: firefox.ServiceBuilder | undefined;
+     if (this.options.profilePath) {
+-      firefoxOptions.setProfile(this.options.profilePath);
++      if (process.env.SELENIUM_REMOTE_URL || process.env.SELENIUM_SERVER_JAR) {
++        firefoxOptions.setProfile(this.options.profilePath);
++      } else {
++        // Local geckodriver can use a private copy directly, without ZIP/base64 transport.
++        const started = performance.now();
++        this.profile = await TemporaryFirefoxProfile.create(this.options.profilePath);
++        firefoxOptions.addArguments('-profile', this.profile.path);
++        // Explicit ports avoid geckodriver's --profile port-discovery bug and ID collisions.
++        service = new firefox.ServiceBuilder().addArguments(
++          '--marionette-port',
++          String(await findMarionettePort())
++        );
++        logDebug(
++          `Prepared local Firefox profile in ${(performance.now() - started).toFixed(0)} ms`
++        );
++      }
+     }
+ 
+     if (this.options.acceptInsecureCerts) {
+@@ -78,10 +107,11 @@
+     }
+ 
+     // Build WebDriver instance
+-    this.driver = await new Builder()
+-      .forBrowser(Browser.FIREFOX)
+-      .setFirefoxOptions(firefoxOptions)
+-      .build();
++    const builder = new Builder().forBrowser(Browser.FIREFOX).setFirefoxOptions(firefoxOptions);
++    if (service) {
++      builder.setFirefoxService(service);
++    }
++    this.driver = await builder.build();
+ 
+     if (windowClass) {
+       captureFirefoxInOpenCodeSidewindow(this.options.instanceId ?? 'default', windowClass);
+@@ -136,8 +166,9 @@
+    * Reset driver state (used when Firefox is detected as closed)
+    */
+   reset(): void {
+-    this.driver = null;
+-    this.currentContextId = null;
++    void this.close().catch((error) =>
++      logDebug(`Failed to clean up disconnected Firefox: ${error}`)
++    );
+     logDebug('Driver state reset');
+   }
+ 
+@@ -159,9 +190,15 @@
+    * Close driver and cleanup
+    */
+   async close(): Promise<void> {
+-    if (this.driver) {
+-      await this.driver.quit();
+-      this.driver = null;
++    const driver = this.driver;
++    const profile = this.profile;
++    this.driver = null;
++    this.profile = null;
++    this.currentContextId = null;
++    try {
++      await driver?.quit();
++    } finally {
++      await profile?.remove();
+     }
+     log('✅ Firefox DevTools closed');
+   }
+--- src/firefox-devtools-mcp-0.7.4/README.md
++++ src/firefox-devtools-mcp-0.7.4/README.md
+@@ -107,6 +107,15 @@
+ ```json
+ {"name":"get_network_request","arguments":{"id":"agent-a","requestId":"request-123"}}
+ ```
++
++### Profile startup performance
++
++With `--profile-path`, local Firefox instances use separate private temporary
++copies of the supplied profile. This avoids ZIP compression, base64 transfer and
++extraction on every launch. The original profile is never used in-place, and
++cookies, extensions and site storage are retained in each copy. Copies are
++removed on close, reconnect or failed initialization. Remote Selenium sessions
++continue to use the ZIP profile capability.
+ 
+ ## CLI options
+ 
+--- src/firefox-devtools-mcp-0.7.4/tests/firefox/sidewindow.test.ts
++++ src/firefox-devtools-mcp-0.7.4/tests/firefox/sidewindow.test.ts
+@@ -4,6 +4,12 @@
+   capture: vi.fn(),
+   build: vi.fn(),
+   options: [] as string[][],
++  createProfile: vi.fn(),
++  port: vi.fn(),
++  setProfile: vi.fn(),
++  service: vi.fn(),
++  serviceArgs: [] as string[][],
++  quit: vi.fn(),
+ }));
+ 
+ vi.mock('node:child_process', () => ({ spawnSync: mocks.capture }));
+@@ -16,6 +22,7 @@
+     setFirefoxOptions() {
+       return this;
+     }
++    setFirefoxService = mocks.service;
+     build = mocks.build;
+   },
+ }));
+@@ -30,8 +37,24 @@
+       addArguments(...args: string[]) {
+         this.args.push(...args);
+       }
++      setProfile = mocks.setProfile;
++    },
++    ServiceBuilder: class {
++      args: string[] = [];
++      constructor() {
++        mocks.serviceArgs.push(this.args);
++      }
++      addArguments(...args: string[]) {
++        this.args.push(...args);
++        return this;
++      }
+     },
+   },
++}));
++
++vi.mock('../../src/firefox/profile.js', () => ({
++  TemporaryFirefoxProfile: { create: mocks.createProfile },
++  findMarionettePort: mocks.port,
+ }));
+ 
+ import { FirefoxCore } from '../../src/firefox/core.js';
+@@ -40,9 +63,21 @@
+   beforeEach(() => {
+     vi.stubEnv('DISPLAY', ':0');
+     mocks.options.length = 0;
++    mocks.serviceArgs.length = 0;
++    vi.stubEnv('SELENIUM_REMOTE_URL', '');
++    vi.stubEnv('SELENIUM_SERVER_JAR', '');
++    mocks.createProfile.mockReset().mockImplementation(async () => ({
++      path: '/tmp/rust_mcp-test',
++      remove: vi.fn().mockResolvedValue(undefined),
++    }));
++    mocks.port.mockReset().mockResolvedValue(12345);
++    mocks.setProfile.mockReset();
++    mocks.service.mockReset();
++    mocks.quit.mockReset().mockResolvedValue(undefined);
+     mocks.capture.mockReset().mockReturnValue({ status: 0 });
+     mocks.build.mockReset().mockResolvedValue({
+       getWindowHandle: vi.fn().mockResolvedValue('context'),
++      quit: mocks.quit,
+     });
+   });
+   afterEach(() => vi.unstubAllEnvs());
+@@ -93,4 +128,69 @@
+     await new FirefoxCore({ headless: false }).connect();
+     expect(mocks.build).toHaveBeenCalledOnce();
+   });
++
++  it('uses a disposable profile and explicit Marionette port for local launches', async () => {
++    const core = new FirefoxCore({ headless: true, profilePath: '/original' });
++    await core.connect();
++    expect(mocks.createProfile).toHaveBeenCalledWith('/original');
++    expect(mocks.options[0]).toEqual(['-headless', '-profile', '/tmp/rust_mcp-test']);
++    expect(mocks.setProfile).not.toHaveBeenCalled();
++    expect(mocks.serviceArgs).toEqual([['--marionette-port', '12345']]);
++    expect(mocks.service).toHaveBeenCalledOnce();
++    const profile = await mocks.createProfile.mock.results[0]!.value;
++    await core.close();
++    await core.close();
++    expect(mocks.quit).toHaveBeenCalledOnce();
++    expect(profile.remove).toHaveBeenCalledOnce();
++  });
++
++  it.each(['SELENIUM_REMOTE_URL', 'SELENIUM_SERVER_JAR'])(
++    'retains ZIP profile transport when %s is configured',
++    async (key) => {
++      vi.stubEnv(key, 'configured');
++      await new FirefoxCore({ headless: true, profilePath: '/original' }).connect();
++      expect(mocks.setProfile).toHaveBeenCalledWith('/original');
++      expect(mocks.createProfile).not.toHaveBeenCalled();
++      expect(mocks.service).not.toHaveBeenCalled();
++    }
++  );
++
++  it('does not prepare profiles or ports when no template is configured', async () => {
++    await new FirefoxCore({ headless: true }).connect();
++    expect(mocks.createProfile).not.toHaveBeenCalled();
++    expect(mocks.port).not.toHaveBeenCalled();
++    expect(mocks.service).not.toHaveBeenCalled();
++  });
++
++  it('removes copied profiles after driver startup fails', async () => {
++    mocks.build.mockRejectedValue(new Error('launch failed'));
++    const core = new FirefoxCore({ headless: true, profilePath: '/original' });
++    await expect(core.connect()).rejects.toThrow('launch failed');
++    const profile = await mocks.createProfile.mock.results[0]!.value;
++    expect(profile.remove).toHaveBeenCalledOnce();
++    await core.close();
++    expect(profile.remove).toHaveBeenCalledOnce();
++  });
++
++  it('removes copied profiles even if quitting the driver fails', async () => {
++    const core = new FirefoxCore({ headless: true, profilePath: '/original' });
++    await core.connect();
++    mocks.quit.mockRejectedValue(new Error('already disconnected'));
++    await expect(core.close()).rejects.toThrow('already disconnected');
++    const profile = await mocks.createProfile.mock.results[0]!.value;
++    expect(profile.remove).toHaveBeenCalledOnce();
++  });
++
++  it('cleans up the disconnected instance without removing a newly launched profile', async () => {
++    const core = new FirefoxCore({ headless: true, profilePath: '/original' });
++    await core.connect();
++    const oldProfile = await mocks.createProfile.mock.results[0]!.value;
++    core.reset();
++    await core.connect();
++    const newProfile = await mocks.createProfile.mock.results[1]!.value;
++    expect(oldProfile.remove).toHaveBeenCalledOnce();
++    expect(newProfile.remove).not.toHaveBeenCalled();
++    await core.close();
++    expect(newProfile.remove).toHaveBeenCalledOnce();
++  });
+ });
+--- /dev/null
++++ src/firefox-devtools-mcp-0.7.4/src/firefox/profile.ts
+@@ -0,0 +1,52 @@
++import { constants } from 'node:fs';
++import { cp, mkdtemp, readdir, rm } from 'node:fs/promises';
++import { createServer } from 'node:net';
++import { tmpdir } from 'node:os';
++import { basename, join } from 'node:path';
++
++const lockFiles = new Set(['parent.lock', 'lock', '.parentlock']);
++
++export class TemporaryFirefoxProfile {
++  private constructor(readonly path: string) {}
++
++  static async create(template: string): Promise<TemporaryFirefoxProfile> {
++    // The hardened launcher binds rust_* profiles into its private /tmp.
++    const profile = new TemporaryFirefoxProfile(await mkdtemp(join(tmpdir(), 'rust_mcp-')));
++    try {
++      // Copy contents rather than the root so the private 0700 directory stays private.
++      for (const entry of await readdir(template)) {
++        if (!lockFiles.has(entry)) {
++          await cp(join(template, entry), join(profile.path, entry), {
++            recursive: true,
++            dereference: true,
++            mode: constants.COPYFILE_FICLONE,
++            filter: (source) => !lockFiles.has(basename(source)),
++          });
++        }
++      }
++      return profile;
++    } catch (error) {
++      await profile.remove();
++      throw error;
++    }
++  }
++
++  async remove(): Promise<void> {
++    await rm(this.path, { recursive: true, force: true });
++  }
++}
++
++export function findMarionettePort(): Promise<number> {
++  return new Promise((resolve, reject) => {
++    const server = createServer();
++    server.once('error', reject);
++    server.listen(0, '127.0.0.1', () => {
++      const address = server.address();
++      if (!address || typeof address === 'string') {
++        server.close(() => reject(new Error('Unable to allocate a Marionette port')));
++        return;
++      }
++      server.close((error) => (error ? reject(error) : resolve(address.port)));
++    });
++  });
++}
+--- /dev/null
++++ src/firefox-devtools-mcp-0.7.4/tests/firefox/profile.test.ts
+@@ -0,0 +1,93 @@
++import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
++import { mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
++import { tmpdir } from 'node:os';
++import { join } from 'node:path';
++import { createServer } from 'node:net';
++import { TemporaryFirefoxProfile, findMarionettePort } from '../../src/firefox/profile.js';
++
++describe.runIf(process.platform === 'linux')('Temporary Firefox profiles', () => {
++  let root: string;
++  let template: string;
++
++  beforeEach(async () => {
++    root = await mkdtemp(join(tmpdir(), 'mcp-profile-test-'));
++    template = join(root, 'template with spaces');
++    await mkdir(join(template, 'storage'), { recursive: true });
++    await writeFile(join(template, 'cookies.sqlite'), 'original cookies');
++    await writeFile(join(template, 'storage', 'data'), 'original storage');
++    await writeFile(join(template, 'user.js'), 'original prefs');
++    vi.stubEnv('TMPDIR', root);
++  });
++
++  afterEach(async () => {
++    vi.unstubAllEnvs();
++    await rm(root, { recursive: true, force: true });
++  });
++
++  it('copies the full profile into separate private directories without sharing writes', async () => {
++    const [first, second] = await Promise.all([
++      TemporaryFirefoxProfile.create(template),
++      TemporaryFirefoxProfile.create(template),
++    ]);
++    expect(first.path).not.toBe(second.path);
++    expect(first.path).not.toBe(template);
++    expect(first.path).toContain('rust_mcp-');
++    expect((await stat(first.path)).mode & 0o777).toBe(0o700);
++    expect(await readFile(join(first.path, 'storage', 'data'), 'utf8')).toBe('original storage');
++    await writeFile(join(first.path, 'cookies.sqlite'), 'changed cookies');
++    expect(await readFile(join(template, 'cookies.sqlite'), 'utf8')).toBe('original cookies');
++    expect(await readFile(join(second.path, 'cookies.sqlite'), 'utf8')).toBe('original cookies');
++    await first.remove();
++    await first.remove();
++    expect(await readFile(join(second.path, 'user.js'), 'utf8')).toBe('original prefs');
++  });
++
++  it('excludes lock files, including dangling lock symlinks, but keeps similarly named data', async () => {
++    await symlink('missing-target', join(template, 'lock'));
++    await writeFile(join(template, '.parentlock'), 'lock');
++    await writeFile(join(template, 'parent.lock'), 'lock');
++    await writeFile(join(template, 'storage', 'lock'), 'lock');
++    await writeFile(join(template, 'blocklist.xml'), 'keep');
++    const profile = await TemporaryFirefoxProfile.create(template);
++    const files = await readdir(profile.path);
++    expect(files).not.toContain('lock');
++    expect(files).not.toContain('parent.lock');
++    expect(files).not.toContain('.parentlock');
++    expect(await readdir(join(profile.path, 'storage'))).toEqual(['data']);
++    expect(await readFile(join(profile.path, 'blocklist.xml'), 'utf8')).toBe('keep');
++  });
++
++  it('copies symlink contents instead of exposing writable links to original files', async () => {
++    const shared = join(root, 'shared-prefs');
++    await writeFile(shared, 'original');
++    await symlink(shared, join(template, 'linked-prefs'));
++    const profile = await TemporaryFirefoxProfile.create(template);
++    await writeFile(join(profile.path, 'linked-prefs'), 'changed');
++    expect(await readFile(shared, 'utf8')).toBe('original');
++  });
++
++  it('removes partial copies when preparation fails', async () => {
++    await symlink('missing-target', join(template, 'bad-link'));
++    await expect(TemporaryFirefoxProfile.create(template)).rejects.toThrow();
++    expect((await readdir(root)).filter((name) => name.startsWith('rust_mcp-'))).toEqual([]);
++  });
++
++  it('removes temporary directories when the original profile does not exist', async () => {
++    await expect(TemporaryFirefoxProfile.create(join(root, 'missing'))).rejects.toThrow();
++    expect((await readdir(root)).filter((name) => name.startsWith('rust_mcp-'))).toEqual([]);
++  });
++
++  it('releases the selected loopback port for geckodriver', async () => {
++    const port = await findMarionettePort();
++    expect(port).toBeGreaterThan(0);
++    const server = createServer();
++    try {
++      await new Promise<void>((resolve, reject) => {
++        server.once('error', reject);
++        server.listen(port, '127.0.0.1', resolve);
++      });
++    } finally {
++      await new Promise<void>((resolve) => server.close(() => resolve()));
++    }
++  });
++});

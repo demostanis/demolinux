@@ -71,9 +71,17 @@ done
 
 bind_marionette_profile=()
 profile=
-if [[ "$*" =~ /tmp/rust_.* ]]; then
-	profile=${BASH_REMATCH[0]}
+args=("$@")
+for ((i=0; i<${#args[@]}; i++)); do
+	case "${args[i]}" in
+		-profile|--profile) profile="${args[i+1]:-}"; break ;;
+		--profile=*) profile="${args[i]#*=}"; break ;;
+	esac
+done
+if [[ "$profile" == /tmp/rust_* ]]; then
 	bind_marionette_profile+=( --bind "$profile" "$profile" )
+else
+	profile=
 fi
 
 # selenium runs in a fresh profile, but we want our
@@ -136,7 +144,7 @@ bwrap \
 	`# WebAuthn` \
 	${bind_hidraw_devs[@]} \
 	`# MCP / Selenium` \
-	${bind_marionette_profile[@]} \
+	"${bind_marionette_profile[@]}" \
 	--ro-bind /sys/class/hidraw /sys/class/hidraw \
 	`# Firefox` \
 	--bind $HOME/.mozilla /firefox/.mozilla \
@@ -148,5 +156,4 @@ bwrap \
 	--unshare-all \
 	--share-net \
 	--die-with-parent \
-	--new-session /usr/bin/firefox $@
-
+	--new-session /usr/bin/firefox "$@"

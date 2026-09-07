@@ -1,45 +1,370 @@
-diff -u b/Xext/security.c b/Xext/security.c
---- b/Xext/security.c
+Subject: [PATCH] Authorize selection transfers by requestor and property
+
+Grant access only after a genuine SelectionRequest. Track the requested
+property instead of recognizing toolkit-specific atom names. Permit INCR
+PropertyDelete acknowledgments and revoke grants on completion, failure,
+window destruction, or owner disconnect. Preserve unrelated X SECURITY checks.
+
+--- a/Xext/security.c
 +++ b/Xext/security.c
-@@ -754,10 +754,12 @@
- 
-     subj = dixLookupPrivate(&rec->client->devPrivates, stateKey);
- 
--    /* disable background None for untrusted windows */
--    if ((requested & DixCreateAccess) && (rec->rtype == RT_WINDOW))
--        if (subj->haveState && subj->trustLevel != XSecurityClientTrusted)
--            ((WindowPtr) rec->res)->forcedBG = TRUE;
-+    /* additional permissions for selection stufff */
-+    if (rec->rtype == RT_WINDOW)
-+      allowed |= DixSendAccess;
+@@ -47,6 +47,26 @@
+
+ RESTYPE SecurityAuthorizationResType;   /* resource type for authorizations */
+ static RESTYPE RTEventClient;
++static RESTYPE RTSelectionWindow;
++static Atom SecurityIncrAtom, SecurityMultipleAtom;
++
++/* The high bit of a core event type marks events produced by SendEvent. */
++enum { SecuritySyntheticEventBit = 1 << 7 };
++
++typedef struct _SecuritySelectionTransfer {
++    struct _SecuritySelectionTransfer *next;
++    ClientPtr owner;
++    Atom selection, target, property, group;
++    Bool incremental, complete;
++} SecuritySelectionTransferRec, *SecuritySelectionTransferPtr;
++
++typedef struct _SecuritySelectionWindow {
++    struct _SecuritySelectionWindow *next;
++    XID requestor;
++    SecuritySelectionTransferPtr transfers;
++} SecuritySelectionWindowRec, *SecuritySelectionWindowPtr;
++
++static SecuritySelectionWindowPtr SecuritySelectionWindows;
+
+ static CallbackListPtr SecurityValidateGroupCallback = NULL;
+
+@@ -135,6 +155,195 @@
+         return Success;
+
+     return BadAccess;
++}
++
++static SecuritySelectionWindowPtr
++SecurityFindSelectionWindow(XID requestor)
++{
++    SecuritySelectionWindowPtr window;
++
++    for (window = SecuritySelectionWindows; window; window = window->next)
++        if (window->requestor == requestor)
++            return window;
++    return NULL;
++}
++
++static SecuritySelectionTransferPtr
++SecurityFindSelectionTransfer(ClientPtr owner, XID requestor, Atom property)
++{
++    SecuritySelectionWindowPtr window = SecurityFindSelectionWindow(requestor);
++    SecuritySelectionTransferPtr transfer;
++
++    if (window)
++        for (transfer = window->transfers; transfer; transfer = transfer->next)
++            if ((!owner || transfer->owner == owner) &&
++                (property == None || transfer->property == property))
++                return transfer;
++    return NULL;
++}
++
++static void
++SecurityRemoveSelectionTransfer(XID requestor,
++                                SecuritySelectionTransferPtr transfer)
++{
++    SecuritySelectionWindowPtr window = SecurityFindSelectionWindow(requestor);
++    SecuritySelectionTransferPtr *link;
++
++    if (window)
++        for (link = &window->transfers; *link; link = &(*link)->next)
++            if (*link == transfer) {
++                *link = transfer->next;
++                free(transfer);
++                return;
++            }
++}
++
++static int
++SecurityDeleteSelectionWindow(void *value, XID id)
++{
++    SecuritySelectionWindowPtr window = value, *link;
++    SecuritySelectionTransferPtr transfer;
++
++    for (link = &SecuritySelectionWindows; *link; link = &(*link)->next)
++        if (*link == window) {
++            *link = window->next;
++            break;
++        }
++    while ((transfer = window->transfers)) {
++        window->transfers = transfer->next;
++        free(transfer);
++    }
++    free(window);
++    return Success;
++}
++
++static void
++SecurityGrantSelectionTransfer(ClientPtr owner, XID requestor, Atom selection,
++                               Atom target, Atom property, Atom group)
++{
++    SecuritySelectionWindowPtr window = SecurityFindSelectionWindow(requestor);
++    SecuritySelectionTransferPtr transfer;
++
++    if (property == None)
++        return;
++    if (!window) {
++        window = calloc(1, sizeof(*window));
++        if (!window)
++            return;
++        window->requestor = requestor;
++        window->next = SecuritySelectionWindows;
++        SecuritySelectionWindows = window;
++        /* FreeResource(requestor) also revokes grants when the window dies. */
++        if (!AddResource(requestor, RTSelectionWindow, window))
++            return;
++    }
++    transfer = SecurityFindSelectionTransfer(NULL, requestor, property);
++    if (!transfer) {
++        transfer = calloc(1, sizeof(*transfer));
++        if (!transfer)
++            return;
++        transfer->next = window->transfers;
++        window->transfers = transfer;
++    }
++    /* Reusing a transport property replaces its previous authorization. */
++    transfer->owner = owner;
++    transfer->selection = selection;
++    transfer->target = target;
++    transfer->property = property;
++    transfer->group = group;
++    transfer->incremental = transfer->complete = FALSE;
++}
++
++static void
++SecuritySelectionRequested(ClientPtr owner, WindowPtr ownerWindow, xEvent *event)
++{
++    WindowPtr requestor;
++    SecurityStateRec *subj, *obj;
++    PropertyPtr pairs;
++    Atom property;
++    CARD32 *atoms;
++    unsigned long i;
++
++    /* Only the server's genuine SelectionRequest can grant cross-client access. */
++    if (event->u.u.type != SelectionRequest ||
++        event->u.selectionRequest.owner != ownerWindow->drawable.id ||
++        dixLookupWindow(&requestor, event->u.selectionRequest.requestor,
++                        serverClient, DixGetAttrAccess) != Success)
++        return;
++    subj = dixLookupPrivate(&owner->devPrivates, stateKey);
++    obj = dixLookupPrivate(&wClient(requestor)->devPrivates, stateKey);
++    if (SecurityDoCheck(subj, obj, DixWriteAccess, 0) == Success)
++        return;
++
++    property = event->u.selectionRequest.property;
++    if (property == None)
++        property = event->u.selectionRequest.target;
++    SecurityGrantSelectionTransfer(owner, requestor->drawable.id,
++                                   event->u.selectionRequest.selection,
++                                   event->u.selectionRequest.target, property, property);
++
++    /* ICCCM MULTIPLE carries the requested target/property pairs in a property. */
++    if (event->u.selectionRequest.target == SecurityMultipleAtom &&
++        dixLookupProperty(&pairs, requestor, property, serverClient,
++                          DixReadAccess) == Success && pairs->format == 32) {
++        atoms = pairs->data;
++        for (i = 0; i + 1 < pairs->size; i += 2)
++            if (atoms[i + 1] != property)
++                SecurityGrantSelectionTransfer(owner, requestor->drawable.id,
++                                               event->u.selectionRequest.selection,
++                                               atoms[i], atoms[i + 1], property);
++    }
++}
++
++static Bool
++SecuritySelectionNotifyAllowed(ClientPtr owner, XID destination, xEvent *event)
++{
++    SecuritySelectionWindowPtr window;
++    SecuritySelectionTransferPtr transfer;
++
++    if ((event->u.u.type & ~SecuritySyntheticEventBit) != SelectionNotify ||
++        event->u.selectionNotify.requestor != destination)
++        return FALSE;
++    window = SecurityFindSelectionWindow(event->u.selectionNotify.requestor);
++    if (!window)
++        return FALSE;
++    for (transfer = window->transfers; transfer; transfer = transfer->next)
++        if (transfer->owner == owner &&
++            transfer->selection == event->u.selectionNotify.selection &&
++            transfer->target == event->u.selectionNotify.target &&
++            (event->u.selectionNotify.property == None ||
++             transfer->property == event->u.selectionNotify.property)) {
++            if (event->u.selectionNotify.property == None) {
++                SecuritySelectionTransferPtr *link = &window->transfers, failed;
++                Atom group = transfer->group;
++
++                /* A failed MULTIPLE reply also revokes its component grants. */
++                while ((failed = *link))
++                    if (failed->owner == owner && failed->group == group) {
++                        *link = failed->next;
++                        free(failed);
++                    }
++                    else
++                        link = &failed->next;
++            }
++            return TRUE;
++        }
++    return FALSE;
++}
++
++static void
++SecuritySelectionEvent(CallbackListPtr *pcbl, void *unused, void *calldata)
++{
++    EventInfoRec *rec = calldata;
++    WindowPtr ownerWindow;
++    int i;
++
++    /* ConvertSelection delivers directly, bypassing XACE_RECEIVE_ACCESS. */
++    for (i = 0; i < rec->count; i++)
++        if (rec->events[i].u.u.type == SelectionRequest &&
++            dixLookupWindow(&ownerWindow, rec->events[i].u.selectionRequest.owner,
++                            serverClient, DixGetAttrAccess) == Success)
++            SecuritySelectionRequested(rec->client, ownerWindow, &rec->events[i]);
+ }
+
+ /*
+@@ -759,6 +968,15 @@
+         if (subj->haveState && subj->trustLevel != XSecurityClientTrusted)
+             ((WindowPtr) rec->res)->forcedBG = TRUE;
+
++    /* The property and event hooks below validate the exact transfer. */
 +    if (rec->rtype == RT_WINDOW &&
-+        strcmp(SecurityLookupRequestName(rec->client), "X11:ChangeProperty") == 0)
-+      allowed |= DixSetPropAccess;
- 
++        SecurityFindSelectionTransfer(rec->client, rec->id, None)) {
++        if (rec->client->majorOp == X_ChangeProperty)
++            allowed |= DixSetPropAccess;
++        if (rec->client->majorOp == X_SendEvent)
++            allowed |= DixSendAccess;
++    }
++
      /* additional permissions for specific resource types */
      if (rec->rtype == RT_WINDOW)
-@@ -864,6 +866,12 @@
+         allowed |= SecurityWindowExtraMask;
+@@ -860,9 +1078,25 @@
+     ATOM name = (*rec->ppProp)->propertyName;
+     Mask requested = rec->access_mode;
+     Mask allowed = SecurityResourceMask | DixReadAccess;
++    SecuritySelectionTransferPtr transfer;
++    Bool granted;
+
      subj = dixLookupPrivate(&rec->client->devPrivates, stateKey);
      obj = dixLookupPrivate(&wClient(rec->pWin)->devPrivates, stateKey);
- 
-+    const char *atom_name = NameForAtom(name);
-+    if (atom_name && (strstr(atom_name, "SELECTION") != 0 ||
-+                      strcmp(atom_name, "XSEL_DATA") == 0 ||
-+                      strcmp(atom_name, "XCLIP_OUT") == 0))
-+      return;
 +
++    transfer = SecurityFindSelectionTransfer(NULL, rec->pWin->drawable.id, name);
++    granted = transfer && transfer->owner == rec->client;
++    if (granted && (requested & (DixCreateAccess | DixPostAccess)) &&
++        (requested & (DixWriteAccess | DixBlendAccess))) {
++        transfer->incremental |= (*rec->ppProp)->type == SecurityIncrAtom;
++        transfer->complete = !transfer->incremental ||
++            ((*rec->ppProp)->type != SecurityIncrAtom && (*rec->ppProp)->size == 0);
++    }
++    if (transfer && transfer->complete && !transfer->incremental &&
++        (requested & DixDestroyAccess))
++        SecurityRemoveSelectionTransfer(rec->pWin->drawable.id, transfer);
++    if (granted)
++        return;
+
      if (SecurityDoCheck(subj, obj, requested, allowed) != Success) {
          SecurityAudit("Security: denied client %d access to property %s "
-                       "(atom 0x%x) window 0x%lx of client %d on request %s\n",
-@@ -892,8 +899,9 @@
+@@ -892,7 +1126,9 @@
          for (i = 0; i < rec->count; i++)
              if (rec->events[i].u.u.type != UnmapNotify &&
                  rec->events[i].u.u.type != ConfigureRequest &&
 -                rec->events[i].u.u.type != ClientMessage) {
--
 +                rec->events[i].u.u.type != ClientMessage &&
-+                (rec->events[i].u.u.type & 127) != SelectionNotify &&
-+                (rec->events[i].u.u.type & 127) != SelectionRequest) {
++                !SecuritySelectionNotifyAllowed(rec->client, rec->pWin->drawable.id,
++                                                &rec->events[i])) {
+
                  SecurityAudit("Security: denied client %d from sending event "
                                "of type %s to window 0x%lx of client %d\n",
-                               rec->client->index,
+@@ -911,11 +1147,31 @@
+ {
+     XaceReceiveAccessRec *rec = calldata;
+     SecurityStateRec *subj, *obj;
++    SecuritySelectionTransferPtr transfer;
++    int i;
+
+     subj = dixLookupPrivate(&rec->client->devPrivates, stateKey);
+     obj = dixLookupPrivate(&wClient(rec->pWin)->devPrivates, stateKey);
+
+     if (SecurityDoCheck(subj, obj, DixReceiveAccess, 0) == Success)
++        return;
++
++    /* INCR owners wait for the requestor to delete each received chunk. */
++    for (i = 0; i < rec->count; i++) {
++        xEvent *event = &rec->events[i];
++
++        if (event->u.u.type != PropertyNotify ||
++            event->u.property.state != PropertyDelete)
++            break;
++        transfer = SecurityFindSelectionTransfer(rec->client,
++                                                 rec->pWin->drawable.id,
++                                                 event->u.property.atom);
++        if (!transfer || !transfer->incremental)
++            break;
++        if (transfer->complete)
++            SecurityRemoveSelectionTransfer(rec->pWin->drawable.id, transfer);
++    }
++    if (i == rec->count)
+         return;
+
+     SecurityAudit("Security: denied client %d from receiving an event "
+@@ -983,6 +1239,19 @@
+
+     case ClientStateGone:
+     case ClientStateRetained:
++        {
++            SecuritySelectionWindowPtr window;
++            SecuritySelectionTransferPtr *link, transfer;
++
++            for (window = SecuritySelectionWindows; window; window = window->next)
++                for (link = &window->transfers; (transfer = *link); )
++                    if (transfer->owner == pci->client) {
++                        *link = transfer->next;
++                        free(transfer);
++                    }
++                    else
++                        link = &transfer->next;
++        }
+         rc = dixLookupResourceByType((void **) &pAuth, state->authId,
+                                      SecurityAuthorizationResType, serverClient,
+                                      DixGetAttrAccess);
+@@ -1016,6 +1285,7 @@
+ {
+     /* Unregister callbacks */
+     DeleteCallback(&ClientStateCallback, SecurityClientState, NULL);
++    DeleteCallback(&EventCallback, SecuritySelectionEvent, NULL);
+
+     XaceDeleteCallback(XACE_EXT_DISPATCH, SecurityExtension, NULL);
+     XaceDeleteCallback(XACE_RESOURCE_ACCESS, SecurityResource, NULL);
+@@ -1052,8 +1322,15 @@
+         CreateNewResourceType(SecurityDeleteAuthorizationEventClient,
+                               "SecurityEventClient");
+
+-    if (!SecurityAuthorizationResType || !RTEventClient)
++    RTSelectionWindow =
++        CreateNewResourceType(SecurityDeleteSelectionWindow,
++                              "SecuritySelectionWindow");
++
++    if (!SecurityAuthorizationResType || !RTEventClient || !RTSelectionWindow)
+         return;
++
++    SecurityIncrAtom = MakeAtom("INCR", sizeof("INCR") - 1, TRUE);
++    SecurityMultipleAtom = MakeAtom("MULTIPLE", sizeof("MULTIPLE") - 1, TRUE);
+
+     RTEventClient |= RC_NEVERRETAIN;
+
+@@ -1064,6 +1341,7 @@
+
+     /* Register callbacks */
+     ret &= AddCallback(&ClientStateCallback, SecurityClientState, NULL);
++    ret &= AddCallback(&EventCallback, SecuritySelectionEvent, NULL);
+
+     ret &= XaceRegisterCallback(XACE_EXT_DISPATCH, SecurityExtension, NULL);
+     ret &= XaceRegisterCallback(XACE_RESOURCE_ACCESS, SecurityResource, NULL);

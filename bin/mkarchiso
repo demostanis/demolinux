@@ -397,7 +397,7 @@ _make_chroot() {
     buildpkg() {
         local pkgdir="$1"
         local inputs="$2"
-        local pkg file
+        local pkg file stale_dir
         local -a additional_opts=()
         local -a archives=()
 
@@ -433,9 +433,22 @@ _make_chroot() {
                 fi
             done
         fi
+        # Only publish archives produced by this build, not old local outputs.
+        stale_dir=""
+        for file in *.pkg.tar.*; do
+            [[ -f "$file" ]] || continue
+            if [[ -z "$stale_dir" ]]; then
+                stale_dir=$(mktemp -d "${work_dir}/stale-${pkg}.XXXXXX")
+            fi
+            mv -- "$file" "$stale_dir/"
+        done
         _run_build_with_download_retries "${work_dir}/build-${pkg}.log" \
             "$correct_makechrootpkg" -U "$SUDO_USER" -r "${chroot_dir}" "${additional_opts[@]}"
-        archives=(*pkg.tar*)
+        for file in *.pkg.tar.*; do
+            [[ -f "$file" && "$file" != *.sig ]] || continue
+            archives+=("$file")
+        done
+        (( ${#archives[@]} > 0 )) || _msg_error "No package archives produced for ${pkg}." 1
         repo-add "${profile}"/packages/db/packages.db.tar.gz "${archives[@]}"
         mv "${archives[@]}" "${profile}"/packages/db/
         printf '%s\n' "$inputs" "${archives[@]}" > "${profile}/packages/db/.inputs/${pkg}"

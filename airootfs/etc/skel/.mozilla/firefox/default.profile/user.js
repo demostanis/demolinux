@@ -65,6 +65,11 @@ user_pref("browser.bookmarks.autoExportHTML",                   true);
 // Middle click scroll
 user_pref("general.autoScroll",                                 true);
 
+// Firefox requires this command pair; VimFx reverses only native history direction.
+user_pref("browser.gesture.swipe.left", "Browser:BackOrBackDuplicate");
+user_pref("browser.gesture.swipe.right", "Browser:ForwardOrForwardDuplicate");
+user_pref("demolinux.reverseHistorySwipes", true);
+
 // Hide popup when typing on Discord
 user_pref("media.webspeech.synth.dont_notify_on_error",         true);
 

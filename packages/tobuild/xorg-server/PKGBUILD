@@ -5,7 +5,7 @@ pkgbase=xorg-server
 pkgname=('xorg-server' 'xorg-server-xephyr' 'xorg-server-xvfb' 'xorg-server-xnest'
          'xorg-server-common' 'xorg-server-devel')
 pkgver=21.1.16
-pkgrel=24
+pkgrel=26
 arch=('x86_64')
 license=('custom')
 groups=('xorg')
@@ -22,6 +22,8 @@ source=(https://xorg.freedesktop.org/releases/individual/xserver/${pkgbase}-${pk
         xvfb-run.1
 	0001-Allow-apps-to-use-GPU-acceleration.patch
         0003-Allow-untrusted-X-clients-to-manage-selection.patch
+        0004-native-xinput-with-keyboard-guards.patch
+        0005-enable-xkb-with-keyboard-privacy.patch
 )
 
 prepare() {
@@ -29,6 +31,8 @@ prepare() {
 
   patch -Np1 -i ../0001-Allow-apps-to-use-GPU-acceleration.patch
   patch -Np1 -i ../0003-Allow-untrusted-X-clients-to-manage-selection.patch
+  patch -Np1 -i ../0004-native-xinput-with-keyboard-guards.patch
+  patch -Np1 -i ../0005-enable-xkb-with-keyboard-privacy.patch
 }
 
 build() {
@@ -173,4 +177,6 @@ sha256sums=('b14a116d2d805debc5b5b2aac505a279e69b217dae2fae2dfcb62400471a9970'
             '27ce50f4432e5549e662db857118761fa9cd74c6900aac52c4db768c956838db'
             '2460adccd3362fefd4cdc5f1c70f332d7b578091fb9167bf88b5f91265bbd776'
             'fb2a9181e0b468f3c0dbd0e6ae65af0829b0bfa1dc9f4ef57c923f4b9459ef93'
-            'cee1751640fb83ace63176a388d8cb8969f7caf5427c094efbb62a7df814efb6')
+            'cee1751640fb83ace63176a388d8cb8969f7caf5427c094efbb62a7df814efb6'
+            '4adebe283c6983d241e33db8092753a84e49d2586c1bec0155274ddd98d5ef02'
+            'b112d90feee58714c2367ceebf5f72b7de422431ad21fd4f42a56c40486d4b10')

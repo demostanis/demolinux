@@ -152,6 +152,7 @@ bwrap \
 	--bind $HOME/.vimfx /firefox/.vimfx \
 	--setenv HOME /firefox \
 	--setenv GTK_THEME Adwaita:dark \
+	--setenv MOZ_USE_XINPUT2 1 \
 	--setenv PATH /usr/bin \
 	--unshare-all \
 	--share-net \

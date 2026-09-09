@@ -1,0 +1,201 @@
+Subject: [PATCH] Enable XKB without exposing other clients keyboard state
+
+Allow keymap queries and client-local flags. Check focus when reading or
+delivering keyboard state, since XKB notifications bypass ordinary window
+event checks. Reject untrusted global keyboard configuration changes.
+
+--- a/Xext/security.c
++++ b/Xext/security.c
+@@ -32,6 +32,7 @@
+ #include "inputstr.h"
+ #include "exglobals.h"
+ #include <X11/extensions/XI2.h>
++#include <X11/extensions/XKBproto.h>
+ #include "windowstr.h"
+ #include "propertyst.h"
+ #include "colormapst.h"
+@@ -91,6 +92,7 @@
+     "BIG-REQUESTS",
+     "Generic Event Extension",
+     "XInputExtension",
++    "XKEYBOARD",
+     "DRI2",
+     "DRI3",
+     "SYNC",
+@@ -950,6 +952,11 @@
+
+     if (!IsKeyboardDevice(rec->dev))
+         allowed = requested;
++    else if (requested == (DixReadAccess | DixReceiveAccess)) {
++        WindowPtr focus = SecurityKeyboardFocus(rec->dev);
++        if (focus && wClient(focus) == rec->client)
++            allowed = requested;
++    }
+     else if (requested & DixGrabAccess) {
+         WindowPtr focus = SecurityKeyboardFocus(rec->dev);
+
+@@ -1044,6 +1051,27 @@
+     rec->status = BadAccess;    /* deny access */
+ }
+
++static Bool
++SecurityXkbRequestAllowed(ClientPtr client)
++{
++    switch (client->minorOp) {
++    case X_kbUseExtension:
++    case X_kbSelectEvents:
++    case X_kbGetState:
++    case X_kbGetControls:
++    case X_kbGetMap:
++    case X_kbGetCompatMap:
++    case X_kbGetIndicatorMap:
++    case X_kbGetNames:
++    case X_kbGetGeometry:
++    case X_kbPerClientFlags:
++    case X_kbListComponents:
++        return TRUE;
++    default:
++        return FALSE;
++    }
++}
++
+ static void
+ SecurityExtension(CallbackListPtr *pcbl, void *unused, void *calldata)
+ {
+@@ -1057,8 +1085,14 @@
+         return;
+
+     while (SecurityTrustedExtensions[i])
+-        if (!strcmp(SecurityTrustedExtensions[i++], rec->ext->name))
++        if (!strcmp(SecurityTrustedExtensions[i++], rec->ext->name)) {
++            /* XKB metadata is available, but global keyboard changes are not. */
++            if (!strcmp(rec->ext->name, "XKEYBOARD") &&
++                rec->access_mode == DixUseAccess &&
++                !SecurityXkbRequestAllowed(rec->client))
++                break;
+             return;
++        }
+
+     SecurityAudit("Security: denied client %d access to extension "
+                   "%s on request %s\n",
+--- a/xkb/xkb.c
++++ b/xkb/xkb.c
+@@ -583,6 +583,7 @@
+     DeviceIntPtr dev;
+     xkbGetStateReply rep;
+     XkbStateRec *xkb;
++    XkbStateRec hidden = {0};
+
+     REQUEST_SIZE_MATCH(xkbGetStateReq);
+
+@@ -591,7 +592,7 @@
+
+     CHK_KBD_DEVICE(dev, stuff->deviceSpec, client, DixGetAttrAccess);
+
+-    xkb = &dev->key->xkbInfo->state;
++    xkb = XkbClientCanReadState(client, dev) ? &dev->key->xkbInfo->state : &hidden;
+     rep = (xkbGetStateReply) {
+         .type = X_Reply,
+         .deviceID = dev->id,
+@@ -5721,6 +5722,11 @@
+     CHK_KBD_DEVICE(dev, stuff->deviceSpec, client, access_mode);
+     CHK_MASK_LEGAL(0x01, stuff->change, XkbPCF_AllFlagsMask);
+     CHK_MASK_MATCH(0x02, stuff->change, stuff->value);
++
++    /* Auto-reset controls change the device when the client disconnects. */
++    if ((stuff->change & XkbPCF_AutoResetControlsMask) &&
++        XaceHook(XACE_DEVICE_ACCESS, client, dev, DixManageAccess) != Success)
++        return BadAccess;
+
+     interest = XkbFindClientResource((DevicePtr) dev, client);
+     if (stuff->change) {
+--- a/xkb/xkbEvents.c
++++ b/xkb/xkbEvents.c
+@@ -40,6 +40,21 @@
+ #include "windowstr.h"
+ #include <xkbsrv.h>
+ #include "xkb.h"
++#include "xace.h"
++
++Bool
++XkbClientCanReadState(ClientPtr client, DeviceIntPtr dev)
++{
++    /* Extended devices may carry keyboard LED state without being keyboards. */
++    if (!IsKeyboardDevice(dev)) {
++        dev = GetMaster(dev, MASTER_KEYBOARD);
++        if (!dev)
++            dev = inputInfo.keyboard;
++    }
++    return XaceHook(XACE_DEVICE_ACCESS, client, dev,
++                    DixReadAccess | DixReceiveAccess) == Success;
++}
++
+
+ /***====================================================================***/
+
+@@ -238,6 +253,7 @@
+     while (interest) {
+         if ((!interest->client->clientGone) &&
+             (interest->client->xkbClientFlags & _XkbClientInitialized) &&
++            XkbClientCanReadState(interest->client, kbd) &&
+             (interest->stateNotifyMask & changed)) {
+             pSN->sequenceNumber = interest->client->sequence;
+             pSN->time = time;
+@@ -400,6 +416,7 @@
+     while (interest) {
+         if ((!interest->client->clientGone) &&
+             (interest->client->xkbClientFlags & _XkbClientInitialized) &&
++            XkbClientCanReadState(interest->client, kbd) &&
+             (interest->ctrlsNotifyMask & changedControls)) {
+             if (!initialized) {
+                 pCN->type = XkbEventCode + XkbEventBase;
+@@ -446,6 +463,7 @@
+     while (interest) {
+         if ((!interest->client->clientGone) &&
+             (interest->client->xkbClientFlags & _XkbClientInitialized) &&
++            XkbClientCanReadState(interest->client, kbd) &&
+             (((xkbType == XkbIndicatorStateNotify) &&
+               (interest->iStateNotifyMask & changed)) ||
+              ((xkbType == XkbIndicatorMapNotify) &&
+@@ -526,6 +544,7 @@
+     while (interest) {
+         if ((!interest->client->clientGone) &&
+             (interest->client->xkbClientFlags & _XkbClientInitialized) &&
++            XkbClientCanReadState(interest->client, kbd) &&
+             (interest->bellNotifyMask)) {
+             if (!initialized) {
+                 time = GetTimeInMillis();
+@@ -578,6 +597,7 @@
+     while (interest) {
+         if ((!interest->client->clientGone) &&
+             (interest->client->xkbClientFlags & _XkbClientInitialized) &&
++            XkbClientCanReadState(interest->client, kbd) &&
+             (interest->accessXNotifyMask & (1 << pEv->detail))) {
+             if (!initialized) {
+                 pEv->type = XkbEventCode + XkbEventBase;
+@@ -716,6 +736,7 @@
+     while (interest) {
+         if ((!interest->client->clientGone) &&
+             (interest->client->xkbClientFlags & _XkbClientInitialized) &&
++            XkbClientCanReadState(interest->client, kbd) &&
+             (interest->actionMessageMask)) {
+             if (!initialized) {
+                 pEv->type = XkbEventCode + XkbEventBase;
+@@ -759,6 +780,7 @@
+     while (interest) {
+         if ((!interest->client->clientGone) &&
+             (interest->client->xkbClientFlags & _XkbClientInitialized) &&
++            XkbClientCanReadState(interest->client, dev) &&
+             (interest->extDevNotifyMask & reason)) {
+             if (!initialized) {
+                 pEv->type = XkbEventCode + XkbEventBase;
+--- a/xkb/xkb.h
++++ b/xkb/xkb.h
+@@ -1,5 +1,7 @@
+ #ifndef _XKB_H
+ #define _XKB_H
++
++extern Bool XkbClientCanReadState(ClientPtr client, DeviceIntPtr dev);
+
+ extern int ProcXkbUseExtension(ClientPtr client);
+ extern int ProcXkbSelectEvents(ClientPtr client);

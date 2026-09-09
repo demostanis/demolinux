@@ -1,0 +1,135 @@
+Subject: [PATCH] Native XInput with keyboard privacy guards
+
+Expose XI2, protect state on all keyboard devices, scope master grabs to
+the focused client, and recheck focus when delivering grabbed keys. Block
+keyboard events between untrusted clients as well. Keep denied legacy
+state queries from dereferencing a cleared device pointer.
+
+--- a/Xext/security.c
++++ b/Xext/security.c
+@@ -30,6 +30,8 @@
+
+ #include "scrnintstr.h"
+ #include "inputstr.h"
++#include "exglobals.h"
++#include <X11/extensions/XI2.h>
+ #include "windowstr.h"
+ #include "propertyst.h"
+ #include "colormapst.h"
+@@ -87,6 +89,8 @@
+ static const char *SecurityTrustedExtensions[] = {
+     "XC-MISC",
+     "BIG-REQUESTS",
++    "Generic Event Extension",
++    "XInputExtension",
+     "DRI2",
+     "DRI3",
+     "SYNC",
+@@ -908,6 +912,31 @@
+  *	An audit message is generated if access is denied.
+  */
+
++static WindowPtr
++SecurityKeyboardFocus(DeviceIntPtr device)
++{
++    DeviceIntPtr keyboard = GetMaster(device, MASTER_KEYBOARD);
++    WindowPtr focus = keyboard && keyboard->focus ? keyboard->focus->win : NoneWin;
++
++    if (focus == PointerRootWin)
++        return GetSpriteWindow(keyboard);
++    return focus == FollowKeyboardWin ? NoneWin : focus;
++}
++
++static Bool
++SecurityKeyboardEvent(xEvent *event)
++{
++    int type = event->u.u.type & ~SecuritySyntheticEventBit;
++    xGenericEvent *generic = (xGenericEvent *) event;
++
++    if (type == GenericEvent && generic->extension == IReqCode)
++        return generic->evtype == XI_KeyPress || generic->evtype == XI_KeyRelease ||
++            generic->evtype == XI_RawKeyPress || generic->evtype == XI_RawKeyRelease;
++    return type == KeyPress || type == KeyRelease || type == KeymapNotify ||
++        type == DeviceKeyPress || type == DeviceKeyRelease ||
++        type == DeviceStateNotify || type == DeviceKeyStateNotify;
++}
++
+ static void
+ SecurityDevice(CallbackListPtr *pcbl, void *unused, void *calldata)
+ {
+@@ -919,9 +948,15 @@
+     subj = dixLookupPrivate(&rec->client->devPrivates, stateKey);
+     obj = dixLookupPrivate(&serverClient->devPrivates, stateKey);
+
+-    if (rec->dev != inputInfo.keyboard)
+-        /* this extension only supports the core keyboard */
++    if (!IsKeyboardDevice(rec->dev))
+         allowed = requested;
++    else if (requested & DixGrabAccess) {
++        WindowPtr focus = SecurityKeyboardFocus(rec->dev);
++
++        /* Grabs must not redirect a trusted window keyboard to an untrusted client. */
++        if (!IsMaster(rec->dev) || !focus || wClient(focus) != rec->client)
++            allowed &= ~DixGrabAccess;
++    }
+
+     if (SecurityDoCheck(subj, obj, requested, allowed) != Success) {
+         SecurityAudit("Security denied client %d keyboard access on request "
+@@ -1113,6 +1148,22 @@
+ {
+     XaceSendAccessRec *rec = calldata;
+     SecurityStateRec *subj, *obj;
++
++    /* Recheck focus at delivery time: a grab can outlive its window focus. */
++    if (!rec->client && rec->dev && IsKeyboardDevice(rec->dev)) {
++        obj = dixLookupPrivate(&wClient(rec->pWin)->devPrivates, stateKey);
++        if (obj->haveState && obj->trustLevel != XSecurityClientTrusted) {
++            WindowPtr focus = SecurityKeyboardFocus(rec->dev);
++            if (!focus || wClient(focus) != wClient(rec->pWin)) {
++                int i;
++                for (i = 0; i < rec->count; i++)
++                    if (SecurityKeyboardEvent(&rec->events[i])) {
++                        rec->status = BadAccess;
++                        return;
++                    }
++            }
++        }
++    }
+
+     if (rec->client) {
+         int i;
+@@ -1152,6 +1203,17 @@
+
+     subj = dixLookupPrivate(&rec->client->devPrivates, stateKey);
+     obj = dixLookupPrivate(&wClient(rec->pWin)->devPrivates, stateKey);
++
++    /* Equal trust levels must not let one sandbox listen to another keyboard. */
++    if (subj->haveState && subj->trustLevel != XSecurityClientTrusted &&
++        wClient(rec->pWin) != rec->client) {
++        for (i = 0; i < rec->count; i++) {
++            if (SecurityKeyboardEvent(&rec->events[i])) {
++                rec->status = BadAccess;
++                return;
++            }
++        }
++    }
+
+     if (SecurityDoCheck(subj, obj, DixReceiveAccess, 0) == Success)
+         return;
+--- a/Xi/queryst.c
++++ b/Xi/queryst.c
+@@ -88,7 +88,13 @@
+     REQUEST_SIZE_MATCH(xQueryDeviceStateReq);
+
+     rc = dixLookupDevice(&dev, stuff->deviceid, client, DixReadAccess);
+-    if (rc != Success && rc != BadAccess)
++    if (rc == BadAccess) {
++        /* A denied lookup clears dev; fetch metadata to return a zeroed state. */
++        int lookup = dixLookupDevice(&dev, stuff->deviceid, client, DixGetAttrAccess);
++        if (lookup != Success)
++            return lookup;
++    }
++    else if (rc != Success)
+         return rc;
+
+     v = dev->valuator;

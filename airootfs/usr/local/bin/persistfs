@@ -54,7 +54,7 @@ add_files() {
 
 	[[ ${#files[@]} = 0 ]] && return 0
 	if ! printf '%s\n' "${files[@]}" |
-		rsync -arq --mkpath --files-from=- / "$pfs_dir/upperdir"; then
+		rsync -arHAXq --mkpath --files-from=- / "$pfs_dir/upperdir"; then
 		return 1
 	fi
 

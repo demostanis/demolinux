@@ -163,6 +163,25 @@ test_concurrent_index_updates() {
 	done
 }
 
+test_metadata_and_hardlinks_survive() {
+	printf 'payload\n' > "$root/metadata"
+	ln "$root/metadata" "$root/hardlink"
+	setfattr -n user.persistfs-test -v keep "$root/metadata"
+	setfacl -m u:demostanis:r-- "$root/metadata"
+	setcap cap_net_bind_service=ep "$root/metadata"
+	pfs add "$root/metadata" "$root/hardlink"
+	getfacl -cp "$root/metadata" > "$root/source-acl"
+	getfacl -cp "$saved/metadata" > "$root/saved-acl"
+	cmp "$root/source-acl" "$root/saved-acl"
+	local attr
+	for attr in user.persistfs-test security.capability; do
+		getfattr --absolute-names --only-values -n "$attr" "$root/metadata" > "$root/source-attr"
+		getfattr --absolute-names --only-values -n "$attr" "$saved/metadata" > "$root/saved-attr"
+		cmp "$root/source-attr" "$root/saved-attr"
+	done
+	[[ "$saved/metadata" -ef "$saved/hardlink" ]]
+}
+
 for test in \
 	test_basic_file \
 	test_basic_directory \
@@ -172,7 +191,8 @@ for test in \
 	test_symlink_ancestor_cannot_delete_source \
 	test_root_is_reserved \
 	test_failed_copy_returns_failure_without_indexing \
-	test_concurrent_index_updates
+	test_concurrent_index_updates \
+	test_metadata_and_hardlinks_survive
 do
 	root=$(mktemp -d /tmp/pfs-test.XXXXXXXX)
 	saved=$upper$root

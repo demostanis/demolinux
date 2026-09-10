@@ -10,7 +10,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 BASE = ["archive_date", "build_packages", "pacman.conf", "profiledef.sh",
-        "bin/build-inputs", ".github/setup-pacman.sh"]
+        "bin/build-inputs", ".github/scripts/setup-pacman.sh"]
 PACKAGES = BASE + ["available_packages", "deps.lock", "packages/tobuild",
                    "nvim_packages", "zsh_plugins"]
 ROOTFS = PACKAGES + ["airootfs", "bin/mkarchiso"]

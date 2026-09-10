@@ -45,7 +45,7 @@ jobs:
           # shellcheck disable=SC2016
           nohup bash -c '
             result=0
-            bash .github/setup-pacman.sh || result=$?
+            bash .github/scripts/setup-pacman.sh || result=$?
             printf "%s\n" "$result" > .ci/setup.status.tmp
             mv .ci/setup.status.tmp .ci/setup.status
           ' > .ci/setup.log 2>&1 < /dev/null &
@@ -127,13 +127,13 @@ jobs:
           # shellcheck disable=SC2016
           nohup bash -c '
             result=0
-            python3 .github/prepare-release.py out/demolinux*.img || result=$?
+            python3 .github/scripts/prepare-release.py out/demolinux*.img || result=$?
             printf "%s\n" "$result" > .ci/release.status.tmp
             mv .ci/release.status.tmp .ci/release.status
           ' > .ci/release.log 2>&1 < /dev/null &
 
       - name: Run all tests in isolated VMs
-        run: bash .github/run-tests.sh out/demolinux*.img
+        run: bash .github/scripts/run-tests.sh out/demolinux*.img
 
       - name: Delete the temporary SSH key
         if: always()
@@ -164,7 +164,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEMOLINUX_PUBLISH_UNCHANGED: ${{ inputs.publish_unchanged && '1' || '0' }}
-        run: python3 .github/publish-release.py
+        run: python3 .github/scripts/publish-release.py
 
       - name: Report execution time and cache hits
         if: always() && steps.inputs.outputs.started != ''

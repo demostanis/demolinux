@@ -1315,10 +1315,7 @@ function sidecar.set_image(c, path)
     image:close()
 
     local state = get_state(c)
-    local tab, index = find_tab_by_role(state, "image")
-    if not tab then
-        tab, index = append_tab(state, unique_name(state, "Image"), "image")
-    end
+    local tab, index = append_tab(state, unique_name(state, "Image"), "image")
     activate_index(state, index)
 
     local focus_before_launch = client.focus
@@ -1330,7 +1327,12 @@ function sidecar.set_image(c, path)
     prepare_launch_focus(tab, focus_before_launch)
     refresh(state)
 
-    tab.launch_generation = tab.launch_generation + 1
+    local generation = state.image_launch_generation or 0
+    for _, existing in ipairs(state.tabs) do
+        generation = math.max(generation, existing.launch_generation)
+    end
+    state.image_launch_generation = generation + 1
+    tab.launch_generation = state.image_launch_generation
     local instance = image_viewer_instance(c, tab.launch_generation)
     watch_for_hosted(tab, matches_image_viewer(instance), "imv", false)
     local pid = awful.spawn({
@@ -1340,13 +1342,8 @@ function sidecar.set_image(c, path)
         "-w", "OpenCode sidewindow image",
         path,
     })
-    if not pid then
-        clear_launch_watch(tab)
-        tab.launching = false
-        tab.hosted_kind = nil
-        tab.image_path = nil
-        restore_launch_focus(tab)
-        refresh(state)
+    if type(pid) ~= "number" then
+        remove_tab_from_state(state, tab)
         return "error: unable to launch imv-hardened"
     end
     tab.hosted_pid = pid

@@ -39,18 +39,21 @@ for i in {1..10}; do
 				instance = candidate.instance or "none"
 			end
 		end
+		table.sort(viewer_instances)
 		return sidewindow.status(owner).." instance="..instance
 			.." viewers="..#viewer_instances
 			.." viewer_instances="..table.concat(viewer_instances, ",")
 			.." viewer_matches="..tostring(
-				#viewer_instances == 1 and viewer_instances[1] == instance)
+				#viewer_instances == 2 and viewer_instances[2] == instance
+				and viewer_instances[1] == instance:gsub("%-2$", "-1"))
 	')
 	if [[ "$sidewindow_status" == *"image=/tmp/output-next.png app=imv:"* \
 		&& "$sidewindow_status" == *"collapsed right"* \
 		&& "$sidewindow_status" == *"reserved=0"* \
 		&& "$sidewindow_status" =~ instance=opencode-sidewindow-imv-[0-9a-f]+-2 \
 		&& "$sidewindow_status" == *"viewer_matches=true"* \
-		&& "$sidewindow_status" == *"viewers=1"* ]]; then
+		&& "$sidewindow_status" == *"viewers=2"* \
+		&& "$sidewindow_status" == *"tab=2/2"* ]]; then
 		break
 	fi
 	sleep 1
@@ -61,7 +64,8 @@ if [[ "$sidewindow_status" != *"image=/tmp/output-next.png app=imv:"* \
 	|| "$sidewindow_status" != *"reserved=0"* \
 	|| ! "$sidewindow_status" =~ instance=opencode-sidewindow-imv-[0-9a-f]+-2 \
 	|| "$sidewindow_status" != *"viewer_matches=true"* \
-	|| "$sidewindow_status" != *"viewers=1"* ]]; then
+	|| "$sidewindow_status" != *"viewers=2"* \
+	|| "$sidewindow_status" != *"tab=2/2"* ]]; then
 	echo "sidewindow image did not attach to imv: $sidewindow_status" >&2
 	exit 1
 fi
@@ -99,7 +103,7 @@ for i in {1..20}; do
 		for _, candidate in ipairs(client.get()) do
 			if candidate.name == "OC | sidewindow test" then
 				owner = candidate
-			elseif candidate.opencode_sidecar_hosted then
+			elseif candidate.opencode_sidecar_hosted and not candidate.hidden then
 				hosted = candidate
 			end
 		end
@@ -136,7 +140,7 @@ for i in {1..20}; do
 		for _, candidate in ipairs(client.get()) do
 			if candidate.name == "OC | sidewindow test" then
 				owner = candidate
-			elseif candidate.opencode_sidecar_hosted then
+			elseif candidate.opencode_sidecar_hosted and not candidate.hidden then
 				hosted = candidate
 			end
 		end

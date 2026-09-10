@@ -34,48 +34,29 @@ safe_path() {
 }
 
 add_files() {
-	files=()
+	local file
+	local -a files=()
 
 	for file in "$@"; do
-		export file=$(absolute_path "$file")
+		file=$(absolute_path "$file") || return 1
+		safe_path "$file" || return 1
+		# Package files may have been removed by localepurge.
+		[[ -e "$file" ]] || continue
 		files+=( "$file" )
 	done
 
-	done=
+	[[ ${#files[@]} = 0 ]] && return 0
+	if ! printf '%s\n' "${files[@]}" |
+		rsync -arq --mkpath --files-from=- / "$pfs_dir/upperdir"; then
+		return 1
+	fi
+
 	for file in "${files[@]}"; do
-		if [ -n "$done" ]; then
-			echo
-			break
-		fi
-
-		# e.g. files removed by localepurge
-		if [ ! -e "$file" ]; then
-			continue
-		fi
-
 		if ! grep -q "$file" $pfs_dir/upperdir/index 2>/dev/null; then
-			printf "%s\n" "$file" >> $pfs_dir/upperdir/index
+			printf "%s\n" "$file" >> $pfs_dir/upperdir/index || return 1
 		fi
-
-		if [ "$is_adding_pkg" = 1 ]; then
-			echo -e "\033[2A"
-			echo -ne "\033[2K"
-		fi
-		maxsize=$(tput cols)
-		printf "%.${maxsize}s\n" "Adding file $file to persistfs..."
-
-		files+=( "$file" )
-	done &
-
-	(
-		exec 3> >( awk '
-			{if(/File exists/){print"\033[2A"}else{print$0}}
-		' ) # --ignore-existing doesn't work...
-		for f in "${files[@]}"; do printf "%s\n" "$f"; done | \
-			rsync -arq --mkpath --files-from=- / $pfs_dir/upperdir 2>&3
-	)
-	done=1
-	wait
+		printf 'Added %s to persistfs.\n' "$file"
+	done
 }
 
 actual_pkg() {
@@ -115,9 +96,10 @@ case $1 in
 				continue
 			fi
 
-			rm -rf $pfs_dir/upperdir/"$file"
+			rm -rf -- "$pfs_dir/upperdir$file" || exit 1
 			grep -Fv "$file" $pfs_dir/upperdir/index > $pfs_dir/upperdir/index.tmp
-			mv $pfs_dir/upperdir/index.tmp $pfs_dir/upperdir/index
+			(( $? <= 1 )) || exit 1
+			mv $pfs_dir/upperdir/index.tmp $pfs_dir/upperdir/index || exit 1
 		done
 
 		exit $statuscode
@@ -136,7 +118,7 @@ case $1 in
 
 			add_files $(pacman -Ql "$pkg" | \
 				cut -d\  -f2 | \
-				grep -v /$) $pacmandb_dir/$pkg-[0-9]*/{desc,files,mtree}
+				grep -v /$) $pacmandb_dir/$pkg-[0-9]*/{desc,files,mtree} || return 1
 
 			unset IFS
 			for dep in $(expac %D "$pkg"); do
@@ -145,21 +127,22 @@ case $1 in
 				# if it's neither already in the persistfs nor in the airootfs...
 				if ! compgen -G $pfs_dir/upperdir$pacmandb_dir/$dep-[0-9]* >/dev/null && \
 					! compgen -G $airfs_dir$pacmandb_dir/$dep-[0-9]* >/dev/null; then
-					add_pkg_files "$dep"
+					add_pkg_files "$dep" || return 1
 				fi
 			done
 			export IFS=$'\n'
 		}
 
 		for pkg in "${@:2}"; do
-			add_pkg_files "$pkg"
+			add_pkg_files "$pkg" || exit 1
 		done
 		;;
 	ipkg)
 		[ -z "$2" ] && echo Missing package to install >&2 && exit 1
 
 		for pkg in "${@:2}"; do
-			pacman -S "$pkg" && "$0" pkg "$pkg"
+			pacman -S "$pkg" || exit 1
+			"$0" pkg "$pkg" || exit 1
 		done
 		;;
 	diff)

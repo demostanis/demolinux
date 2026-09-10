@@ -120,6 +120,21 @@ test_root_is_reserved() {
 	expect_failure pfs add /
 }
 
+test_failed_copy_returns_failure_without_indexing() {
+	touch "$root/cannot-copy"
+	expect_failure timeout 30 unshare --mount bash -ec '
+		mount --make-rprivate /
+		mount --bind "$1" "$1"
+		mount -o remount,bind,ro "$1"
+		exec persistfs add "$2"
+	' bash "$upper" "$root/cannot-copy" > "$root/stdout" 2> "$root/stderr"
+	grep -Fq rsync "$root/stderr"
+	[[ ! -e "$saved/cannot-copy" ]]
+	if [[ -f "$index" ]]; then
+		! grep -aFq -- "$root/cannot-copy" "$index"
+	fi
+}
+
 for test in \
 	test_basic_file \
 	test_basic_directory \
@@ -127,7 +142,8 @@ for test in \
 	test_package_install \
 	test_remove_cannot_escape_upperdir \
 	test_symlink_ancestor_cannot_delete_source \
-	test_root_is_reserved
+	test_root_is_reserved \
+	test_failed_copy_returns_failure_without_indexing
 do
 	root=$(mktemp -d /tmp/pfs-test.XXXXXXXX)
 	saved=$upper$root

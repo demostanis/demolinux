@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 export IFS=$'\n';
 
@@ -14,11 +14,23 @@ fi
 is_adding_pkg=0
 
 absolute_path() {
-	if [[ "$1" = /* ]]; then
-		echo "$1"
-	else
-		echo "$(realpath -s "$(dirname "$1")")/"$(basename "$1")""
+	realpath -ms -- "$1"
+}
+
+safe_path() {
+	local path="$1" parent
+	if [[ "$path" = / || "$path" = /index || "$path" = /index.tmp ]]; then
+		printf 'Refusing reserved persistfs path: %s\n' "$path" >&2
+		return 1
 	fi
+	parent="$(dirname -- "$path")"
+	while [[ "$parent" != / ]]; do
+		if [[ -L "$pfs_dir/upperdir$parent" ]]; then
+			printf 'Refusing symlink ancestor in persistfs: %s\n' "$parent" >&2
+			return 1
+		fi
+		parent="$(dirname -- "$parent")"
+	done
 }
 
 add_files() {
@@ -80,6 +92,8 @@ case $1 in
 		(( $# < 2 )) && echo Missing files to add >&2 && exit 1
 
 		for file in "${@:2}"; do
+			file=$(absolute_path "$file") || exit 1
+			safe_path "$file" || exit 1
 			if [ ! -e "$file" ]; then
 				echo File does not exist: $file >&2
 				exit 1
@@ -93,11 +107,8 @@ case $1 in
 		statuscode=0
 
 		for file in "${@:2}"; do
-			if [ ! "${file:0:1}" = / ]; then
-				file="$(pwd)/$file"
-			fi
-
-			export file=$(absolute_path "$file")
+			file=$(absolute_path "$file") || exit 1
+			safe_path "$file" || exit 1
 			if [ ! -L $pfs_dir/upperdir/"$file" -a ! -e $pfs_dir/upperdir/"$file" ]; then
 				echo File does not exist: $file >&2
 				statuscode=1
@@ -188,4 +199,3 @@ case $1 in
 		exit 1
 		;;
 esac
-

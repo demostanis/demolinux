@@ -1,64 +1,140 @@
 #!/bin/bash
 
-# pfs is very noisy
-exec > >(cat >/dev/null) || :
+# tests/run sources this file in zsh; execute the suite in Bash either way.
+sudo bash <<'BASH'
+set -Eeuo pipefail
+systemd-detect-virt --vm --quiet || { echo 'Run in a disposable VM' >&2; exit 1; }
 
-# TODO: check index?
+upper=/run/archiso/persistfs/upperdir
+index=$upper/index
+root=
+packages=()
+extra_paths=()
+export TERM=xterm
 
-# pfs uses tput lol
-export TERM=xterm-256color
+pfs() {
+	timeout 30 persistfs "$@" > "$root/stdout" 2> "$root/stderr"
+}
 
-alias pfs='sudo persistfs'
-pfsdir=/run/archiso/persistfs/upperdir
-index=/run/archiso/persistfs/index
+expect_failure() {
+	if "$@"; then
+		printf 'Expected failure: %s\n' "$*" >&2
+		return 1
+	fi
+}
 
-rm -rf $pfsdir/home/demostanis/tests
-rm -rf ~/tests
-mkdir ~/tests
-cd ~/tests
+read_index() {
+	pfs list --all --null
+	mapfile -d '' -t entries < "$root/stdout"
+}
 
-# adding a file
-touch a
-pfs add a
-[ -e $pfsdir/home/demostanis/tests/a ]
-# twice shouldn't error out
-pfs add a
-[ -e $pfsdir/home/demostanis/tests/a ]
+index_count() {
+	local entry count=0
+	for entry in "${entries[@]}"; do
+		[[ "$entry" != "$1" ]] || count=$((count + 1))
+	done
+	[[ "$count" = "$2" ]]
+}
 
-# removing a file
-pfs remove a
-[ ! -e $pfsdir/home/demostanis/tests/a ]
-[ -e a ]
-rm a
-[ ! -e a ]
+cleanup_case() {
+	[[ -n "$root" ]] || return 0
+	if (( ${#packages[@]} )); then
+		pacman -Rdd --noconfirm "${packages[@]}" >/dev/null 2>&1 || :
+	fi
+	if (( ${#extra_paths[@]} )); then
+		rm -rf -- "${extra_paths[@]}"
+	fi
+	rm -rf -- "$saved" "$root"
+	root=
+}
 
-# adding a directory
-mkdir -p a/b/c
-pfs add a
-[ -d $pfsdir/home/demostanis/tests/a ]
-[ -d $pfsdir/home/demostanis/tests/a/b/c ]
+fail() {
+	printf 'FAIL: %s, line %s: %s\n' "${test:-setup}" "$1" "$2" >&2
+	if [[ -n "$root" ]]; then
+		cat "$root/stdout" "$root/stderr" "$root"/*.log >&2 2>/dev/null || :
+	fi
+}
 
-# removing an item from a directory
-pfs remove a/b/c
-[ ! -e $pfsdir/home/demostanis/tests/a/b/c ]
-# TODO: we should delete all empty parent directories
-[ -e $pfsdir/home/demostanis/tests/a/b ]
+trap 'fail "$LINENO" "$BASH_COMMAND"' ERR
+trap cleanup_case EXIT
 
-# adding a symlink should add the symlink itself, no deferencing
-ln -s a symlink
-pfs add symlink
-[ -L $pfsdir/home/demostanis/tests/symlink ]
-pfs remove symlink
-[ ! -e $pfsdir/home/demostanis/tests/symlink ]
+test_basic_file() {
+	printf 'payload\n' > "$root/file"
+	pfs add "$root/file"
+	cmp "$root/file" "$saved/file"
+	pfs add "$root/file"
+	cmp "$root/file" "$saved/file"
+	pfs remove "$root/file"
+	[[ ! -e "$saved/file" && -f "$root/file" ]]
+	expect_failure pfs add "$root/missing" "$root/file"
+	[[ ! -e "$saved/file" && ! -e "$saved/missing" ]]
+}
 
-# pfs checks all files beforehand
-pfs add nonexistent symlink 2>/dev/null && exit 1
-[ ! -e $pfsdir/home/demostanis/tests/symlink ]
-[ ! -e $pfsdir/home/demostanis/tests/nonexistent ]
+test_basic_directory() {
+	mkdir -p "$root/a/b/c"
+	pfs add "$root/a"
+	[[ -d "$saved/a/b/c" ]]
+	pfs remove "$root/a/b/c"
+	[[ ! -e "$saved/a/b/c" && -d "$saved/a/b" ]]
+	[[ -d "$root/a/b/c" ]]
+}
 
-# installing a package
-sudo systemctl start pacman-init
-yes | pfs ipkg wildcard 2>/dev/null
-# permissions should be kept
-[ -x $pfsdir/usr/bin/wildcard ]
-[ ! -w $pfsdir/usr/bin/wildcard ]
+test_basic_symlink() {
+	mkdir "$root/target"
+	ln -s target "$root/link"
+	pfs add "$root/link"
+	[[ -L "$saved/link" && $(readlink "$saved/link") = target ]]
+	pfs remove "$root/link"
+	[[ ! -L "$saved/link" && -L "$root/link" ]]
+}
+
+test_package_install() {
+	systemctl start pacman-init
+	# Ignore yes's SIGPIPE, but retain the exit status of pfs.
+	set +o pipefail
+	yes | pfs ipkg wildcard
+	set -o pipefail
+	[[ -x "$upper/usr/bin/wildcard" ]]
+	[[ $(stat -c '%a:%u:%g' /usr/bin/wildcard) = $(stat -c '%a:%u:%g' "$upper/usr/bin/wildcard") ]]
+}
+
+test_remove_cannot_escape_upperdir() {
+	local victim="${upper%/*}/${root##*/}"
+	extra_paths+=( "$victim" )
+	printf 'outside\n' > "$victim"
+	expect_failure pfs remove "/../${victim##*/}"
+	[[ $(< "$victim") = outside ]]
+}
+
+test_symlink_ancestor_cannot_delete_source() {
+	local link="$upper/${root##*/}"
+	extra_paths+=( "$link" )
+	printf 'payload\n' > "$root/victim"
+	ln -s "$root" "$link"
+	expect_failure pfs remove "/${link##*/}/victim"
+	[[ $(< "$root/victim") = payload ]]
+}
+
+test_root_is_reserved() {
+	expect_failure pfs remove /
+	expect_failure pfs add /
+}
+
+for test in \
+	test_basic_file \
+	test_basic_directory \
+	test_basic_symlink \
+	test_package_install \
+	test_remove_cannot_escape_upperdir \
+	test_symlink_ancestor_cannot_delete_source \
+	test_root_is_reserved
+do
+	root=$(mktemp -d /tmp/pfs-test.XXXXXXXX)
+	saved=$upper$root
+	packages=()
+	extra_paths=()
+	"$test"
+	printf 'PASS: %s\n' "$test"
+	cleanup_case
+done
+BASH

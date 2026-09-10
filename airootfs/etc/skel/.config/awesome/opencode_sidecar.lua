@@ -1287,7 +1287,7 @@ function sidecar.capture_firefox(c, id, window_class)
     tab.launching = true
     tab.hosted_kind = "firefox-mcp"
     prepare_launch_focus(tab, focus_before_launch)
-    set_expanded(state, false, true)
+    refresh(state)
     if window_class then
         for _, candidate in ipairs(client.get()) do
             if matcher(candidate) and not sidecar.is_hosted(candidate) then
@@ -1328,7 +1328,7 @@ function sidecar.set_image(c, path)
     tab.launching = true
     tab.hosted_kind = "imv"
     prepare_launch_focus(tab, focus_before_launch)
-    set_expanded(state, false, true)
+    refresh(state)
 
     tab.launch_generation = tab.launch_generation + 1
     local instance = image_viewer_instance(c, tab.launch_generation)

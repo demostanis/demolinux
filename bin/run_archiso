@@ -52,11 +52,21 @@ cleanup_working_dir() {
 }
 
 copy_ovmf_vars() {
-    if [[ ! -f '/usr/share/edk2-ovmf/x64/OVMF_VARS.4m.fd' ]]; then
-        printf 'ERROR: %s\n' "OVMF_VARS.4m.fd not found. Install edk2-ovmf."
+    local ovmf_vars
+    if [[ -f /usr/share/edk2-ovmf/x64/OVMF_VARS.4m.fd ]]; then
+        ovmf_vars=/usr/share/edk2-ovmf/x64/OVMF_VARS.4m.fd
+        ovmf_code=/usr/share/edk2-ovmf/x64/OVMF_CODE.4m.fd
+        [[ "$secure_boot" != on ]] || ovmf_code=/usr/share/edk2-ovmf/x64/OVMF_CODE.secboot.4m.fd
+    else
+        ovmf_vars=/usr/share/OVMF/OVMF_VARS_4M.fd
+        ovmf_code=/usr/share/OVMF/OVMF_CODE_4M.fd
+        [[ "$secure_boot" != on ]] || ovmf_code=/usr/share/OVMF/OVMF_CODE_4M.secboot.fd
+    fi
+    if [[ ! -f "$ovmf_vars" || ! -f "$ovmf_code" ]]; then
+        printf 'ERROR: %s\n' "OVMF firmware not found. Install edk2-ovmf (Arch) or ovmf (Ubuntu)."
         exit 1
     fi
-    cp -av -- '/usr/share/edk2-ovmf/x64/OVMF_VARS.4m.fd' "${working_dir}/"
+    cp -- "$ovmf_vars" "${working_dir}/OVMF_VARS.fd"
 }
 
 check_image() {
@@ -85,16 +95,14 @@ truncate_image() {
 
 run_image() {
     if [[ "$boot_type" == 'uefi' ]]; then
+        local ovmf_code
         copy_ovmf_vars
         if [[ "${secure_boot}" == 'on' ]]; then
             printf '%s\n' 'Using Secure Boot'
-            local ovmf_code='/usr/share/edk2-ovmf/x64/OVMF_CODE.secboot.4m.fd'
-        else
-            local ovmf_code='/usr/share/edk2-ovmf/x64/OVMF_CODE.4m.fd'
         fi
         qemu_options+=(
             '-drive' "if=pflash,format=raw,unit=0,file=${ovmf_code},read-only=on"
-            '-drive' "if=pflash,format=raw,unit=1,file=${working_dir}/OVMF_VARS.4m.fd"
+            '-drive' "if=pflash,format=raw,unit=1,file=${working_dir}/OVMF_VARS.fd"
             '-global' "driver=cfi.pflash01,property=secure,value=${secure_boot}"
         )
     fi
@@ -124,7 +132,9 @@ run_image() {
         -smp "${DEMOLINUX_VM_CPUS:-1}" \
         -k en-us \
         -name archiso,process=archiso_0 \
-        -drive "format=${image_format},file=${image},if=virtio" \
+        -drive "format=${image_format},file=${image},if=none,id=rootdisk" \
+        -device pcie-root-port,id=bootport,chassis=1 \
+        -device virtio-blk-pci,drive=rootdisk,id=bootdisk,bus=bootport,bootindex=1 \
         -display "${display}" \
         -vga virtio \
         -device virtio-net-pci,romfile=,netdev=net0 \

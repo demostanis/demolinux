@@ -91,7 +91,7 @@ add_files() {
 		file=$REPLY
 		safe_path "$file" || return 1
 		# Package files may have been removed by localepurge.
-		[[ -e "$file" ]] || continue
+		[[ -e "$file" || -L "$file" ]] || continue
 		files+=( "$file" )
 	done
 
@@ -129,7 +129,7 @@ case $1 in
 			absolute_path "$file" || exit 1
 			file=$REPLY
 			safe_path "$file" || exit 1
-			if [ ! -e "$file" ]; then
+			if [[ ! -e "$file" && ! -L "$file" ]]; then
 				echo File does not exist: $file >&2
 				exit 1
 			fi

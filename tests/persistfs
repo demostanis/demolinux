@@ -243,6 +243,14 @@ test_legacy_index_migration() {
 	cmp "$root/expected-index" "$index"
 }
 
+test_dangling_symlink_roundtrip() {
+	ln -s missing-target "$root/dangling"
+	pfs add "$root/dangling"
+	[[ -L "$saved/dangling" && $(readlink "$saved/dangling") = missing-target ]]
+	pfs remove "$root/dangling"
+	[[ ! -L "$saved/dangling" && -L "$root/dangling" ]]
+}
+
 for test in \
 	test_basic_file \
 	test_basic_directory \
@@ -258,7 +266,8 @@ for test in \
 	test_unusual_filenames_roundtrip \
 	test_normalized_remove_updates_index \
 	test_index_normalizes_directory_spellings \
-	test_legacy_index_migration
+	test_legacy_index_migration \
+	test_dangling_symlink_roundtrip
 do
 	root=$(mktemp -d /tmp/pfs-test.XXXXXXXX)
 	saved=$upper$root

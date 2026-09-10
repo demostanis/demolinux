@@ -363,6 +363,41 @@ test_remove_stops_at_nonempty_parent() {
 	index_count "$root/tree" 1
 }
 
+test_package_versions_providers_and_recursive_dependencies() {
+	local stem=${root##*/} role name build archive
+	local main=$stem-main provider=$stem-provider sibling=$stem-sibling leaf=$stem-leaf virtual=$stem-virtual
+	local -a archives=()
+	extra_paths+=( "/opt/$stem" "$upper/opt/$stem" )
+	for role in main provider sibling leaf; do
+		name=$stem-$role
+		packages+=( "$name" )
+		extra_paths+=( "$upper/var/lib/pacman/local/$name-r1-1" )
+		build="$root/build-$role"
+		archive="$root/$name.pkg.tar.gz"
+		mkdir -p "$build/opt/$stem"
+		printf 'payload' > "$build/opt/$stem/$name with space"
+		{
+			printf 'pkgname = %s\npkgver = r1-1\npkgdesc = persistfs test\narch = any\nsize = 7\n' "$name"
+			case "$role" in
+				main) printf 'depend = %s>=2\ndepend = %s>=r1\n' "$virtual" "$sibling" ;;
+				provider) printf 'provides = %s=2\n' "$virtual" ;;
+				sibling) printf 'depend = %s\n' "$leaf" ;;
+				leaf) printf 'depend = %s\n' "$main" ;;
+			esac
+		} > "$build/.PKGINFO"
+		tar -czf "$archive" -C "$build" .PKGINFO opt
+		archives+=( "$archive" )
+	done
+	timeout 60 pacman -U --noconfirm "${archives[@]}" > "$root/stdout" 2> "$root/stderr"
+	pfs pkg "$main>=r1"
+	for name in "${packages[@]}"; do
+		[[ -f "$upper/opt/$stem/$name with space" ]]
+		[[ -f "$upper/var/lib/pacman/local/$name-r1-1/desc" ]]
+	done
+	pfs pkg "$virtual>=2"
+	expect_failure pfs pkg "$virtual>2"
+}
+
 for test in \
 	test_basic_file \
 	test_basic_directory \
@@ -387,7 +422,8 @@ for test in \
 	test_live_dataized_ancestor_without_saved_link \
 	test_directory_refresh_removes_only_stale_children \
 	test_remove_prunes_empty_parents_and_their_index \
-	test_remove_stops_at_nonempty_parent
+	test_remove_stops_at_nonempty_parent \
+	test_package_versions_providers_and_recursive_dependencies
 do
 	root=$(mktemp -d /tmp/pfs-test.XXXXXXXX)
 	saved=$upper$root

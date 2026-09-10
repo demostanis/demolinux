@@ -1,7 +1,5 @@
 #!/bin/bash
 
-export IFS=$'\n';
-
 pfs_dir=/run/archiso/persistfs
 airfs_dir=/run/archiso/airootfs
 pacmandb_dir=/var/lib/pacman/local
@@ -17,8 +15,6 @@ case $1 in
 		flock -x 9 || exit 1
 		;;
 esac
-
-is_adding_pkg=0
 
 absolute_path() {
 	IFS= read -r -d '' REPLY < <(realpath -msz -- "$1")
@@ -153,12 +149,52 @@ add_files() {
 }
 
 actual_pkg() {
-	pkg="${1%%=*}"
-	# if the provided package name is not the actual name of the
-	# package to be installed (e.g. installing xorriso actually
-	# installs libisoburn since libisoburn provides xorriso),
-	# find the actual name...
-	pacman -Qi "$pkg" | awk -F': ' '{if(NR==1)print$2}'
+	local name="${1%%[<>=]*}" constraint candidate version provides provision
+	local -a provided
+	constraint=${1#"$name"}
+	if version=$(LC_ALL=C pacman -Q -- "$name" 2>/dev/null); then
+		version=${version#"$name "}
+		if version_satisfies "$version" "$constraint"; then
+			printf '%s\n' "$name"
+			return 0
+		fi
+	fi
+	while IFS=$'\t' read -r candidate provides; do
+		IFS=' ' read -r -a provided <<< "$provides"
+		for provision in "${provided[@]}"; do
+			[[ "${provision%%=*}" = "$name" ]] || continue
+			version=''
+			[[ "$provision" = *=* ]] && version=${provision#*=}
+			if version_satisfies "$version" "$constraint"; then
+				printf '%s\n' "$candidate"
+				return 0
+			fi
+		done
+	done <<< "$provider_records"
+	printf 'No installed package satisfies: %s\n' "$1" >&2
+	return 1
+}
+
+version_satisfies() {
+	local comparison expression='^(>=|<=|=|>|<)(.+)$'
+	[[ -n "$2" ]] || return 0
+	[[ -n "$1" && "$2" =~ $expression ]] || return 1
+	comparison=$(vercmp "$1" "${BASH_REMATCH[2]}") || return 1
+	case "${BASH_REMATCH[1]}" in
+		'=') (( comparison == 0 )) ;;
+		'>=') (( comparison >= 0 )) ;;
+		'<=') (( comparison <= 0 )) ;;
+		'>') (( comparison > 0 )) ;;
+		'<') (( comparison < 0 )) ;;
+	esac
+}
+
+package_db() {
+	local version
+	version=$(expac -Q '%v' "$1") || return 1
+	[[ -n "$version" ]] || return 1
+	REPLY="$pacmandb_dir/$1-$version"
+	[[ -f "$REPLY/desc" && -f "$REPLY/files" ]]
 }
 
 case $1 in
@@ -207,30 +243,33 @@ case $1 in
 	pkg)
 		[ -z "$2" ] && echo Missing package to install && exit 1
 
-		is_adding_pkg=1
+		provider_records=$(expac -Q -l ' ' $'%n\t%P') || exit 1
+		declare -A visited_packages=()
 		add_pkg_files() {
-			pkg=$(actual_pkg "$1")
-			if [ -z "$pkg" ]; then
-				exit 1
-			fi
-			echo -e Adding "\033[1;31m$pkg\033[0m" to persistfs...
-			echo Computing file list...
+			local pkg dep db listing file dependencies
+			local -a files=()
+			pkg=$(actual_pkg "$1") || return 1
+			[[ -z "${visited_packages[$pkg]:-}" ]] || return 0
+			visited_packages[$pkg]=1
+			package_db "$pkg" || return 1
+			db=$REPLY
+			listing=$(pacman -Qql -- "$pkg") || return 1
+			while IFS= read -r file; do
+				[[ -z "$file" || "$file" = */ ]] || files+=( "$file" )
+			done <<< "$listing"
+			files+=( "$db/desc" "$db/files" )
+			[[ ! -f "$db/mtree" ]] || files+=( "$db/mtree" )
+			add_files "${files[@]}" || return 1
 
-			add_files $(pacman -Ql "$pkg" | \
-				cut -d\  -f2 | \
-				grep -v /$) $pacmandb_dir/$pkg-[0-9]*/{desc,files,mtree} || return 1
-
-			unset IFS
-			for dep in $(expac %D "$pkg"); do
-				dep=$(actual_pkg "$dep")
-
-				# if it's neither already in the persistfs nor in the airootfs...
-				if ! compgen -G $pfs_dir/upperdir$pacmandb_dir/$dep-[0-9]* >/dev/null && \
-					! compgen -G $airfs_dir$pacmandb_dir/$dep-[0-9]* >/dev/null; then
+			dependencies=$(expac -Q -l $'\n' '%D' "$pkg") || return 1
+			while IFS= read -r dep; do
+				[[ -n "$dep" ]] || continue
+				dep=$(actual_pkg "$dep") || return 1
+				package_db "$dep" || return 1
+				if [[ ! -f "$pfs_dir/upperdir$REPLY/desc" && ! -f "$airfs_dir$REPLY/desc" ]]; then
 					add_pkg_files "$dep" || return 1
 				fi
-			done
-			export IFS=$'\n'
+			done <<< "$dependencies"
 		}
 
 		for pkg in "${@:2}"; do

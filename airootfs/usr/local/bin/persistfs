@@ -130,7 +130,7 @@ add_files() {
 
 	[[ ${#files[@]} = 0 ]] && return 0
 	if ! printf '%s\0' "${files[@]}" |
-		rsync -arHAXq --mkpath --from0 --files-from=- / "$pfs_dir/upperdir"; then
+		rsync -arHAXq --delete-delay --mkpath --from0 --files-from=- / "$pfs_dir/upperdir"; then
 		return 1
 	fi
 

@@ -327,6 +327,19 @@ test_live_dataized_ancestor_without_saved_link() {
 	[[ -L "$saved/link" ]]
 }
 
+test_directory_refresh_removes_only_stale_children() {
+	mkdir "$root/tree"
+	touch "$root/tree/obsolete" "$root/tree/keep" "$root/unrelated"
+	pfs add "$root/tree" "$root/tree/obsolete" "$root/unrelated"
+	rm "$root/tree/obsolete"
+	pfs add "$root/tree"
+	[[ ! -e "$saved/tree/obsolete" && -f "$saved/tree/keep" && -f "$saved/unrelated" ]]
+	read_index
+	index_count "$root/tree/obsolete" 0
+	pfs add "$root/tree/keep"
+	[[ -f "$saved/unrelated" ]]
+}
+
 for test in \
 	test_basic_file \
 	test_basic_directory \
@@ -348,7 +361,8 @@ for test in \
 	test_pfs_rejects_directory_symlink_conflicts_without_changes \
 	test_pfs_rejects_directory_over_saved_symlink \
 	test_dataized_children_are_not_copied_back \
-	test_live_dataized_ancestor_without_saved_link
+	test_live_dataized_ancestor_without_saved_link \
+	test_directory_refresh_removes_only_stale_children
 do
 	root=$(mktemp -d /tmp/pfs-test.XXXXXXXX)
 	saved=$upper$root

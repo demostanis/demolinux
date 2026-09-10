@@ -135,6 +135,34 @@ test_failed_copy_returns_failure_without_indexing() {
 	fi
 }
 
+test_concurrent_index_updates() {
+	local i pid
+	local -a pids=() paths=()
+	touch "$root/same-file"
+	for i in {1..16}; do
+		timeout 30 persistfs add "$root/same-file" > "$root/add-$i.log" 2>&1 &
+		pids+=( "$!" )
+	done
+	for pid in "${pids[@]}"; do wait "$pid"; done
+	pfs list --all
+	[[ $(grep -Fxc -- "$root/same-file" "$root/stdout") = 1 ]]
+	for i in {01..16}; do
+		touch "$root/file-$i"
+		paths+=( "$root/file-$i" )
+	done
+	pfs add "${paths[@]}"
+	pids=()
+	for i in "${!paths[@]}"; do
+		timeout 30 persistfs remove "${paths[$i]}" > "$root/remove-$i.log" 2>&1 &
+		pids+=( "$!" )
+	done
+	for pid in "${pids[@]}"; do wait "$pid"; done
+	pfs list --all
+	for i in "${paths[@]}"; do
+		! grep -Fxq -- "$i" "$root/stdout"
+	done
+}
+
 for test in \
 	test_basic_file \
 	test_basic_directory \
@@ -143,7 +171,8 @@ for test in \
 	test_remove_cannot_escape_upperdir \
 	test_symlink_ancestor_cannot_delete_source \
 	test_root_is_reserved \
-	test_failed_copy_returns_failure_without_indexing
+	test_failed_copy_returns_failure_without_indexing \
+	test_concurrent_index_updates
 do
 	root=$(mktemp -d /tmp/pfs-test.XXXXXXXX)
 	saved=$upper$root

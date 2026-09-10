@@ -11,6 +11,13 @@ if [ $(id -u) -ne 0 ]; then
 	exit 1
 fi
 
+case $1 in
+	add|remove|pkg|list|diff)
+		exec 9>"$pfs_dir/.persistfs.lock" || exit 1
+		flock -x 9 || exit 1
+		;;
+esac
+
 is_adding_pkg=0
 
 absolute_path() {

@@ -15,3 +15,10 @@ loaded with one `initrd` command.
 
 The `99999199999` resume-offset placeholder is updated by the initramfs after
 first-boot swapfile creation. RAM boot deliberately does not request disk resume.
+
+RAM mode copies only the root and saved persistence to tmpfs, preserving ACLs,
+extended attributes, and hard links. It unmounts the boot disk before starting
+the desktop. Disk `/data` is not copied: the session gets an empty, temporary
+`/data` instead. Writes to `/data` and `persistfs` in this mode are lost on reboot.
+Disk swap and snapshots are unavailable. A copy failure stops boot rather than
+pretending that the disk is safe to unplug.

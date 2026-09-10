@@ -16,6 +16,8 @@ build() {
     add_binary losetup
     add_binary openssl
     add_binary btrfs
+    # RAM copies must preserve persistence ACLs, xattrs, and hard links.
+    add_binary cp
     add_binary plymouth
     add_binary lsblk
     add_binary kexec

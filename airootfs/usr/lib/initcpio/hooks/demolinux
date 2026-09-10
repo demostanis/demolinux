@@ -184,13 +184,6 @@ archiso_mount_handler() {
     _mnt_dev /dev/disk/by-partlabel/system $rundir/airootfs "-r" "subvol=/system/${snapshot:-airootfs},compress=zstd,noatime"
     _mnt_dev /dev/disk/by-partlabel/system $rundir/swap "-w" "subvol=/system/swap,compress=zstd,noatime"
 
-    for dir in $rundir/airootfs/etc/skel/*; do
-        if readlink "$dir" | grep -q '^/data'; then
-            mkdir -p $rundir/data/"$(basename "$(readlink "$dir")")"
-        fi
-    done
-    chown 1000:1000 $rundir/data $rundir/data/*
-
     # Enable copytoram if the following conditions apply:
     # * the root file system image is not on an optical disc drive,
     # * the root file system image size is less than 4 GiB,
@@ -203,10 +196,6 @@ archiso_mount_handler() {
                 copytoram="y"
             fi
         fi
-    fi
-    if [ "${copytoram}" = "y" ]; then
-        msg ":: Mounting $rundir/copytoram (tmpfs) filesystem, size=${copytoram_size}"
-        mount --mkdir -t tmpfs -o "size=${copytoram_size}",mode=0755 copytoram $rundir/copytoram
     fi
 
     # why doesnt {cowspace,persistfs} work...
@@ -227,13 +216,51 @@ EOF
 
     lowerdir=$rundir/airootfs
     if [ "$copytoram" = y ]; then
-           plymouth update --status="Copying airootfs to RAM..."
-            cp -a $rundir/airootfs/* $rundir/copytoram
-            lowerdir=$rundir/copytoram
+        plymouth update --status="Copying system and persistence to RAM..."
+        if ! mount --mkdir -t tmpfs -o "size=${copytoram_size}",mode=0755 copytoram "$rundir/copytoram"; then
+            echo "ERROR: could not create the RAM filesystem."
+            launch_interactive_shell
+            return 1
+        fi
+        # Copy both overlay layers, but start with empty, temporary user data.
+        mkdir -p "$rundir/copytoram/data"
+        for volume in airootfs persistfs; do
+            mkdir -p "$rundir/copytoram/$volume"
+            if ! cp -a "$rundir/$volume/." "$rundir/copytoram/$volume/"; then
+                echo "ERROR: not enough RAM to copy $volume; do not unplug the boot disk."
+                launch_interactive_shell
+                return 1
+            fi
+        done
+        for volume in airootfs persistfs data snapshots swap bootmnt btrfs; do
+            if ! umount "$rundir/$volume"; then
+                echo "ERROR: could not release $volume; do not unplug the boot disk."
+                launch_interactive_shell
+                return 1
+            fi
+        done
+        for volume in airootfs persistfs data; do
+            if ! mount --bind "$rundir/copytoram/$volume" "$rundir/$volume"; then
+                echo "ERROR: could not mount $volume from RAM."
+                launch_interactive_shell
+                return 1
+            fi
+        done
     fi
+    for dir in "$rundir/airootfs/etc/skel/"*; do
+        if readlink "$dir" | grep -q '^/data'; then
+            mkdir -p "$rundir/data/$(basename "$(readlink "$dir")")"
+        fi
+    done
+    chown 1000:1000 "$rundir/data" "$rundir/data/"*
     _mnt_overlayfs lowerdir=$lowerdir upperdir=$rundir/persistfs/upperdir workdir=$rundir/persistfs/workdir mountpoint=$rundir/cowspace/lowerdir
     _mnt_overlayfs lowerdir=$rundir/cowspace/lowerdir upperdir=$rundir/cowspace/upperdir workdir=$rundir/cowspace/workdir mountpoint="$newroot/"
-    umount $btrfs_root
+    if [ "$copytoram" = y ]; then
+        # Disk swap is unavailable in RAM mode; do not leave a failed swap unit.
+        sed -i '\|^/run/archiso/swap/swapfile |d' "$newroot/etc/fstab"
+    else
+        umount "$btrfs_root"
+    fi
 }
 
 # vim: set ft=sh:

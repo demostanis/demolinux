@@ -19,6 +19,12 @@ if [ -L "$file" ]; then
 	exit 1
 fi
 
+persisted=/run/archiso/persistfs/upperdir$(realpath -ms -- "$file")
+if [[ -d "$persisted" && ! -L "$persisted" ]]; then
+	printf 'Directory already in persistfs: %s; remove the saved entry explicitly first.\n' "$file" >&2
+	exit 1
+fi
+
 dest=/data/$(realpath "$file" | tr / _)
 if [ -d "$file" ]; then
 	mkdir -vp "$dest"

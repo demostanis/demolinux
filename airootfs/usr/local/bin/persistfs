@@ -40,7 +40,38 @@ safe_path() {
 	done
 }
 
+safe_source() {
+	local parent data_dir resolved
+	IFS= read -r -d '' parent < <(realpath -ez -- "${1%/*}/") || return 1
+	IFS= read -r -d '' data_dir < <(realpath -mz -- /data) || return 1
+	resolved="${parent%/}/${1##*/}"
+	case "$resolved" in
+		/run/archiso|/run/archiso/*|"$data_dir"|"$data_dir"/*)
+			printf 'Refusing to copy mounted persistence data: %s (persist its symlink instead)\n' "$1" >&2
+			return 1
+			;;
+	esac
+}
+
 indexed_files=()
+
+check_conflicts() {
+	local source="$1" saved="$pfs_dir/upperdir$1" child
+	if [[ -e "$saved" || -L "$saved" ]]; then
+		if { [[ -d "$source" && ! -L "$source" ]] && [[ ! -d "$saved" || -L "$saved" ]]; } ||
+			{ [[ ! -d "$source" || -L "$source" ]] && [[ -d "$saved" && ! -L "$saved" ]]; }; then
+			printf 'Type conflict in persistfs: %s; remove the saved entry explicitly first.\n' "$source" >&2
+			return 1
+		fi
+	fi
+	if [[ -d "$source" && ! -L "$source" ]]; then
+		for child in "$source"/* "$source"/.[!.]* "$source"/..?*; do
+			[[ -e "$child" || -L "$child" ]] || continue
+			check_conflicts "$child" || return 1
+		done
+	fi
+	return 0
+}
 
 index_add() {
 	local entry
@@ -92,6 +123,8 @@ add_files() {
 		safe_path "$file" || return 1
 		# Package files may have been removed by localepurge.
 		[[ -e "$file" || -L "$file" ]] || continue
+		safe_source "$file" || return 1
+		check_conflicts "$file" || return 1
 		files+=( "$file" )
 	done
 
@@ -102,6 +135,7 @@ add_files() {
 	fi
 
 	for file in "${files[@]}"; do
+		index_remove "$file"
 		index_add "$file"
 		printf 'Added %s to persistfs.\n' "$file"
 	done
@@ -129,6 +163,7 @@ case $1 in
 			absolute_path "$file" || exit 1
 			file=$REPLY
 			safe_path "$file" || exit 1
+			safe_source "$file" || exit 1
 			if [[ ! -e "$file" && ! -L "$file" ]]; then
 				echo File does not exist: $file >&2
 				exit 1

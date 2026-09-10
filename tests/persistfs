@@ -251,6 +251,82 @@ test_dangling_symlink_roundtrip() {
 	[[ ! -L "$saved/dangling" && -L "$root/dangling" ]]
 }
 
+test_dataize_rejects_persisted_directory() {
+	local path="$root/dataized" data="/data/${root//\//_}_dataized"
+	extra_paths+=( "$data" )
+	mkdir -p "$path/subdir"
+	printf 'payload\n' > "$path/subdir/child"
+	pfs add "$path" "$path/subdir/child"
+	cp "$index" "$root/expected-index"
+	expect_failure dataize "$path" > "$root/stdout" 2> "$root/stderr"
+	grep -Fq 'already in persistfs' "$root/stderr"
+	[[ ! -L "$path" && ! -L "$upper$path" && ! -e "$data" ]]
+	[[ $(< "$path/subdir/child") = payload ]]
+	cmp "$path/subdir/child" "$upper$path/subdir/child"
+	cmp "$index" "$root/expected-index"
+	pfs remove "$path"
+	dataize "$path" > "$root/stdout" 2> "$root/stderr"
+	[[ -L "$upper$path" ]]
+}
+
+test_pfs_rejects_directory_symlink_conflicts_without_changes() {
+	mkdir -p "$root/tree/.nested"
+	printf 'payload\n' > "$root/tree/.nested/child"
+	printf 'saved\n' > "$root/other"
+	pfs add "$root/tree" "$root/other"
+	cp "$index" "$root/expected-index"
+	rm -rf "$root/tree/.nested"
+	ln -s /data "$root/tree/.nested"
+	printf 'unsaved\n' > "$root/other"
+	local path
+	for path in "$root/tree/.nested" "$root/tree"; do
+		expect_failure pfs add "$path"
+		grep -Fq 'Type conflict' "$root/stderr"
+		[[ $(< "$saved/tree/.nested/child") = payload ]]
+		cmp "$index" "$root/expected-index"
+	done
+	expect_failure pfs add "$root/other" "$root/tree"
+	grep -Fq 'Type conflict' "$root/stderr"
+	[[ $(< "$saved/other") = saved ]]
+	cmp "$index" "$root/expected-index"
+}
+
+test_pfs_rejects_directory_over_saved_symlink() {
+	ln -s /data "$root/link"
+	pfs add "$root/link"
+	cp "$index" "$root/expected-index"
+	rm "$root/link"
+	mkdir "$root/link"
+	expect_failure pfs add "$root/link"
+	grep -Fq 'Type conflict' "$root/stderr"
+	[[ -L "$saved/link" ]]
+	cmp "$index" "$root/expected-index"
+}
+
+test_dataized_children_are_not_copied_back() {
+	local data="/data/${root//\//_}_dataized"
+	extra_paths+=( "$data" )
+	mkdir "$root/dataized"
+	printf 'payload\n' > "$root/dataized/child"
+	dataize "$root/dataized" > "$root/stdout" 2> "$root/stderr"
+	expect_failure pfs add "$root/dataized/child"
+	expect_failure pfs add "$data/child"
+	expect_failure pfs remove "$root/dataized/child"
+	[[ -L "$saved/dataized" && $(< "$root/dataized/child") = payload ]]
+}
+
+test_live_dataized_ancestor_without_saved_link() {
+	local data="/data/${root##*/}"
+	extra_paths+=( "$data" )
+	mkdir "$data"
+	printf 'already persistent\n' > "$data/child"
+	ln -s "$data" "$root/link"
+	expect_failure pfs add "$root/link/child"
+	expect_failure pfs add "$data/child"
+	pfs add "$root/link"
+	[[ -L "$saved/link" ]]
+}
+
 for test in \
 	test_basic_file \
 	test_basic_directory \
@@ -267,7 +343,12 @@ for test in \
 	test_normalized_remove_updates_index \
 	test_index_normalizes_directory_spellings \
 	test_legacy_index_migration \
-	test_dangling_symlink_roundtrip
+	test_dangling_symlink_roundtrip \
+	test_dataize_rejects_persisted_directory \
+	test_pfs_rejects_directory_symlink_conflicts_without_changes \
+	test_pfs_rejects_directory_over_saved_symlink \
+	test_dataized_children_are_not_copied_back \
+	test_live_dataized_ancestor_without_saved_link
 do
 	root=$(mktemp -d /tmp/pfs-test.XXXXXXXX)
 	saved=$upper$root

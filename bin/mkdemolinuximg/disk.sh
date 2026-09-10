@@ -154,16 +154,14 @@ _install_bootloader() {
 
     _msg_info "Configuring grub..."
     cp "$profile"/grub/splash.png /mnt/demolinux/boot/grub
-    # Patch grub-mkconfig to look at the right devices
-    # and configuration files
-    grub_cfg=/mnt/demolinux/boot/grub/grub.cfg
-    sed '
-        1a set -- -o '$grub_cfg'
-        s,GRUB_DEVICE=.*,GRUB_DEVICE=/dev/loop0p3,
-        s,GRUB_DEVICE_BOOT=.*,GRUB_DEVICE_BOOT=/dev/loop0p2,
-        s,grub_mkconfig_dir=.*,grub_mkconfig_dir='"$profile"'/grub/grub.d,
-        /\/default\/grub ; then/{N;N;N;N;N;N;N;a . '"$profile"'/grub/config
-    d}' `which grub-mkconfig` | bash -
+    local grub_cfg=/mnt/demolinux/boot/grub/grub.cfg
+    local boot_uuid system_uuid
+    boot_uuid=$(blkid -s UUID -o value /dev/loop0p2)
+    system_uuid=$(blkid -s UUID -o value /dev/loop0p3)
+    [[ -n "$boot_uuid" && -n "$system_uuid" ]] || _msg_error "Missing boot filesystem UUIDs." 1
+    sed -e "s/@BOOT_UUID@/$boot_uuid/g" -e "s/@SYSTEM_UUID@/$system_uuid/g" \
+        "${profile}/grub/grub.cfg.in" > "$grub_cfg"
+    grub-script-check "$grub_cfg"
 
     mkdir -p /mnt/demolinux/boot/boot/grub
     cat > /mnt/demolinux/boot/boot/grub/grub.cfg <<-EOF

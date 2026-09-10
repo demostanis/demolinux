@@ -1,0 +1,110 @@
+# demolinux: BIOS/UEFI boot from the GPT image's boot and system partitions.
+set default=demolinux
+set timeout=5
+set timeout_style=menu
+
+insmod part_gpt
+insmod fat
+insmod btrfs
+insmod search_fs_uuid
+insmod regexp
+insmod all_video
+insmod gzio
+
+search --no-floppy --fs-uuid --set=boot_root @BOOT_UUID@
+search --no-floppy --fs-uuid --set=system_root @SYSTEM_UUID@
+set root=$boot_root
+set prefix=($boot_root)/grub
+set gfxmode=auto
+set gfxpayload=keep
+terminal_input console
+if loadfont $prefix/fonts/unicode.pf2; then
+    insmod gfxterm
+    terminal_output gfxterm
+    insmod png
+    background_image $prefix/splash.png
+fi
+
+set boot_args="quiet splash vt.global_cursor_default=0"
+# The initramfs replaces this offset after creating the swapfile on first boot.
+set resume_args="resume=PARTLABEL=system resume_offset=99999199999"
+export system_root boot_args resume_args
+
+function load_linux {
+    set root=$system_root
+    set kernel_dir=$1/boot
+    linux $kernel_dir/vmlinuz-linux $2
+    set microcode=
+    for image in intel-uc.img intel-ucode.img amd-uc.img amd-ucode.img early_ucode.cpio microcode.cpio; do
+        if [ -f $kernel_dir/$image ]; then
+            set microcode="$microcode $kernel_dir/$image"
+        fi
+    done
+    initrd $microcode $kernel_dir/initramfs-linux.img
+}
+
+menuentry "Boot demolinux" --id demolinux {
+    load_linux /system/airootfs "$boot_args copytoram=n $resume_args"
+}
+
+menuentry "Boot demolinux (copytoram=y)" --id demolinux-ram {
+    load_linux /system/airootfs "$boot_args copytoram=y"
+}
+
+menuentry "Boot demolinux (recovery shell)" --id demolinux-recovery {
+    load_linux /system/airootfs "disablehooks=demolinux"
+}
+
+set root=$system_root
+for snapshot in /system/snapshots/snapshot-*; do
+    if [ -f $snapshot/boot/vmlinuz-linux ]; then
+        submenu "Boot to previous snapshot..." --id demolinux-snapshots {
+            set root=$system_root
+            for snapshot in /system/snapshots/snapshot-*; do
+                if [ -f $snapshot/boot/vmlinuz-linux ]; then
+                    regexp --set=name 'snapshot-(.*)' "$snapshot"
+                    menuentry "Boot demolinux ($name)" "$snapshot" {
+                        load_linux "$2" "$boot_args copytoram=n $resume_args btrfs_snapshot=$2"
+                    }
+                fi
+            done
+        }
+        break
+    fi
+done
+
+if [ "$grub_platform" = efi ]; then
+    if fwsetup --is-supported; then
+        menuentry "UEFI Firmware Settings" --id uefi-firmware {
+            fwsetup
+        }
+    fi
+    if [ -f /system/airootfs/boot/ipxe.efi ]; then
+        menuentry "Network boot (iPXE)" --id ipxe {
+            set root=$system_root
+            chainloader /system/airootfs/boot/ipxe.efi
+        }
+    fi
+    if [ -f /system/airootfs/boot/memtest.efi ]; then
+        menuentry "memtest86+" --id memtest {
+            set root=$system_root
+            linux /system/airootfs/boot/memtest.efi
+        }
+    fi
+else
+    if [ -f /system/airootfs/boot/ipxe.lkrn ]; then
+        menuentry "Network boot (iPXE)" --id ipxe {
+            set root=$system_root
+            linux16 /system/airootfs/boot/ipxe.lkrn
+            if [ -f /system/airootfs/boot/ipxe.ipxe ]; then
+                initrd16 /system/airootfs/boot/ipxe.ipxe
+            fi
+        }
+    fi
+    if [ -f /system/airootfs/boot/memtest.bin ]; then
+        menuentry "memtest86+" --id memtest {
+            set root=$system_root
+            linux16 /system/airootfs/boot/memtest.bin
+        }
+    fi
+fi

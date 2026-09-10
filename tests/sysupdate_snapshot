@@ -2,31 +2,7 @@
 
 set -ex
 
-echo rebooting to check created snapshot..
-
-qmp(){
-	nc -q0 localhost "${DEMOLINUX_QMP_PORT:-4444}" >/dev/null
-}
-cap(){
-	echo '{"execute":"qmp_capabilities"}'
-}
-key(){
-	echo '{"execute":"send-key","arguments":{"keys":[{"type":"qcode","data":"'"$1"'"}]}}'
-}
-
-(
-	cap
-	sleep 0.2
-	key down
-	sleep 0.2
-	key down
-	sleep 0.2
-	key down
-	sleep 0.2
-	key ret
-	sleep 2
-	key ret
-) | qmp
+echo waiting for GRUB to boot the snapshot selected by tests/run..
 
 echo connecting through ssh...
 connected=

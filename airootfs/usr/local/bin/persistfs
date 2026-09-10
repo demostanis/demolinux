@@ -21,7 +21,7 @@ esac
 is_adding_pkg=0
 
 absolute_path() {
-	realpath -ms -- "$1"
+	IFS= read -r -d '' REPLY < <(realpath -msz -- "$1")
 }
 
 safe_path() {
@@ -30,14 +30,56 @@ safe_path() {
 		printf 'Refusing reserved persistfs path: %s\n' "$path" >&2
 		return 1
 	fi
-	parent="$(dirname -- "$path")"
-	while [[ "$parent" != / ]]; do
+	parent=${path%/*}
+	while [[ -n "$parent" && "$parent" != / ]]; do
 		if [[ -L "$pfs_dir/upperdir$parent" ]]; then
 			printf 'Refusing symlink ancestor in persistfs: %s\n' "$parent" >&2
 			return 1
 		fi
-		parent="$(dirname -- "$parent")"
+		parent=${parent%/*}
 	done
+}
+
+indexed_files=()
+
+index_add() {
+	local entry
+	for entry in "${indexed_files[@]}"; do
+		[[ "$entry" = "$1" ]] && return 0
+	done
+	indexed_files+=( "$1" )
+}
+
+index_remove() {
+	local entry
+	local -a kept=()
+	for entry in "${indexed_files[@]}"; do
+		if [[ "$entry" != "$1" && "$entry" != "$1/"* ]]; then
+			kept+=( "$entry" )
+		fi
+	done
+	indexed_files=( "${kept[@]}" )
+}
+
+load_index() {
+	local entry delimiter=''
+	[[ -e "$pfs_dir/upperdir/index" ]] || return 0
+	# Read the old line-based index until the next mutation migrates it.
+	IFS= read -r -d '' entry < "$pfs_dir/upperdir/index" || delimiter=$'\n'
+	while IFS= read -r -d "$delimiter" entry || [[ -n "$entry" ]]; do
+		[[ -n "$entry" ]] || continue
+		absolute_path "$entry" || return 1
+		index_add "$REPLY"
+	done < "$pfs_dir/upperdir/index"
+}
+
+save_index() {
+	local tmp
+	tmp=$(mktemp "$pfs_dir/.index.XXXXXXXX") || return 1
+	if [[ ${#indexed_files[@]} != 0 ]]; then
+		printf '%s\0' "${indexed_files[@]}" > "$tmp" || { rm -f -- "$tmp"; return 1; }
+	fi
+	mv -fT -- "$tmp" "$pfs_dir/upperdir/index" || { rm -f -- "$tmp"; return 1; }
 }
 
 add_files() {
@@ -45,7 +87,8 @@ add_files() {
 	local -a files=()
 
 	for file in "$@"; do
-		file=$(absolute_path "$file") || return 1
+		absolute_path "$file" || return 1
+		file=$REPLY
 		safe_path "$file" || return 1
 		# Package files may have been removed by localepurge.
 		[[ -e "$file" ]] || continue
@@ -53,17 +96,16 @@ add_files() {
 	done
 
 	[[ ${#files[@]} = 0 ]] && return 0
-	if ! printf '%s\n' "${files[@]}" |
-		rsync -arHAXq --mkpath --files-from=- / "$pfs_dir/upperdir"; then
+	if ! printf '%s\0' "${files[@]}" |
+		rsync -arHAXq --mkpath --from0 --files-from=- / "$pfs_dir/upperdir"; then
 		return 1
 	fi
 
 	for file in "${files[@]}"; do
-		if ! grep -q "$file" $pfs_dir/upperdir/index 2>/dev/null; then
-			printf "%s\n" "$file" >> $pfs_dir/upperdir/index || return 1
-		fi
+		index_add "$file"
 		printf 'Added %s to persistfs.\n' "$file"
 	done
+	save_index
 }
 
 actual_pkg() {
@@ -76,11 +118,16 @@ actual_pkg() {
 }
 
 case $1 in
+	add|remove|pkg|list) load_index || exit 1 ;;
+esac
+
+case $1 in
 	add)
 		(( $# < 2 )) && echo Missing files to add >&2 && exit 1
 
 		for file in "${@:2}"; do
-			file=$(absolute_path "$file") || exit 1
+			absolute_path "$file" || exit 1
+			file=$REPLY
 			safe_path "$file" || exit 1
 			if [ ! -e "$file" ]; then
 				echo File does not exist: $file >&2
@@ -95,7 +142,8 @@ case $1 in
 		statuscode=0
 
 		for file in "${@:2}"; do
-			file=$(absolute_path "$file") || exit 1
+			absolute_path "$file" || exit 1
+			file=$REPLY
 			safe_path "$file" || exit 1
 			if [ ! -L $pfs_dir/upperdir/"$file" -a ! -e $pfs_dir/upperdir/"$file" ]; then
 				echo File does not exist: $file >&2
@@ -104,9 +152,8 @@ case $1 in
 			fi
 
 			rm -rf -- "$pfs_dir/upperdir$file" || exit 1
-			grep -Fv "$file" $pfs_dir/upperdir/index > $pfs_dir/upperdir/index.tmp
-			(( $? <= 1 )) || exit 1
-			mv $pfs_dir/upperdir/index.tmp $pfs_dir/upperdir/index || exit 1
+			index_remove "$file"
+			save_index || exit 1
 		done
 
 		exit $statuscode
@@ -166,14 +213,25 @@ case $1 in
 		diff -u $airfs_dir/"$file" $pfs_dir/upperdir/"$file" | bat --file-name "$file"
 		;;
 	list)
-		if [ "$2" = --all ]; then
-			cat $pfs_dir/upperdir/index
-		else
-			cat $pfs_dir/upperdir/index | xargs pacman -Qo 2>&1 | grep -v $pacmandb_dir | grep 'error: No package owns' | sed 's/.*No package owns \(.*\)/\1/' | sort -u
-		fi
+		all=0
+		format='%s\n'
+		for option in "${@:2}"; do
+			case "$option" in
+				--all) all=1 ;;
+				--null) format='%s\0' ;;
+				*) printf 'Unknown list option: %s\n' "$option" >&2; exit 1 ;;
+			esac
+		done
+		for file in "${indexed_files[@]}"; do
+			if [[ "$all" = 0 ]]; then
+				[[ "$file" = "$pacmandb_dir/"* ]] && continue
+				pacman -Qqo -- "$file" >/dev/null 2>&1 && continue
+			fi
+			printf "$format" "$file"
+		done
 		;;
 	*)
-		echo usage: "$0 [add|remove|pkg|ipkg|list] [--all]" >&2
+		echo usage: "$0 [add|remove|pkg|ipkg|diff|list] [--all] [--null]" >&2
 		echo
 		echo \ add: add a file to persistfs.
 		echo
@@ -186,6 +244,7 @@ case $1 in
 		echo \ diff: show a diff between a file in the airootfs and in the persistfs.
 		echo
 		echo \ list: list files in the persistfs. if --all is specified, files from packages are also listed.
+		echo \ \ use --null for NUL-separated filenames.
 		exit 1
 		;;
 esac

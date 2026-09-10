@@ -182,6 +182,67 @@ test_metadata_and_hardlinks_survive() {
 	[[ "$saved/metadata" -ef "$saved/hardlink" ]]
 }
 
+test_index_matches_whole_paths() {
+	touch "$root/prefix" "$root/prefix-long" "$root/square[1]"
+	pfs add "$root/prefix-long" "$root/prefix" "$root/square[1]" "$root/square[1]"
+	read_index
+	index_count "$root/prefix" 1
+	index_count "$root/square[1]" 1
+	pfs remove "$root/prefix"
+	read_index
+	index_count "$root/prefix" 0
+	index_count "$root/prefix-long" 1
+}
+
+test_unusual_filenames_roundtrip() {
+	local name
+	local -a paths=()
+	for name in 'space name' "quote'name" 'back\slash' $'line\nbreak' $'trailing\n' $'parent\n/child\n'; do
+		if [[ "$name" = */* ]]; then
+			mkdir -p -- "$root/${name%/*}"
+		fi
+		touch -- "$root/$name"
+		paths+=( "$root/$name" )
+	done
+	pfs add "${paths[@]}"
+	pfs list --null
+	mapfile -d '' -t entries < "$root/stdout"
+	for name in "${paths[@]}"; do
+		[[ -f "$upper$name" ]]
+		index_count "$name" 1
+	done
+	pfs remove "${paths[@]}"
+	read_index
+	for name in "${paths[@]}"; do index_count "$name" 0; done
+}
+
+test_normalized_remove_updates_index() {
+	touch "$root/relative-dot"
+	pfs add "$root/relative-dot"
+	pfs remove "$root/./relative-dot"
+	read_index
+	index_count "$root/relative-dot" 0
+}
+
+test_index_normalizes_directory_spellings() {
+	mkdir "$root/dir"
+	pfs add "$root/dir" "$root/dir/." "$root/dir/"
+	read_index
+	index_count "$root/dir" 1
+	index_count "$root/dir/." 0
+	index_count "$root/dir/" 0
+}
+
+test_legacy_index_migration() {
+	touch "$root/legacy"
+	printf '%s\n' "$root/legacy" "$root/./legacy" > "$index"
+	printf '%s\0' "$root/legacy" > "$root/expected-index"
+	pfs list --all --null
+	cmp "$root/expected-index" "$root/stdout"
+	pfs add "$root/legacy"
+	cmp "$root/expected-index" "$index"
+}
+
 for test in \
 	test_basic_file \
 	test_basic_directory \
@@ -192,7 +253,12 @@ for test in \
 	test_root_is_reserved \
 	test_failed_copy_returns_failure_without_indexing \
 	test_concurrent_index_updates \
-	test_metadata_and_hardlinks_survive
+	test_metadata_and_hardlinks_survive \
+	test_index_matches_whole_paths \
+	test_unusual_filenames_roundtrip \
+	test_normalized_remove_updates_index \
+	test_index_normalizes_directory_spellings \
+	test_legacy_index_migration
 do
 	root=$(mktemp -d /tmp/pfs-test.XXXXXXXX)
 	saved=$upper$root

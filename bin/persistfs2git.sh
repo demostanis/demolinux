@@ -6,7 +6,7 @@ if [ ! -d "$gitdir" ]; then
   exit 1
 fi
 
-sudo persistfs list | while read -r path; do
+sudo persistfs list --null | while IFS= read -r -d '' path; do
   # bigger than 10M
   size=$(du -s "$path" 2>/dev/null | awk '{print $1}')
   if [ -z "$size" ]; then continue; fi

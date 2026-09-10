@@ -41,6 +41,11 @@ cleanup_case() {
 	if (( ${#packages[@]} )); then
 		pacman -Rdd --noconfirm "${packages[@]}" >/dev/null 2>&1 || :
 	fi
+	if [[ "$index_existed" = 1 ]]; then
+		cp -- "$root/index.before" "$index"
+	else
+		rm -f -- "$index"
+	fi
 	if (( ${#extra_paths[@]} )); then
 		rm -rf -- "${extra_paths[@]}"
 	fi
@@ -316,13 +321,15 @@ test_dataized_children_are_not_copied_back() {
 }
 
 test_live_dataized_ancestor_without_saved_link() {
-	local data="/data/${root##*/}"
+	local data="/data/${root##*/}" previous_data
 	extra_paths+=( "$data" )
+	previous_data=$(stat -c '%F' "$upper/data" 2>/dev/null || :)
 	mkdir "$data"
 	printf 'already persistent\n' > "$data/child"
 	ln -s "$data" "$root/link"
 	expect_failure pfs add "$root/link/child"
 	expect_failure pfs add "$data/child"
+	[[ $(stat -c '%F' "$upper/data" 2>/dev/null || :) = "$previous_data" ]]
 	pfs add "$root/link"
 	[[ -L "$saved/link" ]]
 }
@@ -429,6 +436,11 @@ do
 	saved=$upper$root
 	packages=()
 	extra_paths=()
+	index_existed=0
+	if [[ -f "$index" ]]; then
+		cp -- "$index" "$root/index.before"
+		index_existed=1
+	fi
 	"$test"
 	printf 'PASS: %s\n' "$test"
 	cleanup_case

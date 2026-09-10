@@ -75,7 +75,7 @@ test_basic_directory() {
 	pfs add "$root/a"
 	[[ -d "$saved/a/b/c" ]]
 	pfs remove "$root/a/b/c"
-	[[ ! -e "$saved/a/b/c" && -d "$saved/a/b" ]]
+	[[ ! -e "$saved/a" ]]
 	[[ -d "$root/a/b/c" ]]
 }
 
@@ -340,6 +340,29 @@ test_directory_refresh_removes_only_stale_children() {
 	[[ -f "$saved/unrelated" ]]
 }
 
+test_remove_prunes_empty_parents_and_their_index() {
+	mkdir -p "$root/empty/a/b"
+	touch "$root/empty/a/b/child" "$root/sibling"
+	pfs add "$root/empty/a" "$root/empty/a/b/child" "$root/sibling"
+	pfs remove "$root/empty/a/b/child"
+	[[ ! -e "$saved/empty" && -f "$saved/sibling" && -f "$root/empty/a/b/child" ]]
+	read_index
+	index_count "$root/empty/a" 0
+	index_count "$root/empty/a/b/child" 0
+	pfs remove "$root/sibling"
+	[[ ! -e "$saved" && -d "$upper" ]]
+}
+
+test_remove_stops_at_nonempty_parent() {
+	mkdir "$root/tree"
+	touch "$root/tree/child" "$root/tree/.keep"
+	pfs add "$root/tree"
+	pfs remove "$root/tree/child"
+	[[ -f "$saved/tree/.keep" ]]
+	read_index
+	index_count "$root/tree" 1
+}
+
 for test in \
 	test_basic_file \
 	test_basic_directory \
@@ -362,7 +385,9 @@ for test in \
 	test_pfs_rejects_directory_over_saved_symlink \
 	test_dataized_children_are_not_copied_back \
 	test_live_dataized_ancestor_without_saved_link \
-	test_directory_refresh_removes_only_stale_children
+	test_directory_refresh_removes_only_stale_children \
+	test_remove_prunes_empty_parents_and_their_index \
+	test_remove_stops_at_nonempty_parent
 do
 	root=$(mktemp -d /tmp/pfs-test.XXXXXXXX)
 	saved=$upper$root

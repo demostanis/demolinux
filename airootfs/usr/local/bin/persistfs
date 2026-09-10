@@ -92,6 +92,16 @@ index_remove() {
 	indexed_files=( "${kept[@]}" )
 }
 
+prune_empty_parents() {
+	local parent=${1%/*}
+	while [[ -n "$parent" && "$parent" != / ]]; do
+		[[ ! -L "$pfs_dir/upperdir$parent" ]] || break
+		rmdir -- "$pfs_dir/upperdir$parent" 2>/dev/null || break
+		index_remove "$parent"
+		parent=${parent%/*}
+	done
+}
+
 load_index() {
 	local entry delimiter=''
 	[[ -e "$pfs_dir/upperdir/index" ]] || return 0
@@ -188,6 +198,7 @@ case $1 in
 
 			rm -rf -- "$pfs_dir/upperdir$file" || exit 1
 			index_remove "$file"
+			prune_empty_parents "$file"
 			save_index || exit 1
 		done
 

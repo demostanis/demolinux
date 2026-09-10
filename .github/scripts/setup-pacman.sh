@@ -36,9 +36,9 @@ sudo pacman-key --populate archlinux
 # we don't let ./demolinux install these packages
 # since it'd overwrite existing files
 sudo apt-get install -y --no-install-recommends arch-install-scripts \
-  btrfs-progs dosfstools erofs-utils \
-  git gdisk grub-pc-bin grub-efi-amd64-bin libxml2 pv squashfs-tools \
-  unzip xfsprogs memtest86+
+  btrfs-progs dosfstools \
+  git gdisk grub-pc-bin grub-efi-amd64-bin libxml2 pv \
+  unzip memtest86+
 
 sudo mkdir -p /boot/memtest86+
 sudo cp /boot/memtest86+x64.bin /boot/memtest86+/memtest.bin
@@ -55,7 +55,7 @@ sudo bsdtar -C / -xf /var/cache/pacman/pkg/devtools-*.zst \
 sudo bsdtar -C / -xf /var/cache/pacman/pkg/ipxe-*.zst \
   usr/share/ipxe
 
-# our patches made to grub-mkconfig inside bin/mkarchiso
+# our patches made to grub-mkconfig inside bin/mkdemolinuximg/disk.sh
 # don't apply to ubuntu's patched grub-mkconfig
 sudo bsdtar -C /usr/sbin --strip-components 2 \
   -xf /var/cache/pacman/pkg/grub-*.zst \

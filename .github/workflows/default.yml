@@ -34,9 +34,9 @@ jobs:
         run: |
           {
             echo "started=$(date +%s)"
-            echo "base=$(python3 bin/build-inputs base)"
-            echo "packages=$(python3 bin/build-inputs packages)"
-            echo "rootfs=$(python3 bin/build-inputs rootfs)"
+            echo "base=$(python3 bin/mkdemolinuximg/build-inputs base)"
+            echo "packages=$(python3 bin/mkdemolinuximg/build-inputs packages)"
+            echo "rootfs=$(python3 bin/mkdemolinuximg/build-inputs rootfs)"
           } >> "$GITHUB_OUTPUT"
 
       - name: Start build-tool setup while restoring caches

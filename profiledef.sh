@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2034
 
-iso_name="demolinux"
-iso_version="$(date +%Y.%m.%d)"
-buildmodes=("disk_image")
-bootmodes=("hybrid.grub.gpt")
+image_id="demolinux"
+image_version="$(date +%Y.%m.%d)"
 ssh_access="y"
 pacman_conf="pacman.conf"
 data_directories=("downloads" "music" "programming" "templates" "pictures" "movies" "shit")

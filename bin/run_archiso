@@ -4,7 +4,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# A simple script to run an archiso image using qemu. The image can be booted
+# A simple script to run a demolinux disk image using qemu. The image can be booted
 # using BIOS or UEFI.
 #
 # Requirements:
@@ -36,7 +36,7 @@ Options:
 
 Example:
     Run an image using UEFI:
-    $ run_archiso -u -i archiso-2020.05.23-x86_64.iso
+    $ run_archiso -u -i out/demolinux-2026.09.10-x86_64.img
 EOF
     printf '%s' "${usagetext}"
 }

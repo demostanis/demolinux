@@ -11,7 +11,7 @@ if (( $# > 0 )); then
     exit 1
 fi
 
-root="$(realpath -- "$(dirname -- "$0")/..")"
+root="$(realpath -- "$(dirname -- "$0")/../..")"
 lock_file="${root}/deps.lock"
 jobs="${DEPS_LOCK_JOBS:-8}"
 git_dir="$(git -C "$root" rev-parse --absolute-git-dir)"

@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+set -e -u
+umask 0022
+export LC_ALL=C.UTF-8
+unset LANGUAGE
+[[ -v SOURCE_DATE_EPOCH ]] || printf -v SOURCE_DATE_EPOCH '%(%s)T' -1
+export SOURCE_DATE_EPOCH
+
+app_name=mkdemolinuximg
+builder_dir="$(dirname -- "$(realpath -- "${BASH_SOURCE[0]}")")"
+pkg_list=()
+aur_pkg_list=()
+nvim_pkg_list=()
+zsh_pkg_list=()
+local_pkg_list=()
+data_directories=()
+declare -A file_permissions=() locked_commits=()
+quiet=n
+ssh_access=""
+work_dir=""
+out_dir=""
+image_id=demolinux
+image_version=""
+arch=x86_64
+pacman_conf=""
+packages=""
+nvim_packages=""
+zsh_packages=""
+deps_lock=""
+pacstrap_dir=""
+readonly ucodes=('intel-uc.img' 'intel-ucode.img' 'amd-uc.img' 'amd-ucode.img' 'early_ucode.cpio' 'microcode.cpio')
+
+for module in common config packages rootfs disk build; do
+    source "${builder_dir}/${module}.sh"
+done
+
+while getopts ':p:C:w:o:h' arg; do
+    case "$arg" in
+        p) read -r -a override_pkg_list <<< "$OPTARG" ;;
+        C) override_pacman_conf="$OPTARG" ;;
+        w) override_work_dir="$OPTARG" ;;
+        o) override_out_dir="$OPTARG" ;;
+        h) _usage 0 ;;
+        :) _msg_error "Option -$OPTARG requires an argument." 0; _usage 1 ;;
+        ?) _msg_error "Unknown option: -$OPTARG" 0; _usage 1 ;;
+    esac
+done
+shift $((OPTIND - 1))
+(( $# == 1 )) || { _msg_error "Exactly one profile is required." 0; _usage 1; }
+(( EUID == 0 )) || _msg_error "${app_name} must be run as root." 1
+profile="$(realpath -- "$1")"
+_read_profile
+_set_overrides
+_validate_options
+
+correct_makechrootpkg=""
+trap '_close_hybrid_disk || :; [[ -z "$correct_makechrootpkg" ]] || rm -f -- "$correct_makechrootpkg"' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+_setup_makechrootpkg
+run_once_mode=build
+_run_once _build_image

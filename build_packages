@@ -2,8 +2,8 @@ arch-install-scripts
 btrfs-progs
 devtools
 dosfstools
-erofs-utils
 git
+gptfdisk
 grub
 ipxe
 libslirp
@@ -12,7 +12,5 @@ memtest86+
 memtest86+-efi
 pv
 python
-squashfs-tools
 unzip
-xfsprogs
 zstd

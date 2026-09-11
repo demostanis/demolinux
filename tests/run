@@ -13,7 +13,17 @@ stop_vm() {
 }
 
 die() {
+	trap - ZERR
 	[ $# != 0 ] && echo "$*" >&2
+	if (( has_encrypt )); then
+		if [[ -n "$vm_pid" && -n "${enc_dir:-}" ]]; then
+			enc_capture || :
+		fi
+		echo tests failed
+		trap - EXIT
+		stop_vm
+		exit 1
+	fi
 	timeout 5 python3 .github/scripts/qmp-screenshot.py "$log_dir/boot.png" || :
 	echo awesome log:
 	timeout 2 ./dctrl shell 'cat ~/.awesome.log /tmp/mpv.log /tmp/record-playback.log 2>/dev/null' | tee "$log_dir/awesome.log"
@@ -25,27 +35,50 @@ die() {
 cd "$(dirname "$(realpath "$0")")"/..
 set -o pipefail
 has_ram=0
+has_encrypt=0
 for name in "$@"; do
 	[[ "$name" != copytoram ]] || has_ram=1
+	[[ "$name" != diskencrypt ]] || has_encrypt=1
 done
 # Reboot/unplug scenarios need a fresh VM, not one already consumed by sysupdate.
-if (( $# == 0 || (has_ram && $# > 1) )); then
+if (( $# == 0 || ((has_ram || has_encrypt) && $# > 1) )); then
 	selected=("$@")
 	if (( $# == 0 )); then
 		selected=(${${(f)"$(find tests -mindepth 1 -maxdepth 1 ! -name run ! -name utils)"}#tests/})
 	fi
 	selected=("${(@)selected:#copytoram}")
+	selected=("${(@)selected:#diskencrypt}")
 	if (( ${#selected} )); then
 		./tests/run "${selected[@]}" || exit $?
 	fi
-	for firmware in bios uefi; do
-		DEMOLINUX_TEST_FIRMWARE=$firmware \
-			DEMOLINUX_TEST_LOG_DIR="${DEMOLINUX_TEST_LOG_DIR:-.ci/tests}/copytoram-$firmware" \
-			./tests/run copytoram || exit $?
+	if (( $# == 0 || has_ram )); then
+		for firmware in bios uefi; do
+			DEMOLINUX_TEST_FIRMWARE=$firmware \
+				DEMOLINUX_TEST_LOG_DIR="${DEMOLINUX_TEST_LOG_DIR:-.ci/tests}/copytoram-$firmware" \
+				./tests/run copytoram || exit $?
+		done
+	fi
+	if (( $# == 0 || has_encrypt )); then
+		DEMOLINUX_TEST_LOG_DIR="${DEMOLINUX_TEST_LOG_DIR:-.ci/tests}/diskencrypt" \
+			./tests/run diskencrypt || exit $?
+	fi
+	exit 0
+fi
+if (( has_encrypt )) && [[ ${DEMOLINUX_DISKENCRYPT_TEST_MODE:-both} == both ]]; then
+	for mode in usb password; do
+		swap_mode=invalid
+		[[ $mode != usb ]] || swap_mode=valid
+		DEMOLINUX_DISKENCRYPT_TEST_MODE=$mode \
+			DEMOLINUX_DISKENCRYPT_TEST_SWAP=${DEMOLINUX_DISKENCRYPT_TEST_SWAP:-$swap_mode} \
+			DEMOLINUX_TEST_LOG_DIR="${DEMOLINUX_TEST_LOG_DIR:-.ci/tests/diskencrypt}/$mode" \
+			./tests/run diskencrypt || exit $?
 	done
 	exit 0
 fi
 log_dir=${DEMOLINUX_TEST_LOG_DIR:-.}
+if (( has_encrypt )); then
+	log_dir=${DEMOLINUX_TEST_LOG_DIR:-.ci/tests/diskencrypt}
+fi
 mkdir -p -- "$log_dir"
 vm_log="$log_dir/console.log"
 control_dir=$(mktemp -d)
@@ -60,6 +93,14 @@ if [[ -z "$image" ]]; then
 	images=(out/demolinux*.img(Nom))
 	(( ${#images} )) || die 'No image found. Run ./demolinux build first.'
 	image=$images[1]
+fi
+if (( has_encrypt )); then
+	set -e
+	trap 'die "diskencrypt failed; see $log_dir"' ZERR
+	. ./tests/diskencrypt
+	trap - EXIT
+	stop_vm
+	exit 0
 fi
 disk_size=10G
 if (( has_ram )); then
@@ -145,7 +186,7 @@ printf '\nvo=x11\n' >> ~/.config/mpv/mpv.conf || exit 1
 while read -r test; do
 	if [ "$test" != ./run -a "$test" != ./utils \
 		-a "$test" != ./sysupdate -a "$test" != ./sysupdate_snapshot \
-		-a "$test" != ./copytoram ]; then
+		-a "$test" != ./copytoram -a "$test" != ./diskencrypt ]; then
 		echo "running $test at guest +${SECONDS}s..."
 		test_started=$SECONDS
 		(

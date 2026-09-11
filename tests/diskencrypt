@@ -1,0 +1,484 @@
+#!/bin/zsh
+
+# Host-side destructive/reboot scenario, sourced only by tests/run in a fresh VM.
+[[ ${has_encrypt:-0} == 1 && -n ${control_dir:-} ]] || {
+	print -u2 'Run this test with ./tests/run diskencrypt'
+	return 1
+}
+zmodload zsh/net/tcp
+enc_password=diskencrypt-vm-test-passphrase
+enc_mode=${DEMOLINUX_DISKENCRYPT_TEST_MODE:-usb}
+[[ $enc_mode == usb || $enc_mode == password ]]
+enc_swap=${DEMOLINUX_DISKENCRYPT_TEST_SWAP:-invalid}
+[[ $enc_swap == valid || $enc_swap == invalid || $enc_swap == missing ]]
+enc_converted=no
+
+enc_qmp() {
+	local fd request response
+	ztcp 127.0.0.1 "${DEMOLINUX_QMP_PORT:-4444}" 2>/dev/null || return 1
+	fd=$REPLY
+	{
+		read -r -t 10 -u "$fd" response || return 1
+		for request in '{"execute":"qmp_capabilities"}' "$1"; do
+			print -r -- "$request" >&$fd
+			while :; do
+				read -r -t 10 -u "$fd" response || return 1
+				if jq -e 'has("error")' <<< "$response" >/dev/null; then
+					print -ru2 -- "$response"
+					return 1
+				fi
+				if jq -e 'has("return")' <<< "$response" >/dev/null; then
+					break
+				fi
+			done
+		done
+		jq -c '.return' <<< "$response"
+	} always {
+		ztcp -c "$fd"
+	}
+}
+
+enc_capture() {
+	enc_qmp "$(jq -nc --arg path "$enc_dir/screen.ppm" \
+		'{execute:"screendump",arguments:{filename:$path}}')" >/dev/null || return 1
+	magick "$enc_dir/screen.ppm" "$enc_dir/screen.png" || return 1
+	magick "$enc_dir/screen.ppm" -negate -filter point -resize 300% "$enc_dir/ocr.png" || return 1
+	tesseract "$enc_dir/ocr.png" stdout --psm 6 2>/dev/null |
+		sed 's|~dev|/dev|g' > "$enc_dir/screen.txt"
+}
+
+enc_wait_screen() {
+	local text=$1 deadline=$((SECONDS + ${2:-180}))
+	while (( SECONDS < deadline )); do
+		kill -0 "$vm_pid"
+		if ! enc_capture; then
+			sleep 1
+			continue
+		fi
+		if grep -qiF -- "$text" "$enc_dir/screen.txt"; then
+			cat "$enc_dir/screen.txt" | tee -a "$enc_dir/prompts.log"
+			return
+		fi
+		if grep -q 'Maintenance stopped\.' "$enc_dir/screen.txt"; then
+			cat "$enc_dir/screen.txt" >&2
+			return 1
+		fi
+		sleep 2
+	done
+	print -u2 -- "Did not see console prompt: $text"
+	cat "$enc_dir/screen.txt" >&2
+	return 1
+}
+
+enc_keys() {
+	local text=$1 char key i
+	for ((i = 1; i <= ${#text}; i++)); do
+		char=$text[$i]
+		case "$char" in
+			$'\n') key=ret ;;
+			-) key=minus ;;
+			[A-Z]) key=shift-${char:l} ;;
+			[a-z0-9]) key=$char ;;
+			*) print -u2 'Unsupported test keystroke'; return 1 ;;
+		esac
+		enc_qmp "$(jq -nc --arg command "sendkey $key 40" \
+			'{execute:"human-monitor-command",arguments:{"command-line":$command}}')" >/dev/null
+		sleep 0.09
+	done
+}
+
+enc_forget_ssh() {
+	timeout 5 ssh -p "${DEMOLINUX_SSH_PORT:-60022}" -S "$DEMOLINUX_SSH_CONTROL_PATH" \
+		-O exit demostanis@localhost 2>/dev/null || :
+}
+
+enc_wait_guest() {
+	local deadline=$((SECONDS + ${1:-240}))
+	while (( SECONDS < deadline )); do
+		kill -0 "$vm_pid"
+		if timeout 10 ./dctrl shell true; then
+			return
+		fi
+		sleep 2
+	done
+	print -u2 'Encrypted guest did not become reachable over SSH'
+	return 1
+}
+
+enc_wait_handoff() {
+	local deadline=$((SECONDS + 240))
+	while (( SECONDS < deadline )); do
+		kill -0 "$vm_pid"
+		if timeout 10 ./dctrl shell true; then return; fi
+		if enc_capture; then
+			if grep -qiE 'Enter passphrase for /dev|GRUB did not supply' "$enc_dir/screen.txt"; then
+				cat "$enc_dir/screen.txt" >&2
+				print -u2 'GRUB key handoff failed; the test will not type a Linux password'
+				return 1
+			fi
+		fi
+		sleep 2
+	done
+	print -u2 'Guest did not unlock automatically after GRUB'
+	return 1
+}
+
+enc_start() {
+	local firmware=$1
+	local -a options=(-H -i "$enc_dir/disk.img")
+	[[ $enc_mode != usb ]] || options+=(-K "$enc_dir/usb.img")
+	[[ $firmware != uefi ]] || options+=(-u)
+	vm_log="$enc_dir/$firmware-serial.log"
+	./demolinux run "${options[@]}" >> "$vm_log" 2>&1 &
+	vm_pid=$!
+	if [[ $enc_mode == password && $enc_converted == yes ]]; then
+		enc_unlock
+	else
+		enc_wait_guest
+	fi
+}
+
+enc_wait_poweroff() {
+	local deadline=$((SECONDS + 180))
+	while kill -0 "$vm_pid" 2>/dev/null; do
+		(( SECONDS < deadline )) || { print -u2 'Guest did not power off'; return 1; }
+		sleep 2
+	done
+	wait "$vm_pid"
+	vm_pid=
+	enc_forget_ssh
+}
+
+enc_guest_command() {
+	local result=0
+	timeout 90 ./dctrl shell "$1" || result=$?
+	# SSH can disconnect before delivering the status of kexec/reboot/hibernate.
+	(( result == 0 || result == 255 ))
+	enc_forget_ssh
+}
+
+enc_safety_tests() {
+	local common="$PWD/airootfs/usr/local/lib/diskencrypt/common" result
+	local -a failures=(
+		'write_grub_unlock "x;reboot" ABCD-1234'
+		'ls() { :; }; findmnt() { return 0; }; assert_unused /dev/fake'
+		'ls() { echo dm-0; }; assert_unused /dev/fake'
+		'swapon() { echo /swapfile; }; assert_target_disk_unused'
+		'lsblk() { :; }; parent /dev/fake'
+		'readlink() { return 1; }; sleep() { :; }; wait_partition missing USB'
+		'blkid() { return 2; }; validated_swap_offset /swapfile /device'
+		'blkid() { echo swap; }; getconf() { echo 4096; }; blockdev() { echo 1073741824; }; btrfs() { echo 4503599627370495; }; validated_swap_offset /swapfile /device'
+		'cryptsetup() { return 1; }; resume_encryption /dev/fake /usb/key'
+	)
+	for result in "${failures[@]}"; do
+		if bash -eu -c 'source "$1"; eval "$2"' test "$common" "$result" >> "$enc_dir/safety.log" 2>&1; then
+			print -u2 -- "Safety check unexpectedly succeeded: $result"
+			return 1
+		fi
+	done
+	result=$(bash -eu -c 'source "$1"; blkid() { echo swap; }; getconf() { echo 4096; }; blockdev() { echo 1073741824; }; btrfs() { echo 8192; }; validated_swap_offset /swapfile /device' test "$common")
+	[[ $result == 8192 ]]
+	result=$(bash -eu -c 'source "$1"; blkid() { return 2; }; swap_resume_args /missing /device' test "$common" 2> "$enc_dir/swap-warning.log")
+	[[ $result == 'noresume diskencrypt_swap=off' ]]
+	grep -q 'WARNING: swapfile' "$enc_dir/swap-warning.log"
+	result=$(bash -eu -c 'source "$1"; blkid() { echo swap; }; getconf() { echo 4096; }; blockdev() { echo 1073741824; }; btrfs() { echo 8192; }; swap_resume_args /swapfile /device' test "$common")
+	[[ $result == 'resume=/dev/mapper/demolinux-system resume_offset=8192' ]]
+	bash -eu -c 'source "$1"; write_grub_unlock 12345678-abcd-4321-abcd-123456789abc ABCD-1234' test "$common" > "$enc_dir/unlock.cfg"
+	grub-script-check "$enc_dir/unlock.cfg"
+	grep -qF -- '-k ($key_usb)/demolinux-diskencrypt/system.key' "$enc_dir/unlock.cfg"
+	grep -qF 'if ! cryptomount -u 12345678abcd4321abcd123456789abc;' "$enc_dir/unlock.cfg"
+	bash -eu -c 'source "$1"; write_grub_unlock 12345678-abcd-4321-abcd-123456789abc' test "$common" > "$enc_dir/password-unlock.cfg"
+	grub-script-check "$enc_dir/password-unlock.cfg"
+	bash -eu -c 'source "$1"; write_grub_config "$2" "noresume diskencrypt_swap=off"' test "$common" "$PWD/grub/grub.cfg.in" > "$enc_dir/complete-grub.cfg"
+	grub-script-check "$enc_dir/complete-grub.cfg"
+	grep -qF 'newc:/etc/diskencrypt/boot.key:($system_root)/system/.diskencrypt/boot.key' "$enc_dir/complete-grub.cfg"
+	! grep -qE 'key_usb|diskencrypt_usb|system.key' "$enc_dir/password-unlock.cfg"
+	bash -eu -c 'source "$1"; cryptsetup() { printf "%s\n" "$@"; }; initialize_encryption /dev/fake /usb/key' test "$common" > "$enc_dir/init-options"
+	grep -qx -- --init-only "$enc_dir/init-options"
+	grep -qx -- --reduce-device-size "$enc_dir/init-options"
+	bash -eu -c 'source "$1"; cryptsetup() { if [[ $1 == luksDump ]]; then printf "%s\n" "{\"keyslots\":{\"2\":{\"type\":\"reencrypt\"}}}"; else printf "%s\n" "$@"; fi; }; resume_encryption /dev/fake /usb/key' test "$common" > "$enc_dir/resume-options"
+	grep -qx -- --resume-only "$enc_dir/resume-options"
+	! grep -qx -- --encrypt "$enc_dir/resume-options"
+	print 'PASS diskencrypt safety checks'
+}
+
+enc_prepare_guest() {
+	tar -cf - airootfs/usr/local/bin/diskencrypt airootfs/usr/local/bin/sysupdate airootfs/usr/local/lib/diskencrypt \
+		airootfs/usr/lib/initcpio/hooks/diskencrypt airootfs/usr/lib/initcpio/hooks/diskencrypt_unlock \
+		airootfs/usr/lib/initcpio/hooks/demolinux airootfs/usr/lib/initcpio/install/diskencrypt \
+		airootfs/usr/lib/initcpio/install/diskencrypt_unlock airootfs/etc/mkinitcpio.conf \
+		profiledef.sh bin/mkdemolinuximg/rootfs.sh |
+		timeout 30 ./dctrl shell 'cat > /tmp/diskencrypt-source.tar'
+	print -r -- "$enc_swap" | timeout 10 ./dctrl shell 'cat > /tmp/diskencrypt-test-swap-mode'
+	timeout 300 ./dctrl shell <<'EOC' 2>&1 | tee "$enc_dir/install.log"
+sudo -n bash -eux <<'ROOT'
+test -b /dev/vda3
+mkdir -p /tmp/diskencrypt-package
+tar -xf /tmp/diskencrypt-source.tar -C /tmp/diskencrypt-package
+(
+    cd /tmp/diskencrypt-package
+    mkdir -p airootfs/etc/skel/.local/bin
+    declare -A file_permissions=()
+    source profiledef.sh
+    for filename in "${!file_permissions[@]}"; do
+        mkdir -p "airootfs$(dirname "$filename")"
+    done
+    chmod 644 airootfs/usr/local/lib/diskencrypt/maintenance
+    source bin/mkdemolinuximg/rootfs.sh
+    profile=$PWD
+    pacstrap_dir=$PWD/packaged
+    _msg_info() { printf '%s\n' "$*"; }
+    _msg_warning() { printf '%s\n' "$*" >&2; }
+    _msg_error() { printf '%s\n' "$*" >&2; exit 1; }
+    _make_custom_airootfs
+    test "$(stat -c %a packaged/usr/local/lib/diskencrypt/maintenance)" = 755
+    test -x packaged/usr/local/bin/diskencrypt
+    test -x packaged/usr/local/lib/diskencrypt/kexec
+)
+growpart /dev/vda 3
+partprobe /dev/vda
+btrfs filesystem resize max /run/archiso/data
+mkdir -p /mnt/diskencrypt-test
+mount -o subvolid=5 /dev/vda3 /mnt/diskencrypt-test
+btrfs property set /mnt/diskencrypt-test/system/airootfs ro false
+cp -a /tmp/diskencrypt-package/packaged/. /mnt/diskencrypt-test/system/airootfs/
+cp -a /tmp/diskencrypt-package/packaged/. /
+mkinitcpio -k "$(uname -r)" -g /mnt/diskencrypt-test/system/airootfs/boot/initramfs-linux.img
+btrfs property set /mnt/diskencrypt-test/system/airootfs ro true
+umount /mnt/diskencrypt-test
+if test -b /dev/sda; then
+    test "$(lsblk -dnro TRAN /dev/sda)" = usb
+    printf 'label: gpt\ntype=U\n' | sfdisk /dev/sda
+    udevadm settle
+    mkfs.vfat /dev/sda1
+fi
+swapoff /run/archiso/swap/swapfile || :
+case "$(cat /tmp/diskencrypt-test-swap-mode)" in
+    valid)
+        rm -f /run/archiso/swap/swapfile
+        btrfs filesystem mkswapfile --size 5G --uuid clear /run/archiso/swap/swapfile
+        swapon /run/archiso/swap/swapfile
+        ;;
+    invalid) : > /run/archiso/swap/swapfile ;;
+    missing) rm -f /run/archiso/swap/swapfile ;;
+    *) exit 1 ;;
+esac
+cp /tmp/diskencrypt-test-swap-mode /data/diskencrypt-test-swap-mode
+if test "$(cat /tmp/diskencrypt-test-swap-mode)" != valid && test -e /run/archiso/swap/swapfile; then
+    sha256sum /run/archiso/swap/swapfile > /data/diskencrypt-swap.before
+fi
+printf 'diskencrypt-preserved-data\n' > /data/diskencrypt-sentinel
+mkdir -p /run/archiso/persistfs/upperdir/etc
+printf 'diskencrypt-preserved-persistence\n' > /run/archiso/persistfs/upperdir/etc/diskencrypt-sentinel
+sfdisk --dump /dev/vda > /data/diskencrypt-partitions.before
+if test -b /dev/sda1; then
+    mount /dev/sda1 /mnt/diskencrypt-test
+    if diskencrypt /dev/sda1 > /run/diskencrypt-refusal.log 2>&1; then exit 1; fi
+    grep -q 'is mounted' /run/diskencrypt-refusal.log
+    umount /mnt/diskencrypt-test
+fi
+! cryptsetup isLuks /dev/vda3
+sync
+ROOT
+EOC
+	if [[ $enc_mode == password ]]; then
+		timeout 10 ./dctrl shell 'test ! -b /dev/sda'
+	fi
+}
+
+enc_verify() {
+	local label=$1
+	timeout 45 ./dctrl shell <<'EOC' 2>&1 | tee "$enc_dir/$label.log"
+sudo -n bash -eu <<'ROOT'
+test -b /dev/mapper/demolinux-system
+test "$(stat -c %a /run/diskencrypt)" = 700
+test "$(stat -c %a /run/diskencrypt/boot.key)" = 400
+test "$(stat -c %u /run/diskencrypt/boot.key)" = 0
+test "$(stat -c %s /run/diskencrypt/boot.key)" = 64
+! sudo -u demostanis test -r /run/diskencrypt/boot.key
+test ! -e /etc/diskencrypt/boot.key
+test "$(cat /data/diskencrypt-sentinel)" = diskencrypt-preserved-data
+test "$(cat /etc/diskencrypt-sentinel)" = diskencrypt-preserved-persistence
+sfdisk --dump /dev/vda > /run/partitions.after
+cmp /data/diskencrypt-partitions.before /run/partitions.after
+test -z "$(findmnt -rn -S /dev/vda3)"
+cryptsetup status demolinux-system
+findmnt -rn -S /dev/mapper/demolinux-system
+swapon --show
+if test "$(cat /data/diskencrypt-test-swap-mode)" = valid; then
+    swapon --noheadings --show=NAME | grep -qx /run/archiso/swap/swapfile
+    offset=$(btrfs inspect-internal map-swapfile -r /run/archiso/swap/swapfile)
+    grep -qw "resume_offset=$offset" /proc/cmdline
+else
+    grep -qw noresume /proc/cmdline
+    grep -qw diskencrypt_swap=off /proc/cmdline
+    ! grep -q 'resume_offset=' /proc/cmdline
+    ! grep -q '^/run/archiso/swap/swapfile ' /etc/fstab
+    ! swapon --noheadings --show=NAME | grep -qx /run/archiso/swap/swapfile
+    ! systemctl --failed --no-legend | grep -q 'archiso.*swap'
+    if test -f /data/diskencrypt-swap.before; then
+        sha256sum -c /data/diskencrypt-swap.before
+    else
+        test ! -e /run/archiso/swap/swapfile
+    fi
+fi
+cat /proc/cmdline
+ROOT
+EOC
+	print -- "PASS diskencrypt $label"
+}
+
+enc_verify_recovery() {
+	timeout 45 ./dctrl shell <<'EOC' 2>&1 | tee "$enc_dir/recovery.log"
+sudo -n bash -eu <<'ROOT'
+state=/run/archiso/bootmnt/grub/diskencrypt-state
+test -s "$state/request"
+test -s "$state/grub.cfg.before"
+test -s "$state/partition-table"
+test ! -e "$state/initramfs.img"
+test ! -e "$state/vmlinuz"
+test ! -e "$state/password"
+mkdir -p /mnt/diskencrypt-system-check
+mount -o ro,subvolid=5 /dev/mapper/demolinux-system /mnt/diskencrypt-system-check
+trap 'umount /mnt/diskencrypt-system-check' EXIT
+keydir=/mnt/diskencrypt-system-check/system/.diskencrypt
+test "$(stat -c %a "$keydir")" = 700
+test "$(stat -c %a "$keydir/boot.key")" = 400
+cmp "$keydir/boot.key" /run/diskencrypt/boot.key
+umount /mnt/diskencrypt-system-check
+trap - EXIT
+lsinitcpio /run/archiso/airootfs/boot/initramfs-linux.img > /run/diskencrypt-initramfs-files
+! grep 'etc/diskencrypt/boot.key$' /run/diskencrypt-initramfs-files
+grep -qF 'newc:/etc/diskencrypt/boot.key:($system_root)/system/.diskencrypt/boot.key' /run/archiso/bootmnt/grub/grub.cfg
+cryptsetup luksDump --dump-json-metadata /dev/vda3 | jq -e '.keyslots["2"].type == "luks2"'
+if ! test -b /dev/sda1; then
+    ! grep -q diskencrypt_usb /proc/cmdline
+    cryptsetup luksDump --dump-json-metadata /dev/vda3 | jq -e '.keyslots | length == 2 and .["0"].kdf.type == "pbkdf2"'
+    exit
+fi
+mkdir -p /mnt/diskencrypt-verify
+mount -o ro,nosuid,nodev,noexec /dev/sda1 /mnt/diskencrypt-verify
+trap 'umount /mnt/diskencrypt-verify' EXIT
+recovery=/mnt/diskencrypt-verify/demolinux-diskencrypt
+test "$(find /mnt/diskencrypt-verify -type f | wc -l)" = 1
+test "$(stat -c %s "$recovery/system.key")" = 64
+cryptsetup luksDump --dump-json-metadata /dev/vda3 | jq -e '.keyslots | length == 3 and all(.[]; .type == "luks2" and .kdf.type == "pbkdf2")'
+ROOT
+EOC
+}
+
+enc_convert() {
+	local result=0 old_boot usb_arg=
+	[[ $enc_mode != usb ]] || usb_arg=/dev/sda1
+	old_boot=$(timeout 10 ./dctrl shell 'cat /proc/sys/kernel/random/boot_id')
+	timeout 180 ./dctrl shell "printf 'ENCRYPT\n' | sudo -n diskencrypt $usb_arg" \
+		> "$enc_dir/launcher.log" 2>&1 || result=$?
+	cat "$enc_dir/launcher.log"
+	(( result == 0 || result == 255 ))
+	enc_forget_ssh
+	enc_wait_screen 'Enter new passphrase' 600
+	! grep -q 'Confirm your backup' "$enc_dir/screen.txt"
+	if [[ $enc_swap != valid ]]; then
+		grep -Eqi '[wu]arning: swapfile' "$enc_dir/screen.txt"
+	fi
+	enc_keys "$enc_password"$'\n'
+	enc_wait_screen 'Verify passphrase'
+	enc_keys "$enc_password"$'\n'
+	enc_wait_screen 'Verify password unlock' 600
+	enc_keys "$enc_password"$'\n'
+	sleep 10
+	enc_converted=yes
+	if [[ $enc_mode == password ]]; then
+		enc_unlock
+	else
+		enc_wait_guest
+	fi
+	[[ $(timeout 10 ./dctrl shell 'cat /proc/sys/kernel/random/boot_id') != "$old_boot" ]]
+	enc_verify "bios-$enc_mode-unlock"
+	enc_verify_recovery
+}
+
+enc_unlock() {
+	enc_wait_screen 'Enter passphrase for hd'
+	enc_keys "$enc_password"$'\n'
+	enc_wait_handoff
+}
+
+enc_kexec_handoff() {
+	local boot_id
+	boot_id=$(timeout 10 ./dctrl shell 'cat /proc/sys/kernel/random/boot_id')
+	enc_guest_command 'sudo -n /usr/local/lib/diskencrypt/kexec /run/archiso/airootfs/boot/vmlinuz-linux /run/archiso/airootfs/boot/initramfs-linux.img "$(cat /proc/cmdline)" && sudo -n systemctl kexec'
+	sleep 10
+	enc_wait_handoff
+	[[ $(timeout 10 ./dctrl shell 'cat /proc/sys/kernel/random/boot_id') != "$boot_id" ]]
+	enc_verify kexec-key-handoff
+}
+
+enc_password_boot() {
+	if [[ $enc_mode == usb ]]; then
+		enc_qmp '{"execute":"device_del","arguments":{"id":"keyusb"}}' >/dev/null
+		sleep 3
+	fi
+	enc_guest_command 'sudo -n reboot'
+	enc_unlock
+	enc_verify "$1-password-unlock"
+}
+
+enc_hibernate() {
+	if [[ $enc_mode == usb ]]; then
+		enc_qmp "$(jq -nc --arg image "$enc_dir/usb.img" \
+			'{execute:"blockdev-add",arguments:{driver:"raw","node-name":"keydisk",file:{driver:"file",filename:$image}}}')" >/dev/null
+		enc_qmp '{"execute":"device_add","arguments":{"driver":"usb-storage","drive":"keydisk","id":"keyusb","bus":"keycontroller.0","bootindex":2}}' >/dev/null
+		sleep 3
+	fi
+	local boot_id
+	boot_id=$(timeout 10 ./dctrl shell 'cat /proc/sys/kernel/random/boot_id')
+	print -r -- "$boot_id" > "$enc_dir/hibernate-boot-id"
+	enc_guest_command 'sudo -n systemctl hibernate'
+	enc_wait_poweroff
+	enc_start uefi
+	[[ $(timeout 10 ./dctrl shell 'cat /proc/sys/kernel/random/boot_id') == "$boot_id" ]]
+	enc_verify uefi-hibernate-resume
+}
+
+enc_main() {
+	local command port
+	for command in qemu-img qemu-system-x86_64 jq magick tesseract grub-script-check ss; do
+		command -v "$command" >/dev/null || { print -u2 -- "Missing dependency: $command"; return 1; }
+	done
+	tesseract --list-langs | grep -qx eng || { print -u2 'Install tesseract-data-eng for console verification'; return 1; }
+	[[ -r /dev/kvm && -w /dev/kvm && -f $image ]]
+	for port in "${DEMOLINUX_SSH_PORT:-60022}" "${DEMOLINUX_QMP_PORT:-4444}"; do
+		[[ $port == <1-65535> ]]
+		if [[ -n $(ss -H -ltn "sport = :$port") ]]; then
+			print -u2 -- "VM port $port is already in use"
+			return 1
+		fi
+	done
+	enc_dir=$(mktemp -d "$log_dir/fixture.XXXXXXXX")
+	enc_dir=$(realpath "$enc_dir")
+	print -- "diskencrypt artifacts: $enc_dir"
+	enc_safety_tests
+	qemu-img convert -f raw -O raw "$image" "$enc_dir/disk.img"
+	qemu-img resize -f raw "$enc_dir/disk.img" 12G
+	[[ $enc_mode != usb ]] || qemu-img create -f raw "$enc_dir/usb.img" 1G
+	export DEMOLINUX_VM_MEMORY=4096 DEMOLINUX_VM_CPUS=2
+	enc_start bios
+	enc_prepare_guest
+	enc_convert
+	enc_password_boot bios
+	enc_guest_command 'sudo -n poweroff'
+	enc_wait_poweroff
+	enc_start uefi
+	timeout 10 ./dctrl shell 'test -d /sys/firmware/efi'
+	enc_verify "uefi-$enc_mode-unlock"
+	enc_password_boot uefi
+	enc_kexec_handoff
+	if [[ $enc_swap == valid ]]; then
+		enc_hibernate
+	fi
+	timeout 30 ./dctrl shell 'sudo -n sync'
+	print "PASS diskencrypt ($enc_mode, swap=$enc_swap): RAM-only kexec, BIOS/UEFI unlock, optional swap handling"
+}
+
+enc_main

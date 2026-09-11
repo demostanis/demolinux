@@ -33,6 +33,7 @@ Options:
     -u              set boot type to 'UEFI'
     -v              use VNC display (instead of default SDL)
     -c [image]      attach an additional optical disc image (e.g. for cloud-init)
+    -K [image]      attach a raw USB key-disk image (for encryption testing)
 
 Example:
     Run an image using UEFI:
@@ -53,7 +54,11 @@ cleanup_working_dir() {
 
 copy_ovmf_vars() {
     local ovmf_vars
-    if [[ -f /usr/share/edk2-ovmf/x64/OVMF_VARS.4m.fd ]]; then
+    if [[ -f /usr/share/edk2/x64/OVMF_VARS.4m.fd ]]; then
+        ovmf_vars=/usr/share/edk2/x64/OVMF_VARS.4m.fd
+        ovmf_code=/usr/share/edk2/x64/OVMF_CODE.4m.fd
+        [[ "$secure_boot" != on ]] || ovmf_code=/usr/share/edk2/x64/OVMF_CODE.secboot.4m.fd
+    elif [[ -f /usr/share/edk2-ovmf/x64/OVMF_VARS.4m.fd ]]; then
         ovmf_vars=/usr/share/edk2-ovmf/x64/OVMF_VARS.4m.fd
         ovmf_code=/usr/share/edk2-ovmf/x64/OVMF_CODE.4m.fd
         [[ "$secure_boot" != on ]] || ovmf_code=/usr/share/edk2-ovmf/x64/OVMF_CODE.secboot.4m.fd
@@ -121,6 +126,14 @@ run_image() {
         )
     fi
 
+    if [[ -n "$usbimage" ]]; then
+        qemu_options+=(
+            '-device' 'qemu-xhci,id=keycontroller'
+            '-drive' "id=keydisk,if=none,format=raw,file=${usbimage}"
+            '-device' 'usb-storage,drive=keydisk,id=keyusb,bus=keycontroller.0,bootindex=2'
+        )
+    fi
+
     if [ "$headless" = y ]; then
         display=none
         qemu_options+=( -monitor none )
@@ -152,6 +165,7 @@ run_image() {
 
 image=''
 oddimage=''
+usbimage=''
 accessibility=''
 boot_type='bios'
 boot_order=c
@@ -169,7 +183,7 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 if (( ${#@} > 0 )); then
-    while getopts 'abc:dhHi:T:Ssuv' flag; do
+    while getopts 'abc:dhHi:K:T:Ssuv' flag; do
         case "$flag" in
             a)
                 accessibility='on'
@@ -179,6 +193,9 @@ if (( ${#@} > 0 )); then
                 ;;
             c)
                 oddimage="$OPTARG"
+                ;;
+            K)
+                usbimage="$OPTARG"
                 ;;
             d)
                 boot_order=c

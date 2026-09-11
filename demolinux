@@ -39,7 +39,7 @@ build(){
 }
 
 run(){
-	without_root ./bin/run_archiso -i out/$(ls -t out/ | head -1)
+	without_root exec ./bin/run_archiso -i "out/$(ls -t out/ | head -1)" "$@"
 }
 
 headless(){
@@ -75,14 +75,14 @@ flash(){
 
 without_root(){
 	if [ $(id -u) -ne 0 ]; then
-		$@
+		"$@"
 	else
 		su $SUDO_USER -pc "$*"
 	fi
 }
 
 case $1 in
-	run) run ;;
+	run) run "${@:2}" ;;
 	__headless) headless ;; # for tests
 	clean) clean ;;
 	build) clean; build ;;

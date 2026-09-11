@@ -7,6 +7,7 @@ expectnofocus() {
 # overview used to have an issue where the focused window
 # would be out of view
 expectfocusandleftmost() {
+	expectawesome 'return overview_shown ~= true'
 	expectfocus "$1"
 	expectviewport
 }
@@ -33,6 +34,7 @@ modkeypress o
 expectawesome 'return overview_shown ~= true'
 expectfocusandleftmost "single window"
 quitwin
+expectawesome 'return #client.get() == 0'
 
 spawndummywin "window 1"
 spawndummywin "window 2"
@@ -54,7 +56,9 @@ xdotool key j
 expectfocusandleftmost "window 2"
 
 quitwin
+expectfocusandleftmost 'window 1'
 quitwin
+expectawesome 'return #client.get() == 0'
 
 # more windows than fjdksla, so we get fffjfd..
 for i in {1..8}; do
@@ -68,3 +72,4 @@ expectfocusandleftmost 'dummy 1'
 for i in {1..8}; do
 	quitwin
 done
+expectawesome 'return #client.get() == 0'

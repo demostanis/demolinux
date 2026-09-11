@@ -7,7 +7,7 @@ url="https://github.com/woodruffw/ff2mpv"
 license=('MIT')
 arch=('any')
 depends=(firefox)
-makedepends=(zip)
+makedepends=(git zip)
 source=("git+https://github.com/woodruffw/ff2mpv#commit=$commit"
 	0001-Open-the-first-video-in-the-page-instead-of-the-page.patch)
 sha256sums=('SKIP'

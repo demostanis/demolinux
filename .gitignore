@@ -10,6 +10,8 @@ packages/tobuild/*/*.tar.xz
 packages/tobuild/*/*.xpi
 !packages/tobuild/firefox-base16/*.xpi
 packages/chroot/
+packages/chroots/
+packages/downloads/
 packages/aurcache/
 packages/nvimcache/
 packages/zshcache/

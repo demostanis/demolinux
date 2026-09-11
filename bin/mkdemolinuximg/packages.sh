@@ -22,7 +22,7 @@ _make_pacman_conf() {
     mirror=https://archive.archlinux.org/repos/$(<"${profile}/archive_date")/'$repo'/os/'$arch'
     echo Server = $mirror >> "${work_dir}/mirrorlist"
     echo '[options]' >> "${work_dir}/chroot.pacman.conf"
-    echo 'Architecture = auto' >> "${work_dir}/chroot.pacman.conf"
+    echo "Architecture = ${arch}" >> "${work_dir}/chroot.pacman.conf"
     echo 'SigLevel = Required DatabaseOptional' >> "${work_dir}/chroot.pacman.conf"
     echo 'LocalFileSigLevel = Optional' >> "${work_dir}/chroot.pacman.conf"
     echo '[core]' >> "${work_dir}/chroot.pacman.conf"
@@ -163,11 +163,26 @@ _run_build_with_download_retries() {
 }
 
 _make_chroot() {
-    local chroot_dir pkg cachepkgpath pkgname url path inputs recipe_inputs
-    local -a clone_pids=()
+    local chroot_dir pkg cachepkgpath pkgname url path inputs recipe_inputs base_inputs
+    local plan specs reason
+    local -a clone_pids=() build_order=()
 
-    chroot_dir="${profile}/packages/chroot"
-    inputs=$(python3 "${builder_dir}/build-inputs" base)
+    base_inputs=$(printf '%s\n' "$(python3 "${builder_dir}/build-inputs" base)" \
+        "$arch" "$(sha256sum < "${work_dir}/chroot.pacman.conf")" | sha256sum | cut -d' ' -f1)
+    # Do not reuse a pristine root from a different snapshot/build configuration.
+    chroot_dir="${profile}/packages/chroots/${base_inputs}"
+    if [[ ! -d "${chroot_dir}/root" ]]; then
+        mkdir -p "${chroot_dir}"
+        _msg_info "Creating build chroot..."
+        mkarchroot -C "${work_dir}/chroot.pacman.conf" "${chroot_dir}/root" base-devel
+        sed -i 's/ debug / !debug /g' "${chroot_dir}/root/etc/makepkg.conf"
+        printf '\nMAKEFLAGS="-j%s"\n' "$(nproc)" >> "${chroot_dir}/root/etc/makepkg.conf"
+    fi
+    base_inputs=$(printf '%s\n' "$base_inputs" \
+        "$(sha256sum < "${chroot_dir}/root/etc/makepkg.conf")" | sha256sum | cut -d' ' -f1)
+    plan="${work_dir}/package-plan.json"
+    specs="${work_dir}/package-specs"
+    : > "$specs"
 
     buildpkg() {
         local pkgdir="$1"
@@ -178,35 +193,19 @@ _make_chroot() {
 
         cd "${pkgdir}"
         pkg="${pkgdir##*/}"
-        if [[ ! -d "${chroot_dir}/root" ]]; then
-            mkdir -p "${chroot_dir}"
-            _msg_info "Creating build chroot..."
-            mkarchroot -C "${work_dir}/chroot.pacman.conf" "${chroot_dir}/root" base-devel
-            sed -i 's/ debug / !debug /g' "${chroot_dir}/root/etc/makepkg.conf"
-            printf '\nMAKEFLAGS="-j%s"\n' "$(nproc)" >> "${chroot_dir}/root/etc/makepkg.conf"
-        fi
-        chown -R "$SUDO_USER:$SUDO_USER" "${pkgdir}"
 
-        realpkgname() {
-            tar -xOf "$1" .PKGINFO 2>/dev/null | \
-                awk -F"[= ]" '/^pkgname =/{print$4}'
-        }
+        _run_build_with_download_retries "${work_dir}/build-${pkg}-dependencies.log" \
+            python3 "${builder_dir}/package-cache.py" archives "$plan" "$pkg" "${work_dir}/dependency-archives"
+        while IFS= read -r file; do
+            additional_opts+=( -I "$file" )
+        done < "${work_dir}/dependency-archives"
 
-        # Remove every previous output of a split package before collecting -I.
+        # Remove every previous output of a split package before publishing.
         if [[ -f "${profile}/packages/db/.inputs/${pkg}" ]]; then
             while IFS= read -r file; do
                 [[ "$file" != */* && "$file" == *.pkg.tar.* ]] || continue
                 rm -f -- "${profile}/packages/db/$file"
             done < "${profile}/packages/db/.inputs/${pkg}"
-        fi
-        if compgen -G "${profile}"/packages/db/*pkg.tar* >/dev/null; then
-            for file in "${profile}"/packages/db/*pkg.tar*; do
-                if [[ "$(realpkgname "$file")" == "$pkg" ]]; then
-                    rm -- "$file"
-                else
-                    additional_opts+=( -I "$file" )
-                fi
-            done
         fi
         # Only publish archives produced by this build, not old local outputs.
         stale_dir=""
@@ -218,7 +217,7 @@ _make_chroot() {
             mv -- "$file" "$stale_dir/"
         done
         _run_build_with_download_retries "${work_dir}/build-${pkg}.log" \
-            "$correct_makechrootpkg" -U "$SUDO_USER" -r "${chroot_dir}" "${additional_opts[@]}"
+            "$correct_makechrootpkg" -c -U "$SUDO_USER" -r "${chroot_dir}" "${additional_opts[@]}"
         for file in *.pkg.tar.*; do
             [[ -f "$file" && "$file" != *.sig ]] || continue
             archives+=("$file")
@@ -227,38 +226,45 @@ _make_chroot() {
         repo-add "${profile}"/packages/db/packages.db.tar.gz "${archives[@]}"
         mv "${archives[@]}" "${profile}"/packages/db/
         printf '%s\n' "$inputs" "${archives[@]}" > "${profile}/packages/db/.inputs/${pkg}"
+        python3 "${builder_dir}/package-cache.py" record "$plan" "$pkg" "${profile}/packages/db/.inputs/${pkg}.json"
         _msg_info "Done!"
     }
 
     mkdir -p "${profile}"/packages/{aurcache,db,nvimcache,zshcache}/
     mkdir -p "${profile}/packages/db/.inputs"
     for pkg in "${aur_pkg_list[@]}"; do
-        inputs=$(printf '%s\n' "$inputs" "$pkg" "${locked_commits["aur:${pkg}"]}" | sha256sum | cut -d' ' -f1)
         pkg_list+=("$pkg")
-        if _package_is_cached "$pkg" "$inputs"; then
-            _msg_info "Using cached AUR package $pkg."
-            continue
-        fi
-        _msg_info "Building AUR package $pkg..."
         cachepkgpath="${profile}/packages/aurcache/$pkg"
         _cache_locked_commit \
             aur "$pkg" "$cachepkgpath" \
             "https://aur.archlinux.org/$pkg.git" \
             "https://github.com/archlinux/aur.git"
         _checkout_locked_commit aur "$pkg" "$cachepkgpath"
-        buildpkg "$cachepkgpath" "$inputs"
+        chown -R "$SUDO_USER:$SUDO_USER" "$cachepkgpath"
+        printf '%s\t%s\t%s\n' "$pkg" "$cachepkgpath" "${locked_commits["aur:${pkg}"]}" >> "$specs"
     done
     for pkg in "${local_pkg_list[@]}"; do
         recipe_inputs=$(python3 "${builder_dir}/build-inputs" paths "packages/tobuild/$pkg")
-        # Rebuild subsequent packages too: they may link against this package.
-        inputs=$(printf '%s\n' "$inputs" "$pkg" "$recipe_inputs" | sha256sum | cut -d' ' -f1)
         pkg_list+=("$pkg")
+        chown -R "$SUDO_USER:$SUDO_USER" "${profile}/packages/tobuild/$pkg"
+        printf '%s\t%s\t%s\n' "$pkg" "${profile}/packages/tobuild/$pkg" "$recipe_inputs" >> "$specs"
+    done
+    _msg_info "Resolving package build dependencies..."
+    python3 "${builder_dir}/package-cache.py" plan --work "$work_dir" --specs "$specs" \
+        --config "${work_dir}/chroot.pacman.conf" --chroot "${chroot_dir}/root" \
+        --arch "$arch" --base "$base_inputs" --user "$SUDO_USER" \
+        --cache "${profile}/packages/downloads" --archives "${profile}/packages/db"
+    mapfile -t build_order < "${work_dir}/package-order"
+    for pkg in "${build_order[@]}"; do
+        inputs=$(python3 "${builder_dir}/package-cache.py" get "$plan" "$pkg" key)
         if _package_is_cached "$pkg" "$inputs"; then
             _msg_info "Using cached package $pkg."
             continue
         fi
-        _msg_info "Building package $pkg..."
-        buildpkg "${profile}/packages/tobuild/$pkg" "$inputs"
+        reason=$(python3 "${builder_dir}/package-cache.py" explain "$plan" "$pkg" "${profile}/packages/db/.inputs/${pkg}.json")
+        _msg_info "Building package $pkg: ${reason}..."
+        path=$(python3 "${builder_dir}/package-cache.py" get "$plan" "$pkg" path)
+        buildpkg "$path" "$inputs"
     done
 
     for pkg in "${nvim_pkg_list[@]}"; do
@@ -318,9 +324,11 @@ _make_packages() {
 
 _setup_makechrootpkg() {
     # https://bugs.archlinux.org/task/64265
+    # Dependencies are preinstalled from the plan; fail rather than resolve new ones in makepkg.
     correct_makechrootpkg=$(mktemp)
     sed '
     s/yes y/yes ""/
+    /^default_makepkg_args=/s/--syncdeps //
     /lib\/util\/machine.sh/a\
 machine_name() {\
     local name=$1 machine="makechrootpkg-${name}" max_hostname=64 max_pid_digits=7\

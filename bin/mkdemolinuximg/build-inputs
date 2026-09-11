@@ -8,11 +8,11 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
-BASE = ["archive_date", "build_packages", "pacman.conf", "profiledef.sh",
+BASE = ["archive_date", "build_packages", "pacman.conf",
         "bin/mkdemolinuximg/build-inputs", ".github/scripts/setup-pacman.sh"]
 PACKAGES = BASE + ["available_packages", "deps.lock", "packages/tobuild",
                    "nvim_packages", "zsh_plugins"]
-ROOTFS = PACKAGES + ["airootfs", "bin/mkdemolinuximg"]
+ROOTFS = PACKAGES + ["profiledef.sh", "airootfs", "bin/mkdemolinuximg"]
 
 
 def fingerprint(paths):
@@ -41,6 +41,7 @@ def compiler_fingerprint():
     return fingerprint(BASE + [
         "bin/mkdemolinuximg/build", "bin/mkdemolinuximg/common.sh",
         "bin/mkdemolinuximg/config.sh", "bin/mkdemolinuximg/packages.sh",
+        "bin/mkdemolinuximg/package-cache.py",
     ])
 
 

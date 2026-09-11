@@ -131,7 +131,7 @@ _install_bootloader() {
     # with No space left on device, so we remove some stuff...
     # TODO: something better??
     if [ -n "${CI-}" ]; then
-        rm -rf "${profile}/packages/chroot"
+        rm -rf "${profile}/packages/chroot" "${profile}/packages/chroots"
     fi
 
     if [[ "${disk_root_in_place:-n}" != y ]]; then

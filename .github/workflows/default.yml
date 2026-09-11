@@ -21,7 +21,7 @@ jobs:
       contents: write
     runs-on: ubuntu-24.04
     # Cold dependency builds are intentionally allowed to seed the caches.
-    timeout-minutes: 90
+    timeout-minutes: 120
     env:
       DEMOLINUX_ROOTFS_CACHE: ${{ github.workspace }}/.ci/rootfs
       DEMOLINUX_PACMAN_CACHE: ${{ github.workspace }}/.ci/pacman

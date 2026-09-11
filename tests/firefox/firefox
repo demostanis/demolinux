@@ -24,19 +24,21 @@ if ! nc -z localhost 6000 2>/dev/null; then
 	exit 1
 fi
 
-# wait for the browser to initialize a bit..
-sleep 5
+browser_window='Services.wm.getMostRecentWindow("navigator:browser")'
+timeout 20 python firefox/browsereval.py --wait "$browser_window?.gBrowserInit?.delayedStartupFinished"
 
 timeout 30 python firefox/browsereval.py
 ret=$?
 
-# move the mouse elsewhere than the tab tooltip,
-# otherwise Escape hides the tooltip instead of unfocus the search bar
-xdotool mousemove 0 0
-sleep 1
-xdotool key Escape
-sleep 1
-urlbar='Services.wm.getMostRecentWindow("navigator:browser").gURLBar'
+# Debugger readiness does not imply X focus or focus in the page itself.
+browser=$(timeout 20 xdotool search --sync --onlyvisible --class '^firefox$')
+browser=${browser%%$'\n'*}
+xdotool windowactivate --sync "$browser"
+expectawesome 'return client.focus and client.focus.class == "firefox"'
+xdotool mousemove --window "$browser" 100 200 click 1
+xdotool key --clearmodifiers Escape
+urlbar="$browser_window.gURLBar"
+timeout 20 python firefox/browsereval.py --wait "$browser_window.document.hasFocus() && !$urlbar.focused"
 target='data:text/html,%3Ctitle%3EDemolinux%20browser%20test%3C/title%3E'
 xdotool key --clearmodifiers o
 timeout 20 python firefox/browsereval.py --wait "$urlbar.focused && $urlbar.inputField.selectionStart === 0 && $urlbar.inputField.selectionEnd === $urlbar.inputField.value.length"

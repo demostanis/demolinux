@@ -1,0 +1,21 @@
+#!/bin/bash
+set -euo pipefail
+umask 077
+[[ $EUID == 0 && $# == 3 ]] || { echo 'Usage: kexec KERNEL INITRAMFS CMDLINE (root only)' >&2; exit 1; }
+key=/run/diskencrypt/boot.key
+[[ -f $key && $(stat -c %s "$key") == 64 ]] || { echo 'No retained GRUB boot key; refusing an encrypted kexec.' >&2; exit 1; }
+lsinitcpio "$2" | grep 'etc/diskencrypt-handoff-v1$' >/dev/null || { echo 'New initramfs does not support GRUB key handoff.' >&2; exit 1; }
+work=$(mktemp -d /run/diskencrypt-kexec.XXXXXX)
+trap 'rm -rf "$work"' EXIT
+[[ $(findmnt -nro FSTYPE -T "$work") == tmpfs ]] || { echo 'Kexec key handoff requires RAM-backed /run.' >&2; exit 1; }
+mkdir -p "$work/root/etc/diskencrypt"
+chmod 755 "$work/root/etc"
+cp "$key" "$work/root/etc/diskencrypt/boot.key"
+chmod 400 "$work/root/etc/diskencrypt/boot.key"
+cp "$2" "$work/initramfs.img"
+padding=$(( (4 - $(stat -c %s "$work/initramfs.img") % 4) % 4 ))
+if (( padding )); then
+    dd if=/dev/zero bs=1 count="$padding" status=none >> "$work/initramfs.img"
+fi
+bsdtar --format=newc -cf - -C "$work/root" etc >> "$work/initramfs.img"
+kexec -l "$1" --initrd="$work/initramfs.img" --command-line="$3"

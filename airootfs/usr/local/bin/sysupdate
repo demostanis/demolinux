@@ -54,12 +54,18 @@ fi
 
 chmod 644 demolinux.img
 chown root:root demolinux.img
-attr -qs createdbysysupdate -V yes demolinux.img
+attr -qr createdbysysupdate demolinux.img 2>/dev/null || :
 
 echo rebooting...
 dev=$(losetup --show -Pf demolinux.img)
 mount "$dev"p3 -o subvol=/system/airootfs /run/archiso/bootmnt
-kexec -l /run/archiso/bootmnt/boot/vmlinuz-linux \
-	--initrd=/run/archiso/bootmnt/boot/initramfs-linux.img \
-	--command-line="$(sed -E 's/btrfs_snapshot=([^ ]|$)+ ?//' /proc/cmdline)"
+cmdline=$(sed -E 's/btrfs_snapshot=([^ ]|$)+ ?//' /proc/cmdline)
+if [ -b /dev/mapper/demolinux-system ]; then
+	/usr/local/lib/diskencrypt/kexec /run/archiso/bootmnt/boot/vmlinuz-linux \
+		/run/archiso/bootmnt/boot/initramfs-linux.img "$cmdline"
+else
+	kexec -l /run/archiso/bootmnt/boot/vmlinuz-linux \
+		--initrd=/run/archiso/bootmnt/boot/initramfs-linux.img --command-line="$cmdline"
+fi
+attr -qs createdbysysupdate -V yes demolinux.img
 kexec -e

@@ -16,6 +16,7 @@ file_permissions=(
 
   ["/usr/lib/xrandr.sh"]="0:0:+x"
   ["/usr/local/lib/diskencrypt/maintenance"]="0:0:755"
+  ["/usr/local/lib/diskencrypt/kexec"]="0:0:755"
 )
 for file in $(find airootfs/usr/local/bin airootfs/etc/skel/.local/bin -type f); do
   file_permissions+=( ["${file##airootfs}"]="0:0:755" )

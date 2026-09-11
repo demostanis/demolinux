@@ -1,0 +1,13 @@
+#!/bin/bash
+build() {
+    add_file /usr/local/lib/diskencrypt/handoff-v1 /etc/diskencrypt-handoff-v1
+    add_module dm-crypt
+    add_all_modules '/crypto/'
+    add_binary /usr/lib/libgcc_s.so.1
+    add_udev_rule 10-dm.rules
+    add_udev_rule 13-dm-disk.rules
+    add_udev_rule 95-dm-notify.rules
+    add_module vfat
+    add_binary cryptsetup
+    add_runscript
+}

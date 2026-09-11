@@ -1,0 +1,1 @@
+GRUB supplies /etc/diskencrypt/boot.key from the encrypted system partition.

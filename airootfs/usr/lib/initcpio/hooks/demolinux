@@ -92,10 +92,15 @@ archiso_mount_handler() {
     local fs_img fs_img_size iso_blockdev
 
     btrfs_root=$rundir/btrfs
-    _mnt_dev /dev/disk/by-partlabel/system $btrfs_root "-w" "subvol=system,compress=zstd"
+    system_dev=${demolinux_system_dev:-/dev/disk/by-partlabel/system}
+    _mnt_dev "$system_dev" $btrfs_root "-w" "subvol=system,compress=zstd"
 
     # yes, this syntax is required...
     if [ $(( $(btrfs subvol list $btrfs_root | wc -l) < 6 )) = 1 ]; then
+        if [ -n "$demolinux_system_dev" ]; then
+            echo 'Encrypted system is missing initialized subvolumes; refusing partition growth.'
+            while :; do launch_interactive_shell; done
+        fi
         plymouth update --status="Extending filesystems..."
 
         # first, resize the filesystem
@@ -108,7 +113,7 @@ archiso_mount_handler() {
 
         plymouth update --status="Creating Btrfs subvolumes..."
 
-        _mnt_dev /dev/disk/by-partlabel/system $btrfs_root "-w" "subvol=system,compress=zstd"
+         _mnt_dev "$system_dev" $btrfs_root "-w" "subvol=system,compress=zstd"
         btrfs filesystem resize max $btrfs_root
 
         # finally, create the necessary subvolumes
@@ -141,7 +146,7 @@ archiso_mount_handler() {
         if grep $offset_magic $rundir/bootmnt/grub/grub.cfg; then
              plymouth update --status="Updating boot params for hibernation..."
              _mnt_dev /dev/disk/by-partlabel/boot "$rundir/bootmnt" "-w" "defaults"
-             _mnt_dev /dev/disk/by-partlabel/system $rundir/airootfs "-r" "subvol=/system/airootfs,compress=zstd,noatime"
+              _mnt_dev "$system_dev" $rundir/airootfs "-r" "subvol=/system/airootfs,compress=zstd,noatime"
 
              offset=$(btrfs inspect-internal map-swapfile -r $rundir/btrfs/swap/swapfile)
              sed -i 's/'$offset_magic'/'$offset/ $rundir/bootmnt/grub/grub.cfg
@@ -153,7 +158,7 @@ archiso_mount_handler() {
         fi
     fi
 
-    _mnt_dev /dev/disk/by-partlabel/system $rundir/data "-w" "subvol=/system/data,compress=zstd,noatime"
+    _mnt_dev "$system_dev" $rundir/data "-w" "subvol=/system/data,compress=zstd,noatime"
     update_img=$rundir/data/sysupdate/demolinux.img
     if [ -e $update_img ]; then
         mode=$(stat -c %u%g%a "$update_img")
@@ -177,19 +182,19 @@ archiso_mount_handler() {
     fi
 
     plymouth update --status="Mouting filesystems..."
-    _mnt_dev /dev/disk/by-partlabel/system $rundir/persistfs "-w" "subvol=/system/persistfs,compress=zstd,noatime"
-    _mnt_dev /dev/disk/by-partlabel/system $rundir/snapshots "-w" "subvol=/system/snapshots,compress=zstd,noatime"
+    _mnt_dev "$system_dev" $rundir/persistfs "-w" "subvol=/system/persistfs,compress=zstd,noatime"
+    _mnt_dev "$system_dev" $rundir/snapshots "-w" "subvol=/system/snapshots,compress=zstd,noatime"
     snapshot="${btrfs_snapshot##*/}"
     snapshot="${snapshot:+snapshots/$snapshot}"
-    _mnt_dev /dev/disk/by-partlabel/system $rundir/airootfs "-r" "subvol=/system/${snapshot:-airootfs},compress=zstd,noatime"
-    _mnt_dev /dev/disk/by-partlabel/system $rundir/swap "-w" "subvol=/system/swap,compress=zstd,noatime"
+    _mnt_dev "$system_dev" $rundir/airootfs "-r" "subvol=/system/${snapshot:-airootfs},compress=zstd,noatime"
+    _mnt_dev "$system_dev" $rundir/swap "-w" "subvol=/system/swap,compress=zstd,noatime"
 
     # Enable copytoram if the following conditions apply:
     # * the root file system image is not on an optical disc drive,
     # * the root file system image size is less than 4 GiB,
     # * the estimated available memory is more than the root file system image size + 2 GiB.
     if [ "${copytoram}" = "auto" ]; then
-        iso_blockdev="$(realpath "$(resolve_device /dev/disk/by-partlabel/system)")"
+        iso_blockdev="$(realpath "$(resolve_device "$system_dev")")"
         if [ "$iso_blockdev" = "${iso_blockdev##/dev/sr}" ]; then
             fs_img_size="$(du -bsk "$rundir/airootfs" | cut -f 1)"
             if [ "$(awk '$1 == "MemAvailable:" { print $2 }' /proc/meminfo)" -gt $((fs_img_size + 2097152)) ]; then
@@ -255,10 +260,11 @@ EOF
     chown 1000:1000 "$rundir/data" "$rundir/data/"*
     _mnt_overlayfs lowerdir=$lowerdir upperdir=$rundir/persistfs/upperdir workdir=$rundir/persistfs/workdir mountpoint=$rundir/cowspace/lowerdir
     _mnt_overlayfs lowerdir=$rundir/cowspace/lowerdir upperdir=$rundir/cowspace/upperdir workdir=$rundir/cowspace/workdir mountpoint="$newroot/"
-    if [ "$copytoram" = y ]; then
-        # Disk swap is unavailable in RAM mode; do not leave a failed swap unit.
-        sed -i '\|^/run/archiso/swap/swapfile |d' "$newroot/etc/fstab"
-    else
+    if [ "$copytoram" = y ] || [ "$(getarg diskencrypt_swap)" = off ]; then
+        # Unavailable swap must not leave a failed swap unit in the live root.
+        sed -i '\|^[[:space:]]*/run/archiso/swap/swapfile[[:space:]]|d' "$newroot/etc/fstab"
+    fi
+    if [ "$copytoram" != y ]; then
         umount "$btrfs_root"
     fi
 }

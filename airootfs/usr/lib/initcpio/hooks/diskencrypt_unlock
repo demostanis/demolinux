@@ -1,0 +1,27 @@
+#!/usr/bin/ash
+run_hook() {
+    local uuid device key
+    uuid=$(getarg diskencrypt_uuid)
+    [ -n "$uuid" ] || return 0
+    case "$uuid" in *[!a-fA-F0-9-]*) echo 'Invalid encryption UUID'; return 1;; esac
+    device=$(resolve_device "UUID=$uuid") || return 1
+    key=/etc/diskencrypt/boot.key
+    if [ -f "$key" ] && [ "$(wc -c < "$key")" -eq 64 ]; then
+        chmod 700 /etc/diskencrypt
+        chmod 600 "$key"
+        if cryptsetup open --key-slot 2 --key-file "$key" "$device" demolinux-system; then
+            mkdir -p /run/diskencrypt
+            chmod 700 /run/diskencrypt
+            cp "$key" /run/diskencrypt/boot.key
+            chmod 400 /run/diskencrypt/boot.key
+        fi
+    fi
+    rm -f "$key"
+    if [ ! -b /dev/mapper/demolinux-system ]; then
+        plymouth quit 2>/dev/null || :
+        echo 'ERROR: GRUB did not supply a valid encrypted-disk boot key.'
+        echo 'Boot with the updated GRUB configuration, or unlock manually in this recovery shell.'
+        while [ ! -b /dev/mapper/demolinux-system ]; do launch_interactive_shell; done
+    fi
+    export demolinux_system_dev=/dev/mapper/demolinux-system
+}

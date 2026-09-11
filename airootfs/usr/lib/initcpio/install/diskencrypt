@@ -1,0 +1,27 @@
+#!/bin/bash
+build() {
+    [[ -s ${DISKENCRYPT_REQUEST:-} ]] || return 1
+    [[ -s ${DISKENCRYPT_GRUB_CONFIG:-} && -s ${DISKENCRYPT_PARTITIONS:-} ]] || return 1
+    add_file "$DISKENCRYPT_REQUEST" /etc/diskencrypt-request
+    add_file "$DISKENCRYPT_GRUB_CONFIG" /etc/diskencrypt-grub.cfg
+    add_file "$DISKENCRYPT_PARTITIONS" /etc/diskencrypt-partitions
+    add_file /usr/local/lib/diskencrypt/common
+    add_binary bash
+    add_file /usr/local/lib/diskencrypt/maintenance /usr/local/lib/diskencrypt/maintenance 755
+    add_module btrfs
+    add_module dm-crypt
+    add_all_modules '/crypto/'
+    add_binary /usr/lib/libgcc_s.so.1
+    add_udev_rule 10-dm.rules
+    add_udev_rule 13-dm-disk.rules
+    add_udev_rule 95-dm-notify.rules
+    for binary in cryptsetup btrfs blkid lsblk findmnt mount umount mountpoint swapon blockdev jq sfdisk grub-install grub-script-check sync ls wc basename readlink cmp cp mv sed grep reboot dd flock getconf stat mktemp; do
+        add_binary "$binary"
+    done
+    for binary in grub-mkimage grub-bios-setup grub-probe grub-mkrelpath; do
+        add_binary "$binary"
+    done
+    add_full_dir /usr/lib/grub
+    add_full_dir /usr/share/grub
+    add_runscript
+}

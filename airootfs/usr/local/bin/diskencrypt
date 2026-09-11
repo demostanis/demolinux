@@ -1,0 +1,65 @@
+#!/bin/bash
+set -euo pipefail
+
+if [[ ${1:-} == --help ]]; then
+    echo 'Usage: sudo diskencrypt [USB-PARTITION]'
+    echo 'Encrypt after a RAM-only kexec. An optional FAT USB holds only an unlock keyfile.'
+    echo 'A verified backup is required. Power-loss recovery requires separately booted rescue Linux.'
+    exit 0
+fi
+[[ $EUID == 0 && $# -le 1 ]] || { echo 'Run diskencrypt --help for usage.' >&2; exit 1; }
+source /usr/local/lib/diskencrypt/common
+[[ -x /usr/local/lib/diskencrypt/maintenance ]] || die 'Maintenance executable is not installed correctly; refusing to kexec.'
+exec 9>/run/diskencrypt.lock
+flock -n 9 || die 'Another diskencrypt is running.'
+system=$(readlink -f /dev/disk/by-partlabel/system)
+boot=$(readlink -f /dev/disk/by-partlabel/boot)
+usb=
+[[ $# == 0 ]] || usb=$(readlink -e "$1")
+validate_devices
+[[ $(blkid -s TYPE -o value "$system") == btrfs ]] || die 'Only an unencrypted Btrfs system is supported.'
+kernel=/run/archiso/airootfs/boot/vmlinuz-linux
+normal_initrd=/run/archiso/airootfs/boot/initramfs-linux.img
+[[ -f $kernel && -f $normal_initrd ]] || die 'Boot files are not mounted.'
+bootcfg=/run/archiso/bootmnt/grub/grub.cfg
+grep -q '^search .*--set=system_root' "$bootcfg" || die 'Unsupported GRUB system search.'
+grep -q 'linux \$kernel_dir/vmlinuz-linux \$2' "$bootcfg" || die 'Unsupported GRUB kernel command.'
+grep -q '^set resume_args=' "$bootcfg" || die 'Unsupported GRUB resume configuration.'
+grep -q 'initrd \$microcode \$kernel_dir/initramfs-linux.img' "$bootcfg" || die 'Unsupported GRUB initramfs command.'
+lsinitcpio "$normal_initrd" | grep 'hooks/diskencrypt_unlock$' >/dev/null || die 'Boot this version of demolinux before encrypting (unlock hook missing).'
+lsinitcpio "$normal_initrd" | grep 'etc/diskencrypt-handoff-v1$' >/dev/null || die 'Rebuild the normal initramfs with GRUB key handoff support before encrypting.'
+for platform in i386-pc x86_64-efi; do
+    for module in luks2 cryptodisk pbkdf2 gcry_rijndael gcry_sha256; do
+        [[ -f /usr/lib/grub/$platform/$module.mod ]] || die "Missing GRUB module: $platform/$module"
+    done
+done
+echo "Target: $system on $(parent "$system"); key USB: ${usb:-none (password only)}. Partition boundaries will not change."
+echo 'Maintenance boots from RAM. Power loss requires independently booted rescue Linux.'
+echo 'A verified, separate data backup is REQUIRED.'
+read -r -p 'Type ENCRYPT to prepare the RAM initramfs and kexec: ' answer
+[[ $answer == ENCRYPT ]] || die 'Cancelled.'
+work=$(mktemp -d /run/diskencrypt.XXXXXX)
+trap 'rm -rf "$work"' EXIT
+[[ $(findmnt -nro FSTYPE -T "$work") == tmpfs ]] || die '/run must be RAM-backed.'
+cp "$bootcfg" "$work/grub.cfg.before"
+write_grub_config "$bootcfg" 'noresume diskencrypt_swap=off' > "$work/grub.cfg.check"
+grub-script-check "$work/grub.cfg.check"
+sfdisk --dump "$(parent "$system")" > "$work/partition-table"
+for device in "$system" "$boot"; do
+    blkid -s PARTUUID -o value "$device"
+done > "$work/request"
+if [[ -n $usb ]]; then
+    blkid -s PARTUUID -o value "$usb" >> "$work/request"
+    blkid -s UUID -o value "$usb" >> "$work/request"
+else
+    printf '%s\n' - - >> "$work/request"
+fi
+cat /proc/sys/kernel/random/boot_id >> "$work/request"
+export DISKENCRYPT_REQUEST="$work/request"
+export DISKENCRYPT_GRUB_CONFIG="$work/grub.cfg.before"
+export DISKENCRYPT_PARTITIONS="$work/partition-table"
+printf '%s\n' 'HOOKS=(base udev modconf block filesystems keyboard diskencrypt)' 'COMPRESSION=zstd' > "$work/mkinitcpio.conf"
+mkinitcpio -k "$(uname -r)" -c "$work/mkinitcpio.conf" -g "$work/maintenance.img"
+kexec -l "$kernel" --initrd="$work/maintenance.img" --command-line='diskencrypt_maintenance=1 noresume console=tty0'
+# Let systemd stop services, disable swap and unmount cleanly before kexec.
+systemctl kexec

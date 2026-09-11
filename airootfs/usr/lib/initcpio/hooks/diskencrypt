@@ -1,0 +1,10 @@
+#!/usr/bin/ash
+run_hook() {
+    [ "$(getarg diskencrypt_maintenance)" = 1 ] || return
+    udevadm settle
+    /usr/local/lib/diskencrypt/maintenance
+    echo 'Maintenance stopped. Do not boot the system until encryption and GRUB setup are complete.'
+    echo 'Retry in this RAM session: bash /usr/local/lib/diskencrypt/maintenance'
+    echo 'After power loss, boot independent rescue Linux.'
+    while :; do launch_interactive_shell; done
+}

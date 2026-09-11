@@ -1,0 +1,166 @@
+#!/bin/bash
+set -euo pipefail
+umask 077
+source /usr/local/lib/diskencrypt/common
+exec 9>/run/diskencrypt-maintenance.lock
+flock -n 9 || die 'Another maintenance worker is running.'
+grep -qw diskencrypt_maintenance=1 /proc/cmdline || die 'Only run in the maintenance initramfs.'
+[[ $(findmnt -nro FSTYPE /) == rootfs || $(findmnt -nro FSTYPE /) == tmpfs ]] || die 'Root is not RAM-backed.'
+mapfile -t request < /etc/diskencrypt-request
+[[ ${#request[@]} == 5 ]] || die 'Invalid request.'
+for id in "${request[@]}"; do [[ $id =~ ^[a-fA-F0-9-]+$ ]] || die 'Invalid request identifier.'; done
+[[ ${request[4]} != "$(cat /proc/sys/kernel/random/boot_id)" ]] || die 'Must kexec before encryption.'
+system=$(wait_partition "${request[0]}" System)
+boot=$(wait_partition "${request[1]}" Boot)
+usb=
+usb_uuid=
+if [[ ${request[2]} != - ]]; then
+    usb=$(wait_partition "${request[2]}" USB)
+    usb_uuid=${request[3]}
+else
+    [[ ${request[3]} == - ]] || die 'Invalid optional USB request.'
+fi
+validate_devices
+assert_target_disk_unused
+[[ -z $usb || $(blkid -s UUID -o value "$usb") == "$usb_uuid" ]] || die 'USB UUID changed.'
+mkdir -p /run/diskencrypt/{usb,boot,system}
+password_file=/run/diskencrypt/password
+boot_key=/run/diskencrypt/boot.key
+trap 'rm -f "$password_file" "$boot_key"; sync; for p in system boot usb; do mountpoint -q /run/diskencrypt/$p && umount /run/diskencrypt/$p; done; cryptsetup close demolinux-maintenance 2>/dev/null || :' EXIT
+key=/run/diskencrypt/usb/demolinux-diskencrypt/system.key
+if [[ -n $usb ]]; then
+    mount -o nosuid,nodev,noexec "$usb" /run/diskencrypt/usb
+    if ! cryptsetup isLuks "$system"; then
+        [[ ! -e $key ]] || die 'USB already contains a system.key; refusing to overwrite it.'
+    fi
+    probe=$(mktemp /run/diskencrypt/usb/.diskencrypt.XXXXXX)
+    rm "$probe"
+    umount /run/diskencrypt/usb
+fi
+sfdisk --dump "$(parent "$system")" > /run/diskencrypt/partition-table
+cmp /etc/diskencrypt-partitions /run/diskencrypt/partition-table || die 'Partition table changed since preparation.'
+mount "$boot" /run/diskencrypt/boot
+state=/run/diskencrypt/boot/grub/diskencrypt-state
+if [[ -f $state/request ]]; then
+    cmp /etc/diskencrypt-request "$state/request" || die 'A different conversion has already recorded recovery metadata.'
+else
+    ! cryptsetup isLuks "$system" || die 'Refusing an unrelated existing LUKS device.'
+    mkdir -p "$state"
+    cp /etc/diskencrypt-request "$state/request"
+    cp /etc/diskencrypt-grub.cfg "$state/grub.cfg.before"
+    cp /etc/diskencrypt-partitions "$state/partition-table"
+fi
+initializing=no
+[[ ! -e $state/initializing ]] || initializing=yes
+sync
+umount /run/diskencrypt/boot
+if ! cryptsetup isLuks "$system"; then
+    [[ $initializing == no ]] || die 'Interrupted header initialization: manual recovery required; do not restart encryption.'
+    [[ $(blkid -s TYPE -o value "$system") == btrfs ]] || die 'Target is not Btrfs.'
+    echo "Encrypting $system; all target disk filesystems are unmounted."
+    mount -o subvolid=5 "$system" /run/diskencrypt/system
+    [[ $(btrfs filesystem show --raw /run/diskencrypt/system | grep -c 'devid ') == 1 ]] || die 'Multi-device Btrfs is unsupported.'
+    for volume in airootfs data persistfs snapshots swap; do
+        btrfs subvolume show "/run/diskencrypt/system/system/$volume" >/dev/null || die 'Finish demolinux first-boot initialization before encrypting.'
+    done
+    swap_resume_args /run/diskencrypt/system/system/swap/swapfile "$system" >/dev/null
+    size=$(blockdev --getsize64 "$system")
+    btrfs filesystem resize "$((size - 32 * 1024 * 1024))" /run/diskencrypt/system
+    umount /run/diskencrypt/system
+    btrfs check --readonly "$system"
+    assert_target_disk_unused
+    echo 'Set your GRUB unlock password (PBKDF2, use a long passphrase).'
+    IFS= read -r -s -p 'Enter new passphrase: ' password
+    echo
+    IFS= read -r -s -p 'Verify passphrase: ' confirmation
+    echo
+    [[ -n $password && $password == "$confirmation" ]] || die 'Passwords are empty or do not match.'
+    printf '%s' "$password" > "$password_file"
+    unset password confirmation
+    mount "$boot" /run/diskencrypt/boot
+    touch "$state/initializing"
+    sync
+    umount /run/diskencrypt/boot
+    assert_target_disk_unused
+    # Slot zero is a durable password from initialization onward, even without USB.
+    initialize_encryption "$system" "$password_file"
+    initializing=yes
+fi
+[[ $initializing == yes ]] || die 'Not a diskencrypt conversion; refusing existing LUKS.'
+assert_target_disk_unused
+if [[ ! -s $password_file ]]; then
+    IFS= read -r -s -p 'Enter existing encryption passphrase: ' password
+    echo
+    [[ -n $password ]] || die 'Empty password.'
+    printf '%s' "$password" > "$password_file"
+    unset password
+fi
+cryptsetup open --test-passphrase --key-slot 0 --key-file "$password_file" "$system"
+resume_encryption "$system" "$password_file"
+echo 'Verify password unlock before installing the boot configuration:'
+cryptsetup open --test-passphrase --key-slot 0 "$system"
+if [[ -n $usb ]]; then
+    mount -o nosuid,nodev,noexec "$usb" /run/diskencrypt/usb
+    mkdir -p /run/diskencrypt/usb/demolinux-diskencrypt
+    if ! cryptsetup luksDump --dump-json-metadata "$system" | jq -e '.keyslots["1"].type == "luks2"' >/dev/null; then
+        if [[ ! -e $key ]]; then
+            # Early boot must wait until the random generator is initialized.
+            dd if=/dev/random of="$key" bs=64 count=1 iflag=fullblock status=none
+            sync
+        fi
+        [[ $(stat -c %s "$key") == 64 ]] || die 'Incomplete USB keyfile.'
+        cryptsetup luksAddKey --key-file "$password_file" --key-slot 1 --pbkdf pbkdf2 --hash sha256 "$system" "$key"
+    fi
+    cryptsetup open --test-passphrase --key-slot 1 --key-file "$key" "$system"
+    umount /run/diskencrypt/usb
+fi
+uuid=$(cryptsetup luksUUID "$system")
+cryptsetup open --key-file "$password_file" "$system" demolinux-maintenance
+mount -o subvolid=5 /dev/mapper/demolinux-maintenance /run/diskencrypt/system
+btrfs filesystem resize max /run/diskencrypt/system
+resume_args=$(swap_resume_args /run/diskencrypt/system/system/swap/swapfile /dev/mapper/demolinux-maintenance)
+# This directory is outside airootfs, snapshots and user data, and is encrypted on disk.
+boot_key_dir=/run/diskencrypt/system/system/.diskencrypt
+[[ ! -L $boot_key_dir && ! -L $boot_key_dir/boot.key ]] || die 'GRUB handoff key paths must not be symlinks.'
+mkdir -p "$boot_key_dir"
+chmod 700 "$boot_key_dir"
+chown 0:0 "$boot_key_dir"
+if [[ -e $boot_key_dir/boot.key ]]; then
+    [[ -f $boot_key_dir/boot.key && $(stat -c %s "$boot_key_dir/boot.key") == 64 ]] || die 'Invalid existing GRUB handoff key.'
+    cp "$boot_key_dir/boot.key" "$boot_key"
+else
+    dd if=/dev/random of="$boot_key" bs=64 count=1 iflag=fullblock status=none
+    cp "$boot_key" "$boot_key_dir/boot.key"
+fi
+chmod 400 "$boot_key_dir/boot.key"
+chown 0:0 "$boot_key_dir/boot.key"
+sync
+umount /run/diskencrypt/system
+cryptsetup close demolinux-maintenance
+assert_target_disk_unused
+if ! cryptsetup luksDump --dump-json-metadata "$system" | jq -e '.keyslots["2"].type == "luks2"' >/dev/null; then
+    cryptsetup luksAddKey --key-file "$password_file" --key-slot 2 --pbkdf pbkdf2 --hash sha256 "$system" "$boot_key"
+fi
+cryptsetup open --test-passphrase --key-slot 2 --key-file "$boot_key" "$system"
+mount "$boot" /run/diskencrypt/boot
+grub=/run/diskencrypt/boot/grub
+write_grub_unlock "$uuid" "$usb_uuid" > "$grub/diskencrypt.cfg.new"
+grub-script-check "$grub/diskencrypt.cfg.new"
+write_grub_config "$state/grub.cfg.before" "$resume_args" > "$grub/grub.cfg.new"
+grep -q 'source ($boot_root)/grub/diskencrypt.cfg' "$grub/grub.cfg.new" || die 'Unsupported GRUB configuration.'
+grep -q 'linux .*\$crypt_args' "$grub/grub.cfg.new" || die 'Unsupported GRUB kernel command.'
+grep -qF 'newc:/etc/diskencrypt/boot.key:($system_root)/system/.diskencrypt/boot.key' "$grub/grub.cfg.new" || die 'Missing GRUB key handoff.'
+grub-script-check "$grub/grub.cfg.new"
+for platform in i386-pc x86_64-efi; do
+    grub-install --target="$platform" --boot-directory=/run/diskencrypt/boot \
+        --efi-directory=/run/diskencrypt/boot --no-nvram --removable \
+        --modules='part_gpt fat btrfs cryptodisk luks2 pbkdf2 gcry_rijndael gcry_sha256' "$(parent "$system")"
+done
+mv "$grub/diskencrypt.cfg.new" "$grub/diskencrypt.cfg"
+mv "$grub/grub.cfg.new" "$grub/grub.cfg"
+sfdisk --dump "$(parent "$system")" > /run/diskencrypt/partition-table.after
+cmp "$state/partition-table" /run/diskencrypt/partition-table.after || die 'Partition table changed unexpectedly.'
+sync
+echo 'Encryption complete. Any optional key USB permits disk unlock; keep it safe. Rebooting through GRUB.'
+umount /run/diskencrypt/boot
+reboot -f

@@ -1,0 +1,131 @@
+die() { echo "diskencrypt: $*" >&2; exit 1; }
+
+wait_partition() {
+    local attempt device
+    for ((attempt = 0; attempt < 30; attempt++)); do
+        if device=$(readlink -e "/dev/disk/by-partuuid/$1") && [[ -b $device ]]; then
+            printf '%s\n' "$device"
+            return
+        fi
+        sleep 1
+    done
+    die "$2 partition unavailable after 30 seconds."
+}
+
+validated_swap_offset() {
+    local offset pagesize bytes
+    [[ $(blkid -p -s TYPE -o value "$1") == swap ]] || die 'An initialized swapfile with a valid swap header is required.'
+    pagesize=$(getconf PAGESIZE)
+    bytes=$(blockdev --getsize64 "$2")
+    offset=$(btrfs inspect-internal map-swapfile -r "$1") || die 'Cannot map the Btrfs swapfile.'
+    [[ $offset =~ ^[0-9]+$ && ${#offset} -le 16 ]] || die 'Invalid swap resume offset.'
+    (( offset > 0 && offset < bytes / pagesize )) || die 'Swap resume offset is outside the device.'
+    printf '%s\n' "$offset"
+}
+
+swap_resume_args() {
+    local offset
+    if offset=$(validated_swap_offset "$1" "$2" 2>/dev/null); then
+        printf 'resume=/dev/mapper/demolinux-system resume_offset=%s\n' "$offset"
+    else
+        echo 'diskencrypt: WARNING: swapfile is missing, invalid, or unmappable; continuing without disk swap or hibernation resume.' >&2
+        printf '%s\n' 'noresume diskencrypt_swap=off'
+    fi
+}
+
+parent() {
+    local name
+    name=$(lsblk -dnro PKNAME "$1")
+    [[ -n $name && $name != *$'\n'* ]] || die 'Expected a plain disk partition.'
+    printf '/dev/%s\n' "$name"
+}
+
+validate_devices() {
+    local device id
+    for device in "$system" "$boot" "$usb"; do
+        [[ -n $device ]] || continue
+        [[ -b $device && $(lsblk -dnro TYPE "$device") == part ]] || die "Not a partition: $device"
+        id=$(blkid -s PARTUUID -o value "$device")
+        [[ $id =~ ^[a-fA-F0-9-]+$ ]] || die 'Missing or invalid PARTUUID.'
+        [[ $(blkid -t "PARTUUID=$id" -o device | wc -l) == 1 ]] || die 'Duplicate PARTUUID.'
+    done
+    [[ $system != "$boot" && $(parent "$system") == "$(parent "$boot")" ]] || die 'Boot and system must be distinct partitions on one disk.'
+    [[ $(blkid -s TYPE -o value "$boot") == vfat ]] || die 'Boot must be a FAT filesystem.'
+    [[ -n $usb ]] || return 0
+    [[ $(parent "$usb") != "$(parent "$system")" ]] || die 'Key USB must be on a separate disk.'
+    [[ $(lsblk -dnro TRAN "$(parent "$usb")") == usb ]] || die 'Key device is not USB.'
+    [[ $(blkid -s TYPE -o value "$usb") == vfat ]] || die 'Key USB must be a FAT filesystem.'
+    id=$(blkid -s UUID -o value "$usb")
+    [[ $id =~ ^[a-fA-F0-9-]+$ ]] || die 'Invalid USB filesystem UUID.'
+    [[ $(blkid -t "UUID=$id" -o device | wc -l) == 1 ]] || die 'Duplicate USB filesystem UUID.'
+    assert_unused "$usb"
+}
+
+assert_unused() {
+    local device=$1 name
+    name=$(basename "$device")
+    [[ -z $(ls -A "/sys/class/block/$name/holders") ]] || die "$device has active holders."
+    ! findmnt -rn -S "$device" >/dev/null || die "$device is mounted."
+}
+
+assert_target_disk_unused() {
+    local device
+    [[ $(swapon --noheadings --show | wc -l) == 0 ]] || die 'Swap must be inactive.'
+    while read -r device; do
+        assert_unused "$device"
+    done < <(lsblk -nrpo NAME "$(parent "$system")")
+}
+
+write_grub_unlock() {
+    local uuid=$1 usb_uuid=${2:-} crypt_args
+    [[ $uuid =~ ^[a-fA-F0-9-]+$ ]] || die 'Invalid UUID for GRUB.'
+    [[ -z $usb_uuid || $usb_uuid =~ ^[a-fA-F0-9-]+$ ]] || die 'Invalid UUID for GRUB.'
+    crypt_args="diskencrypt_uuid=$uuid"
+    cat <<EOF
+insmod cryptodisk
+insmod luks2
+insmod gcry_rijndael
+insmod gcry_sha256
+insmod pbkdf2
+EOF
+    if [[ -n $usb_uuid ]]; then
+        crypt_args+=" diskencrypt_usb=$usb_uuid"
+        cat <<EOF
+set key_usb=
+if search --no-floppy --fs-uuid --set=key_usb $usb_uuid; then
+    cryptomount -u ${uuid//-/} -k (\$key_usb)/demolinux-diskencrypt/system.key
+fi
+EOF
+    fi
+    cat <<EOF
+if ! cryptomount -u ${uuid//-/}; then
+    echo 'Cannot unlock demolinux; returning to GRUB.'
+    sleep --interruptible 10
+fi
+set crypt_args="$crypt_args"
+export crypt_args
+EOF
+}
+
+initialize_encryption() {
+    cryptsetup reencrypt --encrypt --type luks2 --init-only --batch-mode --reduce-device-size 32M \
+        --cipher aes-xts-plain64 --key-size 512 --sector-size 512 --pbkdf pbkdf2 --hash sha256 \
+        --key-file "$2" "$1"
+}
+
+write_grub_config() {
+    local original=$1 resume_args=$2
+    sed -e '/^search .*--set=system_root/i source ($boot_root)/grub/diskencrypt.cfg' \
+        -e 's/linux \$kernel_dir\/vmlinuz-linux \$2/linux $kernel_dir\/vmlinuz-linux $2 $crypt_args/' \
+        -e 's|initrd \$microcode \$kernel_dir/initramfs-linux.img|initrd $microcode $kernel_dir/initramfs-linux.img newc:/etc/diskencrypt/boot.key:($system_root)/system/.diskencrypt/boot.key|' \
+        -e 's|if \[ -f \$snapshot/boot/vmlinuz-linux \]; then|if [ -f $snapshot/boot/vmlinuz-linux -a -f $snapshot/usr/local/lib/diskencrypt/handoff-v1 ]; then|' \
+        -e "s|^set resume_args=.*|set resume_args=\"$resume_args\"|" "$original"
+}
+
+resume_encryption() {
+    local metadata
+    metadata=$(cryptsetup luksDump --dump-json-metadata "$1") || die 'Cannot read encryption metadata.'
+    if jq -e '.keyslots[] | select(.type == "reencrypt")' <<< "$metadata" >/dev/null; then
+        cryptsetup reencrypt --resume-only --key-file "$2" "$1"
+    fi
+}

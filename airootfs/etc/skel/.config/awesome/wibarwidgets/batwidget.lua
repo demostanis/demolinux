@@ -250,7 +250,42 @@ local icons = {
     "\u{f241}", -- three quarters
     "\u{f240}"  -- full
 }
+local battery_warning = nil
+local battery_warning_active = false
+local battery_warning_level = nil
+
+local function update_battery_warning(state, level)
+    if state ~= "-" or not level or level > 5 then
+        if battery_warning then
+            naughty.destroy(battery_warning)
+            battery_warning = nil
+        end
+        battery_warning_active = false
+        battery_warning_level = nil
+        return
+    end
+
+    local title = "Battery critically low"
+    local text = "Battery at " .. level .. "%. Plug in your charger."
+    if not battery_warning_active then
+        battery_warning_active = true
+        battery_warning = naughty.notify({
+            title = title,
+            text = text,
+            preset = naughty.config.presets.critical,
+            timeout = 0,
+            destroy = function()
+                battery_warning = nil
+            end
+        })
+    elseif battery_warning and level ~= battery_warning_level then
+        naughty.replace_text(battery_warning, title, text)
+    end
+    battery_warning_level = level
+end
+
 vicious.register(statusw, vicious.widgets.bat, function(widget, args)
+    update_battery_warning(args[1], tonumber(args[2]))
     if args[1] == "+" then -- charging
         set_battery_icon("\u{f376}")
     else

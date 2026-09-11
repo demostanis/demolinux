@@ -19,9 +19,14 @@ expect_middle_color() {
 	exit 1
 }
 
-yad --title='GTK theme test' &
+# Yad is deliberately floating; its default tiny dialog need not cover the
+# screen midpoint sampled below (which can otherwise hit the wallpaper).
+yad --title='GTK theme test' --width=1200 --height=800 --center &
 expectwin 'GTK theme test'
 expectfocus 'GTK theme test'
+expectawesome 'local c = client.focus; local s = c.screen.geometry
+	return c.x + 64 < s.width / 2 and c.x + c.width - 64 > s.width / 2
+		and c.y + 64 < s.height / 2 and c.y + c.height - 64 > s.height / 2'
 expect_middle_color "srgb(26,9,45)"
 quitwin
 

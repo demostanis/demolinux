@@ -132,6 +132,7 @@ python-nitrokey
 aur paru
 openbsd-netcat
 tinyxxd
+scaleway-cli
 mesa-utils
 poppler
 tmux

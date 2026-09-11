@@ -1,0 +1,88 @@
+#!/bin/bash
+
+# Host-side reboot and hotplug test, invoked by tests/run like sysupdate_snapshot.
+set -ex
+
+wait_for_ram_guest() {
+	local command=$1 deadline=$((SECONDS + ${2:-180}))
+	while (( SECONDS < deadline )); do
+		kill -0 "$vm_pid" || return 1
+		if timeout 10 ./dctrl shell "$command"; then
+			return
+		fi
+		sleep 2
+	done
+	echo "RAM guest did not satisfy: $command" >&2
+	return 1
+}
+
+first_boot=$(timeout 10 ./dctrl shell 'cat /proc/sys/kernel/random/boot_id')
+firmware_probe='test ! -d /sys/firmware/efi'
+[[ ${DEMOLINUX_TEST_FIRMWARE:-bios} != uefi ]] || firmware_probe='test -d /sys/firmware/efi'
+timeout 10 ./dctrl shell "$firmware_probe"
+timeout 30 ./dctrl shell <<'EOC'
+sudo bash -eu <<'ROOT'
+test -b /dev/vda
+mkdir -p /run/archiso/persistfs/upperdir/etc
+echo persisted > /run/archiso/persistfs/upperdir/etc/copytoram-test
+setfattr -n user.copytoram -v kept /run/archiso/persistfs/upperdir/etc/copytoram-test
+setfacl -m u:1000:r-- /run/archiso/persistfs/upperdir/etc/copytoram-test
+ln /run/archiso/persistfs/upperdir/etc/copytoram-test /run/archiso/persistfs/upperdir/etc/copytoram-link
+echo disk-only > /data/copytoram-disk-only
+mount -o remount,rw /run/archiso/bootmnt
+sed -i -e 's/^set default=.*/set default=demolinux-ram/' \
+	-e 's/^set timeout=.*/set timeout=1/' /run/archiso/bootmnt/grub/grub.cfg
+sync
+ROOT
+EOC
+
+timeout 10 ./dctrl shell 'sudo reboot' || :
+ssh -p "${DEMOLINUX_SSH_PORT:-60022}" -S "$DEMOLINUX_SSH_CONTROL_PATH" \
+	-O exit demostanis@localhost 2>/dev/null || :
+wait_for_ram_guest "test \"\$(cat /proc/sys/kernel/random/boot_id)\" != '$first_boot' && grep -qw copytoram=y /proc/cmdline" 600
+wait_for_ram_guest 'systemctl is-system-running --quiet && pgrep -x Xorg && pgrep -x awesome'
+
+timeout 30 ./dctrl shell <<'EOC'
+bash -eu <<'CHECK'
+for volume in airootfs persistfs data; do
+	test "$(findmnt -n -o FSTYPE /run/archiso/$volume)" = tmpfs
+done
+test -z "$(findmnt -rn -S /dev/vda3)"
+test -z "$(findmnt -rn -S /dev/vda2)"
+test -z "$(swapon --noheadings --show)"
+test ! -e /data/copytoram-disk-only
+CHECK
+EOC
+
+echo "Unplugging the root disk (${DEMOLINUX_TEST_FIRMWARE:-bios})..."
+reply=$({
+	printf '%s\n' '{"execute":"qmp_capabilities"}'
+	printf '%s\n' '{"execute":"device_del","arguments":{"id":"bootdisk"}}'
+} | timeout 10 nc -q 1 -w 5 localhost "${DEMOLINUX_QMP_PORT:-4444}")
+printf '%s\n' "$reply"
+jq -e -s 'all(.[]; has("error") | not) and ([.[] | select(has("return"))] | length == 2)' <<< "$reply"
+wait_for_ram_guest 'test ! -e /sys/block/vda && test ! -b /dev/vda' 30
+
+timeout 90 ./dctrl shell <<'EOC'
+bash -eu <<'CHECK'
+sudo sh -c 'sync; echo 3 > /proc/sys/vm/drop_caches'
+test "$(cat /etc/copytoram-test)" = persisted
+test "$(getfattr --only-values -n user.copytoram /etc/copytoram-test)" = kept
+getfacl -cpn /etc/copytoram-test | grep -q user:1000:r--
+test "$(stat -c %i /etc/copytoram-test)" = "$(stat -c %i /etc/copytoram-link)"
+test ! -e /data/copytoram-disk-only
+python3 -c 'import ssl, sqlite3, hashlib; print(ssl.OPENSSL_VERSION)'
+sha256sum /usr/bin/bash /usr/bin/python3 /usr/lib/firefox/libxul.so
+echo after-unplug > /data/copytoram-ram-only
+test "$(cat /data/copytoram-ram-only)" = after-unplug
+sudo sh -c 'echo ram-persistence > /etc/copytoram-after'
+sudo persistfs add /etc/copytoram-after
+test -f /run/archiso/persistfs/upperdir/etc/copytoram-after
+systemctl is-active sshd
+pgrep -x Xorg
+pgrep -x awesome
+test -z "$(systemctl --failed --no-legend --plain)"
+CHECK
+EOC
+
+echo "PASS test copytoram: root disk unplugged, cold reads and metadata intact, disk data not copied"

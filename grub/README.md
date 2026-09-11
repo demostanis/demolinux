@@ -22,3 +22,10 @@ the desktop. Disk `/data` is not copied: the session gets an empty, temporary
 `/data` instead. Writes to `/data` and `persistfs` in this mode are lost on reboot.
 Disk swap and snapshots are unavailable. A copy failure stops boot rather than
 pretending that the disk is safe to unplug.
+
+Run `./tests/run copytoram` for the BIOS unplug regression, or
+`DEMOLINUX_TEST_FIRMWARE=uefi ./tests/run copytoram` for UEFI. Like the system-update
+test, it runs host-side reboot/hotplug checks through the shared VM harness.
+Both variants also run in the full test suite, sequentially because each RAM
+guest needs 12 GiB. The test checks that saved persistence survives, disk `/data`
+is not copied, and the desktop remains usable after disk removal and cache drops.

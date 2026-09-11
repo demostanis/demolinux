@@ -34,7 +34,7 @@ shard() {
     DEMOLINUX_SSH_PORT=$((60022 + index)) \
     DEMOLINUX_QMP_PORT=$((4444 + index)) \
     DEMOLINUX_TEST_LOG_DIR="$logs" \
-        timeout --kill-after=10s 360s ./tests/run "$@" > "$logs/tests.log" 2>&1 &
+        timeout --kill-after=10s "${DEMOLINUX_TEST_TIMEOUT:-360}s" ./tests/run "$@" > "$logs/tests.log" 2>&1 &
     pids+=("$!")
     names+=("$name")
 }
@@ -46,15 +46,26 @@ shard applications awesome/launcher dataize firefox mpv nvim opencode persistfs 
 shard system theme sysupdate sysupdate_snapshot
 
 failed=0
-for index in "${!pids[@]}"; do
-    if wait "${pids[$index]}"; then
-        printf 'PASS: %s\n' "${names[$index]}"
-    else
-        printf 'FAIL: %s\n' "${names[$index]}"
-        cat ".ci/tests/${names[$index]}/tests.log"
-        failed=1
-    fi
-    grep -E '^VM SSH ready|^PASS test |^VM harness took' ".ci/tests/${names[$index]}/tests.log" || true
+wait_shards() {
+    local index
+    for index in "${!pids[@]}"; do
+        if wait "${pids[$index]}"; then
+            printf 'PASS: %s\n' "${names[$index]}"
+        else
+            printf 'FAIL: %s\n' "${names[$index]}"
+            cat ".ci/tests/${names[$index]}/tests.log"
+            failed=1
+        fi
+        grep -E '^VM SSH ready|^PASS test |^VM harness took' ".ci/tests/${names[$index]}/tests.log" || true
+    done
+    pids=()
+    names=()
+}
+wait_shards
+# RAM guests need 12 GiB each, so run them after the parallel shards, one at a time.
+for firmware in bios uefi; do
+    DEMOLINUX_TEST_FIRMWARE=$firmware DEMOLINUX_TEST_TIMEOUT=900 \
+        shard "copytoram-$firmware" copytoram
+    wait_shards
 done
-pids=()
 exit "$failed"

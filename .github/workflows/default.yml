@@ -133,7 +133,9 @@ jobs:
           ' > .ci/release.log 2>&1 < /dev/null &
 
       - name: Run all tests in isolated VMs
-        run: bash .github/scripts/run-tests.sh out/demolinux*.img
+        run: |
+          sudo apt-get install -y ovmf
+          bash .github/scripts/run-tests.sh out/demolinux*.img
 
       - name: Delete the temporary SSH key
         if: always()

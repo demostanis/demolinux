@@ -24,6 +24,27 @@ die() {
 
 cd "$(dirname "$(realpath "$0")")"/..
 set -o pipefail
+has_ram=0
+for name in "$@"; do
+	[[ "$name" != copytoram ]] || has_ram=1
+done
+# Reboot/unplug scenarios need a fresh VM, not one already consumed by sysupdate.
+if (( $# == 0 || (has_ram && $# > 1) )); then
+	selected=("$@")
+	if (( $# == 0 )); then
+		selected=(${${(f)"$(find tests -mindepth 1 -maxdepth 1 ! -name run ! -name utils)"}#tests/})
+	fi
+	selected=("${(@)selected:#copytoram}")
+	if (( ${#selected} )); then
+		./tests/run "${selected[@]}" || exit $?
+	fi
+	for firmware in bios uefi; do
+		DEMOLINUX_TEST_FIRMWARE=$firmware \
+			DEMOLINUX_TEST_LOG_DIR="${DEMOLINUX_TEST_LOG_DIR:-.ci/tests}/copytoram-$firmware" \
+			./tests/run copytoram || exit $?
+	done
+	exit 0
+fi
 log_dir=${DEMOLINUX_TEST_LOG_DIR:-.}
 mkdir -p -- "$log_dir"
 vm_log="$log_dir/console.log"
@@ -40,7 +61,18 @@ if [[ -z "$image" ]]; then
 	(( ${#images} )) || die 'No image found. Run ./demolinux build first.'
 	image=$images[1]
 fi
-./bin/run_archiso -S -T 10G -H -i "$image" > >(cat -v | tee "$vm_log") 2>&1 &
+disk_size=10G
+if (( has_ram )); then
+	export DEMOLINUX_VM_MEMORY=${DEMOLINUX_RAM_TEST_MEMORY:-12288}
+	disk_size=20G
+fi
+vm_options=(-S -T "$disk_size" -H -i "$image")
+case ${DEMOLINUX_TEST_FIRMWARE:-bios} in
+	bios) ;;
+	uefi) vm_options+=(-u) ;;
+	*) die 'DEMOLINUX_TEST_FIRMWARE must be bios or uefi.' ;;
+esac
+./bin/run_archiso "${vm_options[@]}" > >(cat -v | tee "$vm_log") 2>&1 &
 vm_pid=$!
 
 # can't use timeout 60 zsh -c ... since signal
@@ -80,6 +112,12 @@ fi
 echo changing display resolution...
 ./dctrl shell 'DISPLAY=:0 /usr/lib/xrandr.sh >/dev/null 2>&1'
 
+if (( has_ram )); then
+	( . ./tests/copytoram )
+	(( $? == 0 )) || die 'copytoram failed'
+	exit 0
+fi
+
 selected=("$@")
 if (( $# == 0 )); then
 	selected=(${${(f)"$(find tests -mindepth 1 -maxdepth 1 ! -name run ! -name utils)"}#tests/})
@@ -106,7 +144,8 @@ printf '\nvo=x11\n' >> ~/.config/mpv/mpv.conf || exit 1
 
 while read -r test; do
 	if [ "$test" != ./run -a "$test" != ./utils \
-		-a "$test" != ./sysupdate -a "$test" != ./sysupdate_snapshot ]; then
+		-a "$test" != ./sysupdate -a "$test" != ./sysupdate_snapshot \
+		-a "$test" != ./copytoram ]; then
 		echo "running $test at guest +${SECONDS}s..."
 		test_started=$SECONDS
 		(

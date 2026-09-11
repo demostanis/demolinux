@@ -5,7 +5,7 @@ pkgbase=xorg-server
 pkgname=('xorg-server' 'xorg-server-xephyr' 'xorg-server-xvfb' 'xorg-server-xnest'
          'xorg-server-common' 'xorg-server-devel')
 pkgver=21.1.16
-pkgrel=26
+pkgrel=27
 arch=('x86_64')
 license=('custom')
 groups=('xorg')
@@ -24,6 +24,7 @@ source=(https://xorg.freedesktop.org/releases/individual/xserver/${pkgbase}-${pk
         0003-Allow-untrusted-X-clients-to-manage-selection.patch
         0004-native-xinput-with-keyboard-guards.patch
         0005-enable-xkb-with-keyboard-privacy.patch
+        0006-support-nettle-4.patch
 )
 
 prepare() {
@@ -33,6 +34,7 @@ prepare() {
   patch -Np1 -i ../0003-Allow-untrusted-X-clients-to-manage-selection.patch
   patch -Np1 -i ../0004-native-xinput-with-keyboard-guards.patch
   patch -Np1 -i ../0005-enable-xkb-with-keyboard-privacy.patch
+  patch -Np1 -i ../0006-support-nettle-4.patch
 }
 
 build() {
@@ -179,4 +181,5 @@ sha256sums=('b14a116d2d805debc5b5b2aac505a279e69b217dae2fae2dfcb62400471a9970'
             'fb2a9181e0b468f3c0dbd0e6ae65af0829b0bfa1dc9f4ef57c923f4b9459ef93'
             'cee1751640fb83ace63176a388d8cb8969f7caf5427c094efbb62a7df814efb6'
             '4adebe283c6983d241e33db8092753a84e49d2586c1bec0155274ddd98d5ef02'
-            'b112d90feee58714c2367ceebf5f72b7de422431ad21fd4f42a56c40486d4b10')
+            'b112d90feee58714c2367ceebf5f72b7de422431ad21fd4f42a56c40486d4b10'
+            '5451eca0e68a0aeea87ce98bae5acf97e515b4ecb2afd35e476481ada1ab7279')

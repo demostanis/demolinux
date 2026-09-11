@@ -70,6 +70,14 @@ wait_for_recorder_status() {
 
 recording=
 cleanup_recording_test() {
+	local result=$?
+	if (( result != 0 )) && [[ -f /tmp/record-playback.log ]]; then
+		cat /tmp/record-playback.log >&2
+	fi
+	if (( result != 0 )); then
+		xrefresh
+		import -window root /data/screenshot.png || :
+	fi
 	screenrecord stop >/dev/null 2>&1 || :
 	[ -n "$recording" ] && rm -f "$recording"
 	rm -f record.mp4
@@ -93,12 +101,12 @@ recording=$(screenrecord output)
 ffprobe -v error -select_streams v:0 \
 	-show_entries stream=codec_name,width,height \
 	-of default=noprint_wrappers=1 "$recording"
-# Keep the recorded clip visible long enough to inspect the xdg-open result.
-ffmpeg -v error -stream_loop -1 -i "$recording" -t 30 -c copy record.mp4
+# Keep playback alive beyond the bounded wait for a software-rendered window.
+ffmpeg -v error -stream_loop -1 -i "$recording" -t 120 -c copy record.mp4
 rm -f "$recording"
 recording=
 xdg-open record.mp4 >/tmp/record-playback.log 2>&1 &
-expectwin 'record.mp4 - mpv'
+expectwin 'record.mp4 - mpv' 30
 activatewin 'record.mp4 - mpv'
 quitwin
 

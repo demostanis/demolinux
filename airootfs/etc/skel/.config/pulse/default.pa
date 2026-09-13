@@ -1,0 +1,6 @@
+.include /etc/pulse/default.pa
+
+# Do not fail startup on machines without a microphone.
+.nofail
+set-source-mute @DEFAULT_SOURCE@ no
+.fail

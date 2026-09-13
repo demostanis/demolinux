@@ -2,19 +2,24 @@
 
 pkgname=opencode
 pkgver=1.2.27
-_pkgver=1.2.27.65-demolinux
-pkgrel=47
+_pkgver=1.2.27.66-demolinux
+pkgrel=48
 pkgdesc='The open source coding agent'
 arch=('x86_64')
 url='https://github.com/anomalyco/opencode'
 license=('MIT')
 depends=(
+  'alsa-plugins'
+  'alsa-utils'
   'curl'
   'gcc-libs'
   'glibc'
   'icu'
   'ripgrep'
   'tar'
+  'uv'
+  'xdotool'
+  'xorg-xprop'
 )
 makedepends=(
   'bun'
@@ -32,7 +37,7 @@ _opentui_ver=0.1.79
 source=(
   "https://github.com/demostanis/opencode/archive/refs/tags/$_pkgver.tar.gz"
 )
-sha256sums=('14c26d780c5078af0ac01501e557b760b381a11c909437b9492e83de8ac69855')
+sha256sums=('2ab98c487f25c39631e385af7c8b1955bafd7edb6e6516970df86a4198dcd4bd')
 
 prepare() {
   cd "$srcdir/$pkgname-$_pkgver"
@@ -54,6 +59,8 @@ package() {
   x86_64) dir=opencode-linux-x64-baseline ;;
   esac
   install -vDm755 -t "$pkgdir/usr/bin" "packages/opencode/dist/$dir/bin/opencode"
+  install -vDm644 -t "$pkgdir/usr/share/$pkgname/voice" \
+    packages/opencode/src/cli/cmd/tui/voice/{bridge,wake}.py
 
   install -vDm644 -t "$pkgdir/usr/share/licenses/$pkgname" LICENSE
 

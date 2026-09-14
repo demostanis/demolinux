@@ -1,0 +1,105 @@
+# Maintainer: demostanis <demostanis@protonmail.com>
+
+pkgname=opencode-voice
+pkgver=1.2.27
+_pkgver=1.2.27.70-demolinux
+pkgrel=2
+pkgdesc='Private OpenCode voice daemon and offline English/French wake models'
+arch=('x86_64')
+url='https://github.com/demostanis/opencode'
+license=('MIT' 'Apache-2.0' 'BSD-2-Clause' 'BSD-3-Clause' 'ISC' 'MPL-2.0' 'PSF-2.0' 'LGPL-2.1-or-later' 'GPL-3.0-or-later')
+depends=(
+  'python>=3.14'
+  'python<3.15'
+  'glibc'
+  'gcc-libs'
+  'zlib'
+  'alsa-utils'
+  'alsa-plugins'
+  'libpulse'
+)
+makedepends=('python-pip')
+options=('!debug' '!strip')
+_voice="opencode-$_pkgver/packages/opencode/src/cli/cmd/tui/voice"
+_models=('vosk-model-small-en-us-0.15' 'vosk-model-small-fr-0.22')
+source=(
+  "https://github.com/demostanis/opencode/archive/refs/tags/$_pkgver.tar.gz"
+  'https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip'
+  'https://alphacephei.com/vosk/models/vosk-model-small-fr-0.22.zip'
+  'requirements.txt'
+)
+sha256sums=('e9c780d8eaaae405a5fe83819fa140f822bd3da45aa526f4bc1b0542f0da828d'
+            '30f26242c4eb449f948e42cb302dd7a686cb29a3423a8367f99ff41780942498'
+            'cabf6180e177eb9b3a9a9d43a437bd5e549f3a7d09525e5d69a3fed787be12ad'
+            '83fa769cb1ae44c42d65d021db050bd680d5b9ef061a49f48087dc617201346c')
+
+prepare() {
+  local file
+  for file in daemon.py bridge.py wake.py; do
+    if [[ ! -f "$srcdir/$_voice/$file" ]]; then
+      error "Missing voice/$file in OpenCode $_pkgver."
+      return 1
+    fi
+  done
+}
+
+build() {
+  cd "$srcdir" || return
+  export PYTHONDONTWRITEBYTECODE=1
+  python -c 'import sys; assert sys.version_info[:2] == (3, 14), "Rebuild/update Python ABI bounds"'
+  python -m pip --isolated wheel --wheel-dir wheels -r requirements.txt
+  python -m venv --clear --without-pip venv
+  python -m pip --isolated --python venv/bin/python install \
+    --no-index --find-links wheels --no-compile -r requirements.txt
+}
+
+check() {
+  cd "$srcdir" || return
+  export PYTHONDONTWRITEBYTECODE=1
+  python -m pip --isolated --python venv/bin/python check
+  venv/bin/python -E -s -B "$_voice/daemon.py" --help
+  venv/bin/python -E -s -B - "$srcdir/$_voice" "$srcdir" <<'PY'
+import asyncio
+from pathlib import Path
+import sys
+
+import aiohttp
+import aiortc
+import av
+import vosk
+import webrtcvad
+
+sys.path.insert(0, sys.argv[1])
+import bridge
+from wake import Gate
+
+models = asyncio.run(bridge.models(Path(sys.argv[2]), download=False))
+assert len(models) == 2
+gate = Gate(models)
+assert len(gate.recognizers) == 2
+assert not webrtcvad.Vad(2).is_speech(bytes(1920), 48000)
+PY
+}
+
+package() {
+  local dir="$pkgdir/usr/lib/$pkgname" file model
+  install -dm755 "$dir"
+  cp -a --no-preserve=ownership "$srcdir/venv/." "$dir/"
+
+  # Only the Python symlinks are used; wheel entry points embed the build path.
+  for file in "$dir/bin/"*; do
+    case "${file##*/}" in
+      python|python3|python3.14) ;;
+      *) rm "$file" ;;
+    esac
+  done
+  sed -i '/^command = /d' "$dir/pyvenv.cfg"
+  install -m644 "$srcdir/$_voice/"{daemon,bridge,wake}.py "$dir/"
+  install -Dm644 "$srcdir/requirements.txt" "$dir/requirements.txt"
+
+  install -dm755 "$pkgdir/usr/share/$pkgname/models"
+  for model in "${_models[@]}"; do
+    cp -a --no-preserve=ownership "$srcdir/$model" "$pkgdir/usr/share/$pkgname/models/"
+  done
+  install -Dm644 "$srcdir/opencode-$_pkgver/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

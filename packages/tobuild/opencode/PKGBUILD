@@ -2,22 +2,20 @@
 
 pkgname=opencode
 pkgver=1.2.27
-_pkgver=1.2.27.68-demolinux
-pkgrel=50
+_pkgver=1.2.27.70-demolinux
+pkgrel=51
 pkgdesc='The open source coding agent'
 arch=('x86_64')
 url='https://github.com/anomalyco/opencode'
 license=('MIT')
 depends=(
-  'alsa-plugins'
-  'alsa-utils'
   'curl'
   'gcc-libs'
   'glibc'
   'icu'
+  'opencode-voice>=1.2.27-2'
   'ripgrep'
   'tar'
-  'uv'
   'xdotool'
   'xorg-xprop'
 )
@@ -37,10 +35,10 @@ _opentui_ver=0.1.79
 source=(
   "https://github.com/demostanis/opencode/archive/refs/tags/$_pkgver.tar.gz"
 )
-sha256sums=('43397617ac56012e14880dcc684be8fabb04aeb1d85a354adf8d10bb387f4ae6')
+sha256sums=('e9c780d8eaaae405a5fe83819fa140f822bd3da45aa526f4bc1b0542f0da828d')
 
 prepare() {
-  cd "$srcdir/$pkgname-$_pkgver"
+  cd "$srcdir/$pkgname-$_pkgver" || return
 
   sed -i "s/\"packageManager\": \"bun@[^\"]*\"/\"packageManager\": \"bun@$(bun --version)\"/" package.json
 
@@ -48,22 +46,21 @@ prepare() {
 }
 
 build() {
-  cd $pkgname-$_pkgver/packages/opencode
+  cd "$srcdir/$pkgname-$_pkgver/packages/opencode" || return
   OPENCODE_VERSION=$pkgver bun run ./script/build.ts --single --baseline
 }
 
 package() {
-  cd $pkgname-$_pkgver
+  cd "$srcdir/$pkgname-$_pkgver" || return
   case $CARCH in
   aarch64) dir=opencode-linux-arm64 ;;
   x86_64) dir=opencode-linux-x64-baseline ;;
   esac
   install -vDm755 -t "$pkgdir/usr/bin" "packages/opencode/dist/$dir/bin/opencode"
-  install -vDm644 -t "$pkgdir/usr/share/$pkgname/voice" \
-    packages/opencode/src/cli/cmd/tui/voice/{bridge,wake}.py
 
   install -vDm644 -t "$pkgdir/usr/share/licenses/$pkgname" LICENSE
 
+  export OPENCODE_DISABLE_MODELS_FETCH=1
   SHELL=/bin/bash "$pkgdir/usr/bin/opencode" completion \
     | install -vDm644 /dev/stdin "$pkgdir/usr/share/bash-completion/completions/opencode"
   SHELL=/bin/zsh "$pkgdir/usr/bin/opencode" completion \

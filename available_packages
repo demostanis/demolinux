@@ -149,6 +149,7 @@ docker-buildx
 docker-compose
 python-virtualenv
 local opencode
+local opencode-voice
 local firefox-devtools-mcp
 typescript-language-server
 bun

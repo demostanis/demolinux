@@ -2,8 +2,8 @@
 
 pkgname=opencode-voice
 pkgver=1.2.27
-_pkgver=1.2.27.70-demolinux
-pkgrel=2
+_pkgver=1.2.27.71-demolinux
+pkgrel=3
 pkgdesc='Private OpenCode voice daemon and offline English/French wake models'
 arch=('x86_64')
 url='https://github.com/demostanis/opencode'
@@ -28,7 +28,7 @@ source=(
   'https://alphacephei.com/vosk/models/vosk-model-small-fr-0.22.zip'
   'requirements.txt'
 )
-sha256sums=('e9c780d8eaaae405a5fe83819fa140f822bd3da45aa526f4bc1b0542f0da828d'
+sha256sums=('72a0c365255133b87a8a91cf8fc9f8288f9d7cb7abf0ebe0c5c44830b4ef38f0'
             '30f26242c4eb449f948e42cb302dd7a686cb29a3423a8367f99ff41780942498'
             'cabf6180e177eb9b3a9a9d43a437bd5e549f3a7d09525e5d69a3fed787be12ad'
             '83fa769cb1ae44c42d65d021db050bd680d5b9ef061a49f48087dc617201346c')

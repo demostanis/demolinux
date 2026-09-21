@@ -8,3 +8,5 @@ When producing simple demo web apps:
 Never start git merges. Always prefer rebases.
 
 Avoid activating or moving X11 windows unless really necessary. Use `import` if you need to take screenshots of windows outside the viewport.
+
+Do not include unnecessary verbose text in UI. Things like implementation details, implicit details, etc. do not always need to end up in the frontend, neither do motivation sentences. Keep things minimal, not verbose.

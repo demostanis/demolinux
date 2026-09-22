@@ -2,10 +2,14 @@
   "recent": [
     {
       "providerID": "openai",
-      "modelID": "gpt-6-astra"
+      "modelID": "gpt-6-sol"
     }
   ],
   "favorite": [
+    {
+      "providerID": "openai",
+      "modelID": "gpt-6-sol"
+    },
     {
       "providerID": "openai",
       "modelID": "gpt-6-astra"

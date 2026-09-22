@@ -416,25 +416,51 @@ case $1 in
 		;;
 	list)
 		all=0
+		packages=0
 		format='%s\n'
 		for option in "${@:2}"; do
 			case "$option" in
 				--all) all=1 ;;
+				--packages) packages=1 ;;
 				--null) format='%s\0' ;;
 				*) printf 'Unknown list option: %s\n' "$option" >&2; exit 1 ;;
 			esac
 		done
+		if [[ "$packages" = 1 ]]; then
+			declare -A listed_packages=()
+			for desc in "$pfs_dir/upperdir$pacmandb_dir"/*/desc; do
+				[[ -f "$desc" ]] || continue
+				db_name "$desc" || exit 1
+				pkg=$REPLY
+				if [[ -z "${listed_packages[$pkg]:-}" ]]; then
+					printf "$format" "$pkg"
+					listed_packages[$pkg]=1
+				fi
+			done
+			exit 0
+		fi
+		declare -A package_paths=()
+		if [[ "$all" = 0 ]]; then
+			for manifest in "$pfs_dir/upperdir$pacmandb_dir"/*/files; do
+				[[ -f "$manifest" ]] || continue
+				package_manifest "$manifest" paths || exit 1
+				for file in "${paths[@]}"; do package_paths[${file%/}]=1; done
+			done
+		fi
 		for file in "${indexed_files[@]}"; do
 			if [[ "$all" = 0 ]]; then
 				[[ "$file" = "$pacmandb_dir/"* ]] && continue
+				[[ -n "${package_paths[$file]:-}" ]] && continue
 				is_whiteout "$pfs_dir/upperdir$file" && continue
-				pacman -Qqo -- "$file" >/dev/null 2>&1 && continue
+				if [[ ! -e "$airfs_dir$file" && ! -L "$airfs_dir$file" ]]; then
+					pacman -Qqo -- "$file" >/dev/null 2>&1 && continue
+				fi
 			fi
 			printf "$format" "$file"
 		done
 		;;
 	*)
-		echo usage: "$0 [add|remove|pkg|ipkg|diff|list] [--all] [--null]" >&2
+		echo usage: "$0 [add|remove|pkg|ipkg|diff|list] [--all] [--packages] [--null]" >&2
 		echo
 		echo \ add: add a file to persistfs.
 		echo
@@ -446,8 +472,9 @@ case $1 in
 		echo
 		echo \ diff: show a diff between a file in the airootfs and in the persistfs.
 		echo
-		echo \ list: list files in the persistfs. if --all is specified, files from packages are also listed.
-		echo \ \ use --null for NUL-separated filenames.
+		echo \ list: list non-package files and overrides of system files in the persistfs.
+		echo \ \ use --all to include all package files, or --packages to list saved package names instead.
+		echo \ \ use --null for NUL-separated output.
 		exit 1
 		;;
 esac

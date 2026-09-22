@@ -479,6 +479,11 @@ whiteout "$db/example-1-1"
 [[ ! -e "$upper$fixture/live/shared" && -d "$upper$fixture/live/dir" ]]
 pfs pkg example
 whiteout "$db/example-1-1"
+pfs list --packages --null
+mapfile -d '' -t names < "$fixture/stdout"
+[[ ${#names[@]} = 1 && ${names[0]} = example ]]
+pfs list --null
+[[ ! -s "$fixture/stdout" ]]
 mount -t overlay overlay -o "lowerdir=$base,upperdir=$upper,workdir=/run/archiso/persistfs/work,index=off" "$fixture/merged"
 merged=$fixture/merged
 [[ ! -e "$merged$fixture/live/gone" && ! -e "$merged$db/example-1-1" ]]
@@ -537,6 +542,26 @@ printf 'keep\n' > "$fixture/victim/gone"
 ln -s "$fixture/victim" "$upper$fixture/live/dir"
 if pfs pkg example; then exit 1; fi
 [[ $(< "$fixture/victim/gone") = keep ]]
+
+reset_fixture
+package "$base" example 1-1 packaged
+package '' example 1-1 packaged
+package "$base" other 1-1 manual
+package '' other 1-1 manual
+pfs pkg example
+pfs add "$fixture/live/manual"
+pfs list
+[[ $(< "$fixture/stdout") = "$fixture/live/manual" ]]
+
+reset_fixture
+pfs list --packages
+[[ ! -s "$fixture/stdout" ]]
+package "$upper" example 1-1
+package "$upper" example 2-1
+pfs list --packages --null
+mapfile -d '' -t names < "$fixture/stdout"
+[[ ${#names[@]} = 1 && ${names[0]} = example ]]
+if pfs list --unknown; then exit 1; fi
 WHITEOUT_TEST
 }
 
@@ -571,6 +596,16 @@ test_package_versions_providers_and_recursive_dependencies() {
 		[[ -f "$upper/opt/$stem/$name with space" ]]
 		[[ -f "$upper/var/lib/pacman/local/$name-r1-1/desc" ]]
 	done
+	pfs list --packages --null
+	mapfile -d '' -t entries < "$root/stdout"
+	for name in "${packages[@]}"; do index_count "$name" 1; done
+	pfs list --packages
+	for name in "${packages[@]}"; do
+		grep -Fxq -- "$name" "$root/stdout"
+	done
+	pfs list --null
+	mapfile -d '' -t entries < "$root/stdout"
+	for name in "${packages[@]}"; do index_count "/opt/$stem/$name with space" 0; done
 	pfs pkg "$virtual>=2"
 	expect_failure pfs pkg "$virtual>2"
 }

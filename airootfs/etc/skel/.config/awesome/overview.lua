@@ -3,13 +3,58 @@
 awesome.register_xproperty("WM_NAME", "string")
 
 local content_cache = {}
+local last_visible_content = setmetatable({}, { __mode = "k" })
+
+local function snapshot_visible_content(c)
+    if not c.valid or c.minimized or c.hidden or c.is_minimized_tab
+        or not c:isvisible() then
+        return nil
+    end
+
+    local ok, snapshot = pcall(function()
+        local su = gears.surface(c.content)
+        local width, height = gears.surface.get_size(su)
+        if width <= 0 or height <= 0 then return nil end
+
+        local image = last_visible_content[c]
+        if image then
+            local old_width, old_height = gears.surface.get_size(image)
+            if old_width ~= width or old_height ~= height then
+                image = nil
+            end
+        end
+        if not image then
+            image = cairo.ImageSurface.create(cairo.Format.ARGB24, width, height)
+            last_visible_content[c] = image
+        end
+        local cr = cairo.Context(image)
+        cr:set_operator(cairo.Operator.SOURCE)
+        cr:set_source_surface(su, 0, 0)
+        cr:paint()
+        image:flush()
+        return image
+    end)
+    if ok then return snapshot end
+end
+
+client.connect_signal("focus", snapshot_visible_content)
+gears.timer.delayed_call(function()
+    for _, c in ipairs(client.get()) do
+        snapshot_visible_content(c)
+    end
+end)
+
 function draw(c, cache_content)
     local geo = c:geometry()
     local content = cairo.ImageSurface.create(cairo.Format.ARGB24, geo.width, geo.height)
     local cr = cairo.Context(content)
     local su
 
-    su = content_cache[c] or gears.surface(c.content)
+    su = content_cache[c] or snapshot_visible_content(c) or last_visible_content[c]
+    if not su then
+        local ok, current = pcall(function() return gears.surface(c.content) end)
+        if ok then su = current end
+    end
     if cache_content then
         content_cache[c] = su
     end
@@ -31,8 +76,10 @@ function draw(c, cache_content)
         cr:set_source_surface(titlebarsu, 0, 0)
         cr:paint()
     end
-    cr:set_source_surface(su, 0, titlebarheight)
-    cr:paint()
+    if su then
+        cr:set_source_surface(su, 0, titlebarheight)
+        cr:paint()
+    end
 
     return content
 end

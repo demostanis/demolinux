@@ -197,6 +197,123 @@ package_db() {
 	[[ -f "$REPLY/desc" && -f "$REPLY/files" ]]
 }
 
+db_name() {
+	local field
+	while IFS= read -r field; do
+		[[ "$field" = %NAME% ]] || continue
+		IFS= read -r REPLY && [[ -n "$REPLY" ]]
+		return
+	done < "$1"
+	return 1
+}
+
+package_manifest() {
+	local file section=0
+	local -n manifest_paths=$2
+	manifest_paths=()
+	while IFS= read -r file; do
+		if [[ "$file" = %*% ]]; then
+			section=0
+			[[ "$file" != %FILES% ]] || section=1
+			continue
+		fi
+		[[ "$section" = 1 && -n "$file" ]] || continue
+		case "/${file%/}/" in
+			*//*|*/./*|*/../*)
+				printf 'Invalid package path: %s\n' "$file" >&2
+				return 1
+				;;
+		esac
+		safe_path "/${file%/}" || return 1
+		manifest_paths+=( "/$file" )
+	done < "$1"
+}
+
+is_whiteout() {
+	[[ ! -L "$1" && -c "$1" && $(stat -c '%t:%T' -- "$1") = 0:0 ]]
+}
+
+whiteout() {
+	local path="$1" saved="$pfs_dir/upperdir$1"
+	safe_path "$path" || return 1
+	if ! is_whiteout "$saved"; then
+		if [[ -d "$saved" && ! -L "$saved" ]]; then
+			printf 'Refusing to whiteout saved directory: %s\n' "$path" >&2
+			return 1
+		fi
+		mkdir -p -- "${saved%/*}" || return 1
+		rm -f -- "$saved" || return 1
+		mknod -- "$saved" c 0 0 || return 1
+	fi
+	index_remove "$path"
+	index_add "$path"
+}
+
+clear_whiteouts() {
+	local path="$1"
+	safe_path "$path" || return 1
+	while [[ -n "$path" && "$path" != / ]]; do
+		if is_whiteout "$pfs_dir/upperdir$path"; then
+			rm -f -- "$pfs_dir/upperdir$path" || return 1
+			index_remove "$path"
+		fi
+		path=${path%/*}
+	done
+}
+
+replace_package() {
+	local pkg="$1" db="$2" root desc old_db file parent covered owner
+	shift 2
+	local -a current=() previous=() obsolete=() old_databases=()
+	local -A current_paths=() current_files=() seen=()
+	package_manifest "$db/files" current || return 1
+	for file in "${current[@]}"; do
+		current_paths[${file%/}]=1
+		[[ "$file" = */ ]] || current_files[$file]=1
+	done
+	for root in "$airfs_dir" "$pfs_dir/upperdir"; do
+		for desc in "$root$pacmandb_dir/$pkg-"*/desc; do
+			[[ -f "$desc" ]] || continue
+			db_name "$desc" || return 1
+			[[ "$REPLY" = "$pkg" ]] || continue
+			old_db=${desc%/desc}
+			[[ "${old_db#"$root"}" != "$db" ]] || continue
+			package_manifest "$old_db/files" previous || return 1
+			old_databases+=( "${old_db#"$root"}" )
+			for file in "${previous[@]}"; do
+				[[ "$file" != */ && -z "${current_paths[$file]:-}" && -z "${seen[$file]:-}" ]] || continue
+				seen[$file]=1
+				# A new file replacing a directory already hides its old descendants.
+				parent=${file%/*}
+				covered=0
+				while [[ -n "$parent" ]]; do
+					[[ -z "${current_files[$parent]:-}" ]] || covered=1
+					parent=${parent%/*}
+				done
+				[[ "$covered" = 0 ]] || continue
+				# Do not hide paths now owned by another installed package.
+				if owner=$(pacman -Qqo -- "$file" 2>/dev/null) && [[ "$owner" != "$pkg" ]]; then
+					continue
+				fi
+				obsolete+=( "$file" )
+			done
+		done
+	done
+	for file in "${current[@]}" "$db/desc"; do
+		clear_whiteouts "${file%/}" || return 1
+	done
+	add_files "$@" || return 1
+	for file in "${obsolete[@]}"; do
+		whiteout "$file" || return 1
+	done
+	for old_db in "${old_databases[@]}"; do
+		safe_path "$old_db" || return 1
+		rm -rf -- "$pfs_dir/upperdir$old_db" || return 1
+		whiteout "$old_db" || return 1
+	done
+	save_index
+}
+
 case $1 in
 	add|remove|pkg|list) load_index || exit 1 ;;
 esac
@@ -259,7 +376,7 @@ case $1 in
 			done <<< "$listing"
 			files+=( "$db/desc" "$db/files" )
 			[[ ! -f "$db/mtree" ]] || files+=( "$db/mtree" )
-			add_files "${files[@]}" || return 1
+			replace_package "$pkg" "$db" "${files[@]}" || return 1
 
 			dependencies=$(expac -Q -l $'\n' '%D' "$pkg") || return 1
 			while IFS= read -r dep; do
@@ -310,6 +427,7 @@ case $1 in
 		for file in "${indexed_files[@]}"; do
 			if [[ "$all" = 0 ]]; then
 				[[ "$file" = "$pacmandb_dir/"* ]] && continue
+				is_whiteout "$pfs_dir/upperdir$file" && continue
 				pacman -Qqo -- "$file" >/dev/null 2>&1 && continue
 			fi
 			printf "$format" "$file"

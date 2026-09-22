@@ -370,6 +370,176 @@ test_remove_stops_at_nonempty_parent() {
 	index_count "$root/tree" 1
 }
 
+test_package_whiteouts() {
+	timeout 60 unshare --mount bash -s -- "$root" "$(command -v persistfs)" <<'WHITEOUT_TEST'
+set -Eeuo pipefail
+mount --make-rprivate /
+export fixture=$1
+trap 'printf "Whiteout test failed at line %s: %s\n" "$LINENO" "$BASH_COMMAND" >&2; cat "$fixture/stderr" >&2' ERR
+pfs_script=$2
+upper=/run/archiso/persistfs/upperdir
+base=/run/archiso/airootfs
+db=/var/lib/pacman/local
+export mock_db=$db
+mkdir -p "$fixture"/{pfs/upperdir,pfs/work,base,db,live,state,merged}
+mount --bind "$fixture/pfs" /run/archiso/persistfs
+mount --bind "$fixture/base" "$base"
+mount --bind "$fixture/db" "$db"
+
+# Mock only package queries; copying, whiteouts and OverlayFS use real tools.
+pacman() {
+	local name version file target=${@: -1}
+	case "$1" in
+		-Q|-Qql)
+			[[ -f "$fixture/state/$target" ]] || return 1
+			read -r version < "$fixture/state/$target"
+			if [[ "$1" = -Q ]]; then
+				printf '%s %s\n' "$target" "$version"
+			else
+				while IFS= read -r file; do
+					[[ -z "$file" || "$file" = %*% ]] || printf '/%s\n' "$file"
+				done < "$mock_db/$target-$version/files"
+			fi
+			;;
+		-Qqo)
+			for name in "$fixture/state/"*; do
+				[[ -f "$name" && "$name" != *.deps ]] || continue
+				read -r version < "$name"
+				while IFS= read -r file; do
+					if [[ "/$file" = "$target" ]]; then
+						printf '%s\n' "${name##*/}"
+						return 0
+					fi
+				done < "$mock_db/${name##*/}-$version/files"
+			done
+			return 1
+			;;
+		*) return 2 ;;
+	esac
+}
+expac() {
+	local name=${@: -1} version dep
+	case "$name" in
+		$'%n\t%P')
+			for name in "$fixture/state/"*; do
+				[[ -f "$name" && "$name" != *.deps ]] || continue
+				printf '%s\t\n' "${name##*/}"
+			done
+			;;
+		*)
+			case "${@: -2:1}" in
+				%v) read -r version < "$fixture/state/$name"; printf '%s\n' "$version" ;;
+				%D)
+					if [[ -f "$fixture/state/$name.deps" ]]; then
+						while IFS= read -r dep; do printf '%s\n' "$dep"; done < "$fixture/state/$name.deps"
+					fi
+					;;
+				*) return 2 ;;
+			esac
+			;;
+	esac
+}
+export -f pacman expac
+pfs() { "$pfs_script" "$@" > "$fixture/stdout" 2> "$fixture/stderr"; }
+package() {
+	local layer=$1 name=$2 version=$3 file record target
+	shift 3
+	record="$layer$db/$name-$version"
+	mkdir -p "$record"
+	printf '%%NAME%%\n%s\n\n%%VERSION%%\n%s\n' "$name" "$version" > "$record/desc"
+	printf '%%FILES%%\n' > "$record/files"
+	for file in "$@"; do
+		printf '%s\n' "${fixture#/}/live/$file" >> "$record/files"
+		target="$layer$fixture/live/$file"
+		if [[ "$file" = */ ]]; then
+			mkdir -p "$target"
+		else
+			mkdir -p "${target%/*}"
+			printf '%s\n' "$version" > "$target"
+		fi
+	done
+	[[ -n "$layer" ]] || printf '%s\n' "$version" > "$fixture/state/$name"
+}
+whiteout() { [[ -c "$upper$1" && $(stat -c '%t:%T' "$upper$1") = 0:0 ]]; }
+reset_fixture() {
+	rm -rf "$upper/"* "$base/"* "$db/"* "$fixture/live/"* "$fixture/state/"*
+}
+
+package "$base" example 1-1 common gone shared 'dir/' 'dir/old file' dangling
+package "$base" example-tools 1-1 tool
+rm "$base$fixture/live/dangling"
+ln -s missing "$base$fixture/live/dangling"
+package '' example 2-1 common new 'dir/' 'dir/new file'
+package '' other 1-1 shared
+pfs pkg example
+whiteout "$fixture/live/gone"
+whiteout "$fixture/live/dir/old file"
+whiteout "$fixture/live/dangling"
+whiteout "$db/example-1-1"
+[[ ! -e "$upper$fixture/live/shared" && -d "$upper$fixture/live/dir" ]]
+pfs pkg example
+whiteout "$db/example-1-1"
+mount -t overlay overlay -o "lowerdir=$base,upperdir=$upper,workdir=/run/archiso/persistfs/work,index=off" "$fixture/merged"
+merged=$fixture/merged
+[[ ! -e "$merged$fixture/live/gone" && ! -e "$merged$db/example-1-1" ]]
+[[ ! -e "$merged$fixture/live/dangling" && ! -L "$merged$fixture/live/dangling" ]]
+[[ ! -e "$merged$fixture/live/dir/old file" ]]
+[[ $(< "$merged$fixture/live/common") = 2-1 && -f "$merged$fixture/live/shared" ]]
+[[ -f "$merged$db/example-2-1/desc" && -f "$merged$db/example-tools-1-1/desc" ]]
+umount "$merged"
+
+package '' example 3-1 common gone
+pfs pkg example
+whiteout "$db/example-2-1"
+whiteout "$fixture/live/new"
+[[ $(< "$upper$fixture/live/gone") = 3-1 ]]
+package '' example 1-1 common gone
+pfs pkg example
+[[ -f "$upper$db/example-1-1/desc" ]]
+whiteout "$db/example-3-1"
+pfs remove "$fixture/live/new"
+[[ ! -e "$upper$fixture/live/new" ]]
+pfs list --all
+! grep -Fxq "$fixture/live/new" "$fixture/stdout"
+
+reset_fixture
+package "$base" dep 1-1 old-dep
+package '' dep 1-1 old-dep
+package '' main 1-1 main
+printf 'dep\n' > "$fixture/state/main.deps"
+pfs pkg main
+[[ ! -e "$upper$db/dep-1-1" ]]
+package '' dep 2-1 new-dep
+pfs pkg main
+whiteout "$db/dep-1-1"
+whiteout "$fixture/live/old-dep"
+
+reset_fixture
+package "$base" example 1-1 gone
+package '' example 2-1 new
+mknod() { return 1; }
+export -f mknod
+if pfs pkg example; then exit 1; fi
+unset -f mknod
+
+reset_fixture
+package "$base" example 1-1 gone
+package '' example 2-1 new
+printf '%%FILES%%\n../../victim\n' > "$base$db/example-1-1/files"
+if pfs pkg example; then exit 1; fi
+[[ ! -e "$upper/index" ]]
+
+reset_fixture
+package "$base" example 1-1 dir/gone
+package '' example 2-1 new
+mkdir -p "$fixture/victim" "$upper$fixture/live"
+printf 'keep\n' > "$fixture/victim/gone"
+ln -s "$fixture/victim" "$upper$fixture/live/dir"
+if pfs pkg example; then exit 1; fi
+[[ $(< "$fixture/victim/gone") = keep ]]
+WHITEOUT_TEST
+}
+
 test_package_versions_providers_and_recursive_dependencies() {
 	local stem=${root##*/} role name build archive
 	local main=$stem-main provider=$stem-provider sibling=$stem-sibling leaf=$stem-leaf virtual=$stem-virtual
@@ -430,6 +600,7 @@ for test in \
 	test_directory_refresh_removes_only_stale_children \
 	test_remove_prunes_empty_parents_and_their_index \
 	test_remove_stops_at_nonempty_parent \
+	test_package_whiteouts \
 	test_package_versions_providers_and_recursive_dependencies
 do
 	root=$(mktemp -d /tmp/pfs-test.XXXXXXXX)

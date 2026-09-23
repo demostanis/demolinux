@@ -43,7 +43,7 @@ shard() {
 shard windows awesome/layout awesome/overview imv music
 shard desktop awesome/emoji awesome/panel dpi urxvt
 shard applications awesome/launcher dataize firefox mpv nvim opencode persistfs resized systemd xorg
-shard system theme sysupdate sysupdate_snapshot
+shard system docker-no-boot-restart theme sysupdate sysupdate_snapshot
 
 failed=0
 wait_shards() {

@@ -1,0 +1,68 @@
+#!/bin/zsh
+bash <<'BASH'
+set -euo pipefail
+
+script=/usr/local/bin/docker-no-boot-restart
+[[ -x $script ]]
+systemctl show docker.service -p ExecStartPre | grep -F "$script" >/dev/null
+tmp=$(mktemp -d)
+trap 'rm -rf -- "$tmp"' EXIT
+root=$tmp/docker
+mkdir -p "$root/containers"
+
+container() {
+    local id path
+    printf -v id '%064d' "$1"
+    mkdir -p "$root/containers/$id"
+    path=$root/containers/$id/hostconfig.json
+    printf '{"Binds":["/data/example:/var/data:rw"],"RestartPolicy":{"Name":"%s","MaximumRetryCount":0},"Extra":12345678901234567890}' "$2" > "$path"
+    chmod 600 "$path"
+}
+
+run_hook() {
+    bash "$script" --data-root "$root" "$@"
+}
+
+container 1 always
+container 2 unless-stopped
+container 3 no
+container 4 on-failure
+first=$root/containers/$(printf '%064d' 1)/hostconfig.json
+second=$root/containers/$(printf '%064d' 2)/hostconfig.json
+first_original=$(< "$first")
+second_original=$(< "$second")
+third_original=$(< "$root/containers/$(printf '%064d' 3)/hostconfig.json")
+fourth_original=$(< "$root/containers/$(printf '%064d' 4)/hostconfig.json")
+[[ $(run_hook --check) == *'2 containers'* ]]
+[[ $(run_hook) == *'2 containers'* ]]
+[[ $(run_hook) == 'No boot restart policies to change' ]]
+[[ $(< "$first") == "${first_original/always/no}" ]]
+[[ $(< "$second") == "${second_original/unless-stopped/no}" ]]
+[[ $(< "$root/containers/$(printf '%064d' 3)/hostconfig.json") == "$third_original" ]]
+[[ $(< "$root/containers/$(printf '%064d' 4)/hostconfig.json") == "$fourth_original" ]]
+for number in 1 2; do
+    id=$(printf '%064d' "$number")
+    [[ $(stat -c %a "$root/containers/$id/hostconfig.json") == 600 ]]
+done
+
+rm -rf "$root/containers"
+mkdir -p "$root/containers"
+container 1 always
+container 2 always
+printf '{invalid json' > "$root/containers/$(printf '%064d' 2)/hostconfig.json"
+if run_hook >/dev/null 2>&1; then exit 1; fi
+[[ $(jq -r '.RestartPolicy.Name' "$root/containers/$(printf '%064d' 1)/hostconfig.json") == always ]]
+
+rm -rf "$root/containers"
+mkdir -p "$tmp/elsewhere"
+ln -s "$tmp/elsewhere" "$root/containers"
+if run_hook >/dev/null 2>&1; then exit 1; fi
+
+rm "$root/containers"
+[[ $(run_hook) == 'No boot restart policies to change' ]]
+rmdir "$root"
+[[ $(run_hook) == 'No saved Docker data root to inspect' ]]
+ln -s "$tmp/missing-docker-root" "$root"
+if run_hook >/dev/null 2>&1; then exit 1; fi
+printf 'PASS docker-no-boot-restart\n'
+BASH

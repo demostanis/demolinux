@@ -1,0 +1,108 @@
+#!/bin/bash
+set -euo pipefail
+shopt -s nullglob
+
+data_root=/var/lib/docker
+check=0
+temp=
+trap 'if [[ -n "$temp" && -e "$temp" ]]; then rm -f -- "$temp"; fi' EXIT
+
+fail() {
+    printf 'docker-no-boot-restart: %s\n' "$*" >&2
+    exit 1
+}
+
+while (( $# )); do
+    case $1 in
+        --data-root)
+            (( $# >= 2 )) || fail "missing argument for $1"
+            data_root=$2
+            shift 2
+            ;;
+        --check) check=1; shift ;;
+        *) fail "unknown argument: $1" ;;
+    esac
+done
+
+if [[ $(realpath -m -- "$data_root") == $(realpath -m -- /var/lib/docker) ]]; then
+    (( EUID == 0 )) || fail 'must run as root for the live Docker data root'
+    if [[ $(realpath -m -- "$data_root") == /run/archiso/data/* ]]; then
+        mountpoint -q /run/archiso/data || fail 'persistent Docker data is not mounted'
+    fi
+    if (( ! check )) && pgrep -x dockerd >/dev/null; then
+        fail 'refusing to edit Docker metadata while dockerd is running'
+    fi
+fi
+if [[ ! -e $data_root && ! -L $data_root ]]; then
+    printf 'No saved Docker data root to inspect\n'
+    exit 0
+fi
+[[ -d $data_root ]] || fail "Docker data root does not exist: $data_root"
+[[ ! -L $data_root/containers ]] || fail 'containers directory is a symlink'
+command -v getfattr >/dev/null || fail 'getfattr is required'
+command -v jq >/dev/null || fail 'jq is required'
+command -v perl >/dev/null || fail 'perl is required'
+
+paths=()
+declare -A digests=()
+if [[ -d $data_root/containers ]]; then
+    for container in "$data_root"/containers/*; do
+        [[ ${container##*/} =~ ^[0-9a-f]{64}$ ]] || continue
+        [[ -d $container && ! -L $container ]] || fail "unsafe container directory: $container"
+        file=$container/hostconfig.json
+        [[ -f $file && ! -L $file && $(stat -c %h -- "$file") == 1 ]] ||
+            fail "unsafe Docker metadata file: $file"
+        attrs=$(getfattr -d --absolute-names -- "$file") || fail "cannot inspect attributes of $file"
+        [[ -z $attrs ]] || fail "Docker metadata has attributes that cannot be preserved: $file"
+        policy=$(jq -er '.RestartPolicy.Name | strings' "$file") ||
+            fail "invalid restart policy in $file"
+        case $policy in
+            no|on-failure|'') continue ;;
+            always|unless-stopped) ;;
+            *) fail "unknown restart policy in $file: $policy" ;;
+        esac
+        matches=$(POLICY=$policy perl -0777 -ne '
+            $policy = $ENV{POLICY};
+            $count = () = /"RestartPolicy"\s*:\s*\{\s*"Name"\s*:\s*"\Q$policy\E"\s*,\s*"MaximumRetryCount"\s*:\s*\d+\s*\}/g;
+            print $count;
+        ' "$file") || fail "cannot inspect restart policy in $file"
+        [[ $matches == 1 ]] || fail "unrecognized restart policy layout in $file"
+        paths+=( "$file" )
+        digest=$(sha256sum -- "$file") || fail "cannot checksum Docker metadata in $file"
+        digests["$file"]=${digest%% *}
+    done
+fi
+
+if (( check )); then
+    printf 'Would disable boot restarts for %d containers\n' "${#paths[@]}"
+    exit 0
+fi
+if (( ${#paths[@]} == 0 )); then
+    printf 'No boot restart policies to change\n'
+    exit 0
+fi
+
+for file in "${paths[@]}"; do
+    current=$(sha256sum -- "$file") || fail "cannot checksum Docker metadata in $file"
+    [[ ${current%% *} == "${digests[$file]}" ]] ||
+        fail "Docker metadata changed during rewrite: $file"
+    policy=$(jq -er '.RestartPolicy.Name | strings' "$file") || fail "invalid policy in $file"
+    temp=$(mktemp -- "${file%/*}/.hostconfig-no-boot-XXXXXXXX")
+    POLICY=$policy perl -0777 -pe '
+        $policy = $ENV{POLICY};
+        $changed = s/("RestartPolicy"\s*:\s*\{\s*"Name"\s*:\s*")\Q$policy\E("\s*,\s*"MaximumRetryCount"\s*:\s*\d+\s*\})/${1}no${2}/;
+        die "unrecognized restart policy layout\n" unless $changed == 1;
+    ' "$file" > "$temp" || fail "cannot rewrite restart policy in $file"
+    jq -e '.RestartPolicy.Name == "no"' "$temp" >/dev/null ||
+        fail "invalid rewritten Docker metadata in $file"
+    chmod --reference="$file" -- "$temp"
+    chown --reference="$file" -- "$temp"
+    sync "$temp"
+    current=$(sha256sum -- "$file") || fail "cannot checksum Docker metadata in $file"
+    [[ ${current%% *} == "${digests[$file]}" ]] ||
+        fail "Docker metadata changed during rewrite: $file"
+    mv -fT -- "$temp" "$file"
+    temp=
+    sync "${file%/*}"
+done
+printf 'Disabled boot restarts for %d containers\n' "${#paths[@]}"

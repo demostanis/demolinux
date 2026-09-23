@@ -111,7 +111,9 @@ patchutils
 lsof
 irssi
 btop
+attr
 jq
+perl
 ncdu
 lynx
 nmap

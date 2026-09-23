@@ -124,7 +124,6 @@ qemu-desktop
 kdeconnect
 ripgrep
 ripgrep-all
-pandoc
 strace
 websocat
 xsel

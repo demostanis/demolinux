@@ -109,7 +109,8 @@ _prepare_hybrid_disk() {
     fi
 
     mkdir -p /mnt/demolinux/root
-    mount -o compress=zstd,noatime /dev/loop0p3 /mnt/demolinux/root
+    # Avoid heuristic compression skips in the fixed-size image.
+    mount -o compress-force=zstd,noatime /dev/loop0p3 /mnt/demolinux/root
     disk_root_mounted=y
     if [[ "$reuse" == n ]]; then
         btrfs subvolume create /mnt/demolinux/root/system

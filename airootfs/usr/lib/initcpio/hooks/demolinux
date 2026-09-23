@@ -93,7 +93,7 @@ archiso_mount_handler() {
 
     btrfs_root=$rundir/btrfs
     system_dev=${demolinux_system_dev:-/dev/disk/by-partlabel/system}
-    _mnt_dev "$system_dev" $btrfs_root "-w" "subvol=system,compress=zstd"
+    _mnt_dev "$system_dev" $btrfs_root "-w" "subvol=system,compress-force=zstd"
 
     # yes, this syntax is required...
     if [ $(( $(btrfs subvol list $btrfs_root | wc -l) < 6 )) = 1 ]; then
@@ -113,7 +113,7 @@ archiso_mount_handler() {
 
         plymouth update --status="Creating Btrfs subvolumes..."
 
-         _mnt_dev "$system_dev" $btrfs_root "-w" "subvol=system,compress=zstd"
+         _mnt_dev "$system_dev" $btrfs_root "-w" "subvol=system,compress-force=zstd"
         btrfs filesystem resize max $btrfs_root
 
         # finally, create the necessary subvolumes
@@ -146,7 +146,7 @@ archiso_mount_handler() {
         if grep $offset_magic $rundir/bootmnt/grub/grub.cfg; then
              plymouth update --status="Updating boot params for hibernation..."
              _mnt_dev /dev/disk/by-partlabel/boot "$rundir/bootmnt" "-w" "defaults"
-              _mnt_dev "$system_dev" $rundir/airootfs "-r" "subvol=/system/airootfs,compress=zstd,noatime"
+              _mnt_dev "$system_dev" $rundir/airootfs "-r" "subvol=/system/airootfs,compress-force=zstd,noatime"
 
              offset=$(btrfs inspect-internal map-swapfile -r $rundir/btrfs/swap/swapfile)
              sed -i 's/'$offset_magic'/'$offset/ $rundir/bootmnt/grub/grub.cfg
@@ -158,7 +158,7 @@ archiso_mount_handler() {
         fi
     fi
 
-    _mnt_dev "$system_dev" $rundir/data "-w" "subvol=/system/data,compress=zstd,noatime"
+    _mnt_dev "$system_dev" $rundir/data "-w" "subvol=/system/data,compress-force=zstd,noatime"
     update_img=$rundir/data/sysupdate/demolinux.img
     if [ -e $update_img ]; then
         mode=$(stat -c %u%g%a "$update_img")
@@ -182,12 +182,12 @@ archiso_mount_handler() {
     fi
 
     plymouth update --status="Mouting filesystems..."
-    _mnt_dev "$system_dev" $rundir/persistfs "-w" "subvol=/system/persistfs,compress=zstd,noatime"
-    _mnt_dev "$system_dev" $rundir/snapshots "-w" "subvol=/system/snapshots,compress=zstd,noatime"
+    _mnt_dev "$system_dev" $rundir/persistfs "-w" "subvol=/system/persistfs,compress-force=zstd,noatime"
+    _mnt_dev "$system_dev" $rundir/snapshots "-w" "subvol=/system/snapshots,compress-force=zstd,noatime"
     snapshot="${btrfs_snapshot##*/}"
     snapshot="${snapshot:+snapshots/$snapshot}"
-    _mnt_dev "$system_dev" $rundir/airootfs "-r" "subvol=/system/${snapshot:-airootfs},compress=zstd,noatime"
-    _mnt_dev "$system_dev" $rundir/swap "-w" "subvol=/system/swap,compress=zstd,noatime"
+    _mnt_dev "$system_dev" $rundir/airootfs "-r" "subvol=/system/${snapshot:-airootfs},compress-force=zstd,noatime"
+    _mnt_dev "$system_dev" $rundir/swap "-w" "subvol=/system/swap,compress-force=zstd,noatime"
 
     # Enable copytoram if the following conditions apply:
     # * the root file system image is not on an optical disc drive,

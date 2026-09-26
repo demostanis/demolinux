@@ -3,6 +3,7 @@ local beautiful = require("beautiful")
 local gears = require("gears")
 local wibox = require("wibox")
 local cairo = require("lgi").cairo
+local schedule_image_gc = require("imagegc")
 
 local base = wibox.widget.base
 local dpi = beautiful.xresources.apply_dpi
@@ -144,6 +145,7 @@ local function client_snapshot(c, height, max_width)
     end
     cr:restore()
     snapshot:flush()
+    schedule_image_gc()
     return snapshot, width, height
 end
 

@@ -2,6 +2,7 @@
 -- to tell picom not to give them a shadow
 awesome.register_xproperty("WM_NAME", "string")
 
+local schedule_image_gc = require("imagegc")
 local content_cache = {}
 local last_visible_content = setmetatable({}, { __mode = "k" })
 
@@ -32,6 +33,7 @@ local function snapshot_visible_content(c)
         cr:set_source_surface(su, 0, 0)
         cr:paint()
         image:flush()
+        schedule_image_gc()
         return image
     end)
     if ok then return snapshot end
@@ -81,6 +83,7 @@ function draw(c, cache_content)
         cr:paint()
     end
 
+    schedule_image_gc()
     return content
 end
 

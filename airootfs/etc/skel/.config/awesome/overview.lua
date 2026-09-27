@@ -391,7 +391,7 @@ return function()
     local all_clients = s.selected_tag:clients()
     local clients = {}
     for _, c in ipairs(all_clients) do
-        if not c.is_minimized_tab then
+        if not c.is_minimized_tab and not c.opencode_sidecar_hosted then
             table.insert(clients, c)
         end
     end

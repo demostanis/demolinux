@@ -25,6 +25,26 @@ openoverview() {
 }
 
 expectawesome 'return #client.get() == 0'
+
+# Hosted sidewindows belong to their OpenCode window, not the overview grid.
+spawndummywin "owner"
+spawndummywin "sidewindow"
+awesome-client 'client.focus.opencode_sidecar_hosted = true' >/dev/null
+modkeypress o
+expectawesome 'return overview_shown ~= true'
+quitwin
+spawndummywin "window 2"
+spawndummywin "sidewindow"
+awesome-client 'client.focus.opencode_sidecar_hosted = true' >/dev/null
+openoverview
+xdotool key j
+expectfocusandleftmost "window 2"
+awesome-client 'for _, c in ipairs(client.get()) do if c.opencode_sidecar_hosted then c:kill() end end' >/dev/null
+expectawesome 'for _, c in ipairs(client.get()) do if c.opencode_sidecar_hosted then return false end end return true'
+quitwin
+expectfocusandleftmost "owner"
+quitwin
+expectawesome 'return #client.get() == 0'
 modkeypress o
 expectawesome 'return overview_shown ~= true'
 expectnofocus

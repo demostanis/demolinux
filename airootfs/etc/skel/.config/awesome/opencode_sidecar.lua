@@ -662,7 +662,10 @@ activate_index = function(state, index)
     refresh(state)
     if previous and is_valid(previous.hosted_client)
         and focused == previous.hosted_client and is_valid(state.client) then
-        client.focus = state.client
+        local selected = active_tab(state)
+        local next_hosted = selected and selected.hosted_client
+        client.focus = client_is_visible(next_hosted)
+            and next_hosted or state.client
     end
     return true
 end

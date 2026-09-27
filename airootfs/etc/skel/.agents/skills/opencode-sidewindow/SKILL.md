@@ -14,4 +14,6 @@ opencode-sidewindow-api status
 opencode-sidewindow-api list
 opencode-sidewindow-api name "Name"
 opencode-sidewindow-api image "/absolute/path/to/image.png"
+opencode-sidewindow-api remove                  # close the selected tab
+opencode-sidewindow-api remove "Name"           # close a tab by name or index
 ```

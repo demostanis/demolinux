@@ -77,6 +77,9 @@ def api_action_code(args):
         return f"return sidewindow.rename(target, {lua_string(args.name)})"
     if args.command == "list":
         return "return sidewindow.list(target)"
+    if args.command == "remove":
+        selector = "nil" if args.selector is None else lua_string(args.selector)
+        return f"return sidewindow.remove(target, {selector})"
     if args.command == "image":
         path = Path(args.path).expanduser().resolve(strict=True)
         if not path.is_file():
@@ -140,6 +143,10 @@ def api_parser():
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("status", help="print selected sidewindow details")
     commands.add_parser("list", help="list sidewindows and mark the selected one")
+    remove = commands.add_parser("remove", help="close a sidewindow tab")
+    remove.add_argument(
+        "selector", nargs="?", help="sidewindow name or index; defaults to selected tab"
+    )
     name = commands.add_parser("name", help="rename the selected sidewindow")
     name.add_argument("name", help="new title name")
     image = commands.add_parser(

@@ -863,19 +863,14 @@ local function attach_hosted(tab, hosted, kind, expand_on_attach)
     end)
     hosted:connect_signal("unmanage", function(c)
         if tab.hosted_client == c then
-            local browser_closed = tab.hosted_kind == "firefox-mcp"
             local was_focused = client.focus == c
             tab.hosted_client = nil
             tab.hosted_kind = nil
             tab.hosted_pid = nil
             tab.launching = false
-            if browser_closed then
-                remove_tab_from_state(state, tab)
-                if was_focused and client_is_visible(state.client) then
-                    client.focus = state.client
-                end
-            else
-                refresh(state)
+            remove_tab_from_state(state, tab)
+            if was_focused and client_is_visible(state.client) then
+                client.focus = state.client
             end
         end
     end)

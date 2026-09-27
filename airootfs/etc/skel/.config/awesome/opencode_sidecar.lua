@@ -621,6 +621,7 @@ local function make_tab(state, name, role)
         hosted_client = nil,
         hosted_kind = nil,
         hosted_pid = nil,
+        original_window = nil,
         launching = false,
         launch_generation = 0,
         focus_before_launch = nil,
@@ -737,18 +738,39 @@ end
 
 local function close_hosted(tab, restore_focus)
     local hosted = tab.hosted_client
+    local original = tab.original_window
     local hosted_was_focused = is_valid(hosted) and client.focus == hosted
     local launching_pid = tab.launching and tab.hosted_pid
     clear_launch_watch(tab)
     tab.hosted_client = nil
     tab.hosted_kind = nil
     tab.hosted_pid = nil
+    tab.original_window = nil
     tab.launching = false
     if hosted_was_focused and client_is_visible(tab.owner.client) then
         client.focus = tab.owner.client
     end
     if is_valid(hosted) then
-        hosted:kill()
+        if original then
+            hosted.opencode_sidecar_hosted = nil
+            hosted.opencode_sidecar_owner = nil
+            hosted.screen = original.screen
+            hosted:tags(original.tags)
+            hosted.floating = original.floating
+            hosted.skip_taskbar = original.skip_taskbar
+            hosted.size_hints_honor = original.size_hints_honor
+            hosted.buttons = original.buttons
+            hosted:geometry(original.geometry)
+            hosted.maximized = original.maximized
+            hosted.fullscreen = original.fullscreen
+            hosted.hidden = original.hidden
+            hosted.minimized = original.minimized
+            for position, size in pairs(original.titlebars) do
+                hosted["titlebar_"..position](hosted, size)
+            end
+        else
+            hosted:kill()
+        end
     end
     if launching_pid then
         awful.spawn({"kill", "-TERM", tostring(launching_pid)})
@@ -799,18 +821,40 @@ local function remove_tab_from_state(state, tab)
     return true
 end
 
-local function attach_hosted(tab, hosted, kind, expand_on_attach)
+local function attach_hosted(tab, hosted, kind, expand_on_attach, adopt)
     local state = tab.owner
     if tab.removed or not is_valid(state.client) then
-        hosted:kill()
+        if not adopt then
+            hosted:kill()
+        end
         return
     end
 
     if is_valid(tab.hosted_client) and tab.hosted_client ~= hosted then
-        tab.hosted_client:kill()
+        close_hosted(tab)
     end
 
     clear_launch_watch(tab)
+    if adopt then
+        tab.original_window = {
+            screen = hosted.screen,
+            tags = hosted:tags(),
+            floating = hosted.floating,
+            skip_taskbar = hosted.skip_taskbar,
+            size_hints_honor = hosted.size_hints_honor,
+            buttons = hosted.buttons,
+            geometry = hosted:geometry(),
+            maximized = hosted.maximized,
+            fullscreen = hosted.fullscreen,
+            hidden = hosted.hidden,
+            minimized = hosted.minimized,
+            titlebars = {},
+        }
+        for _, position in ipairs({"top", "bottom", "left", "right"}) do
+            local _, size = hosted["titlebar_"..position](hosted)
+            tab.original_window.titlebars[position] = size
+        end
+    end
     tab.hosted_client = hosted
     tab.hosted_kind = kind
     tab.hosted_pid = hosted.pid
@@ -898,6 +942,39 @@ local function attach_hosted(tab, hosted, kind, expand_on_attach)
     end
     refresh(state)
     restore_launch_focus(tab, hosted)
+end
+
+function sidecar.capture_window(c, window_id, name)
+    if not sidecar.is_opencode(c) then
+        return "error: target is not an OpenCode window"
+    end
+    if type(window_id) ~= "number" or window_id < 1
+        or window_id ~= math.floor(window_id) then
+        return "error: invalid X11 window ID"
+    end
+    local hosted
+    for _, candidate in ipairs(client.get()) do
+        if tonumber(candidate.window) == window_id then
+            hosted = candidate
+            break
+        end
+    end
+    if not is_valid(hosted) then
+        return "error: window not found: "..tostring(window_id)
+    end
+    if sidecar.is_opencode(hosted) or sidecar.is_hosted(hosted) then
+        return "error: window is already managed by OpenCode"
+    end
+    local normalized, err = normalize_name(name or hosted.name or hosted.class or "Window")
+    if not normalized then
+        return "error: "..err
+    end
+
+    local state = get_state(c)
+    local tab, index = append_tab(state, unique_name(state, normalized), "window")
+    activate_index(state, index)
+    attach_hosted(tab, hosted, "window", true, true)
+    return sidecar.status(c)
 end
 
 local function watch_for_hosted(tab, matcher, kind, expand_on_attach)

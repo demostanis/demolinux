@@ -159,6 +159,42 @@ if [[ "$hosted_focused" != true || "$new_owner_x" -le $((owner_x + 200)) ]]; the
 	exit 1
 fi
 
+custom_state=$(awesome-client '
+	local sidewindow = require"opencode_sidecar"
+	local owner, custom
+	for _, candidate in ipairs(client.get()) do
+		if candidate.name == "OC | sidewindow test" then
+			owner = candidate
+		elseif candidate.name == "sidewindow edge spacer" then
+			custom = candidate
+		end
+	end
+	if not owner or not custom then return "missing" end
+	custom.floating = true
+	local geometry = custom:geometry()
+	local original_tags = custom:tags()
+	local original_buttons = custom.buttons
+	local result = sidewindow.capture_window(owner, custom.window, "Custom app")
+	local attached = sidewindow.is_hosted(custom)
+		and custom.opencode_sidecar_owner == owner
+		and result:match("name=\"Custom app\"") ~= nil
+		and result:match("expanded right") ~= nil
+	local rejected = sidewindow.capture_window(owner, custom.window)
+		== "error: window is already managed by OpenCode"
+	sidewindow.remove(owner, "Custom app")
+	local restored = custom.valid and not sidewindow.is_hosted(custom)
+		and custom.floating and not custom.hidden
+		and custom.buttons == original_buttons
+		and custom:tags()[1] == original_tags[1]
+		and custom.x == geometry.x and custom.y == geometry.y
+		and custom.width == geometry.width and custom.height == geometry.height
+	return tostring(attached).." "..tostring(rejected).." "..tostring(restored)
+')
+if [[ "$custom_state" != *'true true true'* ]]; then
+	echo "custom sidewindow did not attach and restore the app: $custom_state" >&2
+	exit 1
+fi
+
 awesome-client '
 	for _, candidate in ipairs(client.get()) do
 		if candidate.name == "OC | sidewindow test"

@@ -85,6 +85,11 @@ def api_action_code(args):
         if not path.is_file():
             raise ValueError(f"not a file: {path}")
         return f"return sidewindow.set_image(target, {lua_string(str(path))})"
+    if args.command == "window":
+        return (
+            "return sidewindow.capture_window(target, "
+            f"{args.id}, {lua_string(args.name) if args.name else 'nil'})"
+        )
     return "return sidewindow.status(target)"
 
 
@@ -154,6 +159,15 @@ def api_parser():
         help="display an image; creates the first sidewindow when needed",
     )
     image.add_argument("path", help="path to an image supported by imv")
+    window = commands.add_parser(
+        "window", help="host an existing X11 window in a sidewindow tab"
+    )
+    window.add_argument(
+        "id", type=lambda value: int(value, 0), help="X11 window ID (decimal or 0x hex)"
+    )
+    window.add_argument(
+        "name", nargs="?", help="tab name; defaults to the window title"
+    )
     return parser
 
 

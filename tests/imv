@@ -195,6 +195,51 @@ if [[ "$custom_state" != *'true true true'* ]]; then
 	exit 1
 fi
 
+urxvt -title "OC | sidewindow launch test" -e sh -c '
+	$HOME/.local/bin/opencode-sidewindow-api launch --name "Launched terminal" -- urxvt -title "sidewindow launched terminal" -e sleep 60 > /tmp/sidewindow-launch-status
+	sleep 60
+' &
+expectwin "OC | sidewindow launch test"
+
+launch_state=
+for i in {1..20}; do
+	launch_state=$(awesome-client '
+		local sidewindow = require"opencode_sidecar"
+		local owner, hosted
+		for _, candidate in ipairs(client.get()) do
+			if candidate.name == "OC | sidewindow launch test" then
+				owner = candidate
+			elseif candidate.name == "sidewindow launched terminal" then
+				hosted = candidate
+			end
+		end
+		if not owner or not hosted then return "missing" end
+		local status = sidewindow.status(owner)
+		return tostring(status:find("Launched terminal", 1, true) ~= nil)
+			.." "..tostring(status:find("app=URxvt:", 1, true) ~= nil)
+			.." "..tostring(hosted.opencode_sidecar_owner == owner)
+			.." "..tostring(client.focus == owner)
+	')
+	[[ "$launch_state" == *'true true true true'* ]] && break
+	sleep 0.2
+done
+
+if [[ "$launch_state" != *'true true true true'* ]]; then
+	echo "launched sidewindow escaped or stole focus: $launch_state" >&2
+	exit 1
+fi
+
+awesome-client '
+	local sidewindow = require"opencode_sidecar"
+	for _, candidate in ipairs(client.get()) do
+		if candidate.name == "OC | sidewindow launch test" then
+			sidewindow.remove(candidate, "Launched terminal")
+			candidate:kill()
+		end
+	end
+	return true
+' >/dev/null
+
 awesome-client '
 	for _, candidate in ipairs(client.get()) do
 		if candidate.name == "OC | sidewindow test"

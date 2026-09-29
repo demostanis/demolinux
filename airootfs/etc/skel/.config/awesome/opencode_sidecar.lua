@@ -15,6 +15,7 @@ local arrow_icons = {
 local sidecar = {}
 local states = setmetatable({}, {__mode = "k"})
 local active_state
+local get_state
 local image_viewer_instance_prefix = "opencode-sidewindow-imv-"
 
 local animation_frames = 11
@@ -1024,6 +1025,45 @@ local function watch_for_hosted(tab, matcher, kind, expand_on_attach)
     end)
 end
 
+function sidecar.launch(c, argv, name)
+    if not sidecar.is_opencode(c) then
+        return "error: target is not an OpenCode window"
+    end
+    if type(argv) ~= "table" or #argv == 0 then
+        return "error: launch requires a command"
+    end
+    for _, argument in ipairs(argv) do
+        if type(argument) ~= "string" or argument == "" then
+            return "error: invalid launch argument"
+        end
+    end
+    local normalized, err = normalize_name(name or argv[1]:match("[^/]+$") or argv[1])
+    if not normalized then
+        return "error: "..err
+    end
+
+    local state = get_state(c)
+    local tab, index = append_tab(state, unique_name(state, normalized), "launch")
+    activate_index(state, index)
+    tab.launching = true
+    tab.hosted_kind = "launch"
+    prepare_launch_focus(tab, client.focus)
+    refresh(state)
+
+    local launched_pid
+    watch_for_hosted(tab, function(candidate)
+        return launched_pid ~= nil and candidate.pid == launched_pid
+    end, "launch", true)
+    local pid = awful.spawn(argv)
+    if type(pid) ~= "number" then
+        remove_tab_from_state(state, tab)
+        return "error: unable to launch "..argv[1]
+    end
+    launched_pid = pid
+    tab.hosted_pid = pid
+    return sidecar.status(c)
+end
+
 local function make_state(c)
     local border_width = 0
     local titlebar = wibox({
@@ -1153,7 +1193,7 @@ local function make_state(c)
     return state
 end
 
-local function get_state(c)
+get_state = function(c)
     return states[c] or make_state(c)
 end
 

@@ -90,6 +90,13 @@ def api_action_code(args):
             "return sidewindow.capture_window(target, "
             f"{args.id}, {lua_string(args.name) if args.name else 'nil'})"
         )
+    if args.command == "launch":
+        argv = args.argv[1:] if args.argv and args.argv[0] == "--" else args.argv
+        if not argv:
+            raise ValueError("launch requires a command")
+        command = ", ".join(lua_string(argument) for argument in argv)
+        name = lua_string(args.name) if args.name else "nil"
+        return f"return sidewindow.launch(target, {{{command}}}, {name})"
     return "return sidewindow.status(target)"
 
 
@@ -168,6 +175,11 @@ def api_parser():
     window.add_argument(
         "name", nargs="?", help="tab name; defaults to the window title"
     )
+    launch = commands.add_parser(
+        "launch", help="start an application directly in a sidewindow tab"
+    )
+    launch.add_argument("--name", help="tab name; defaults to the executable name")
+    launch.add_argument("argv", nargs=argparse.REMAINDER, help="command and arguments")
     return parser
 
 

@@ -177,6 +177,7 @@ python-websockets # for wa
 copyq
 aur localepurge
 ufw
+syncthing
 earlyoom
 xdg-dbus-proxy
 pulseaudio

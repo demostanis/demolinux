@@ -1,0 +1,3 @@
+-A ufw-service-input -p tcp --dport 22000 -j ACCEPT
+-A ufw-service-input -p udp --dport 22000 -j ACCEPT
+-A ufw-service-input -p udp --dport 21027 -j ACCEPT

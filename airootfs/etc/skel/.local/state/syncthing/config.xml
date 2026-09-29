@@ -1,0 +1,8 @@
+<configuration version="37">
+    <folder id="opencode-sessions" label="OpenCode sessions" path="~/.local/share/opencode-sync" type="sendreceive" fsWatcherEnabled="true" />
+    <folder id="agentgraph-nodes" label="AgentGraph nodes" path="~/.local/share/agentgraph/nodes" type="sendreceive" fsWatcherEnabled="true" />
+    <options>
+        <urAccepted>-1</urAccepted>
+        <urSeen>3</urSeen>
+    </options>
+</configuration>

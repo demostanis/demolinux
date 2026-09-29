@@ -113,8 +113,7 @@ _make_customize_airootfs() {
         ln -sf /usr/lib/systemd/system/sshd.service "${pacstrap_dir}/etc/systemd/system/multi-user.target.wants/sshd.service"
         _msg_info "Done!"
     else
-        # do not allow connections to port 22
-        sed -i /22/d "${pacstrap_dir}"/etc/ufw/*.rules
+        rm -f -- "${pacstrap_dir}/etc/ufw/rules.d/ssh.rules"
     fi
 
     cp -- "${work_dir}/mirrorlist" "${pacstrap_dir}"/etc/pacman.d/mirrorlist

@@ -1,0 +1,1 @@
+-A ufw-service-input -p tcp --dport 22 -j ACCEPT

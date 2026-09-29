@@ -1,0 +1,2 @@
+-A ufw-service-input -p tcp -m multiport --dports 1714:1764 -j ACCEPT
+-A ufw-service-input -p udp -m multiport --dports 1714:1764 -j ACCEPT

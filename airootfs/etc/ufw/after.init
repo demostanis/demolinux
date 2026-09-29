@@ -1,0 +1,50 @@
+#!/bin/bash
+set -euo pipefail
+
+rules_dir="$(dirname -- "$0")/rules.d"
+chain=ufw-service-input
+
+load_rules() {
+    local command="$1" parent="$2" file
+
+    {
+        printf '*filter\n:%s - [0:0]\n-F %s\n' "$chain" "$chain"
+        for file in "$rules_dir"/*.rules; do
+            [[ -f "$file" ]] || continue
+            cat -- "$file"
+            printf '\n'
+        done
+        printf 'COMMIT\n'
+    } | "${command}-restore" --wait --noflush
+
+    if ! "$command" -w -C "$parent" -j "$chain" 2>/dev/null; then
+        "$command" -w -A "$parent" -j "$chain"
+    fi
+}
+
+unload_rules() {
+    local command="$1" parent="$2"
+
+    if "$command" -w -S "$chain" >/dev/null 2>&1; then
+        while "$command" -w -C "$parent" -j "$chain" 2>/dev/null; do
+            "$command" -w -D "$parent" -j "$chain"
+        done
+        "$command" -w -F "$chain"
+        "$command" -w -X "$chain"
+    fi
+}
+
+case "${1:-}" in
+    start)
+        # User-rule edits flush ufw-user-input without rerunning this hook.
+        load_rules iptables ufw-before-input
+        # UFW creates this chain only when IPv6 filtering is available and enabled.
+        if ip6tables -w -S ufw6-user-input >/dev/null 2>&1; then
+            load_rules ip6tables ufw6-before-input
+        fi
+        ;;
+    stop)
+        unload_rules iptables ufw-before-input
+        unload_rules ip6tables ufw6-before-input
+        ;;
+esac

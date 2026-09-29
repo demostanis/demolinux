@@ -13,6 +13,7 @@ file_permissions=(
 
   ["/etc/openvpn/up"]="0:0:+x"
   ["/etc/openvpn/down"]="0:0:+x"
+  ["/etc/ufw/after.init"]="0:0:755"
 
   ["/usr/lib/xrandr.sh"]="0:0:+x"
   ["/usr/local/lib/diskencrypt/maintenance"]="0:0:755"

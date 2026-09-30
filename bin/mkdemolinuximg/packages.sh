@@ -174,7 +174,8 @@ _make_chroot() {
     if [[ ! -d "${chroot_dir}/root" ]]; then
         mkdir -p "${chroot_dir}"
         _msg_info "Creating build chroot..."
-        mkarchroot -C "${work_dir}/chroot.pacman.conf" "${chroot_dir}/root" base-devel
+        _run_build_with_download_retries "${work_dir}/build-chroot.log" \
+            mkarchroot -C "${work_dir}/chroot.pacman.conf" "${chroot_dir}/root" base-devel
         sed -i 's/ debug / !debug /g' "${chroot_dir}/root/etc/makepkg.conf"
         printf '\nMAKEFLAGS="-j%s"\n' "$(nproc)" >> "${chroot_dir}/root/etc/makepkg.conf"
     fi

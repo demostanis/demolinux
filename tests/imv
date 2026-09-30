@@ -182,9 +182,14 @@ custom_state=$(awesome-client '
 	local rejected = sidewindow.capture_window(owner, custom.window)
 		== "error: window is already managed by OpenCode"
 	sidewindow.remove(owner, "Custom app")
+	local restored_buttons = custom.buttons
+	local buttons_match = #restored_buttons == #original_buttons
+	for index, button in ipairs(original_buttons) do
+		buttons_match = buttons_match and restored_buttons[index] == button
+	end
 	local restored = custom.valid and not sidewindow.is_hosted(custom)
 		and custom.floating and not custom.hidden
-		and custom.buttons == original_buttons
+		and buttons_match
 		and custom:tags()[1] == original_tags[1]
 		and custom.x == geometry.x and custom.y == geometry.y
 		and custom.width == geometry.width and custom.height == geometry.height

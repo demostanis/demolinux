@@ -1,6 +1,8 @@
 #!/bin/bash
 
-spawndummywin 'launcher test owner'
+urxvt -title 'launcher test owner' -e sleep infinity &
+expectwin 'launcher test owner'
+expectfocus 'launcher test owner'
 modkeypress space
 expectawesome 'local launcher = screen.primary.app_launcher
     return launcher and launcher.visible'

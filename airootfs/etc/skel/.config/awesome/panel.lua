@@ -9,6 +9,21 @@ local mypanel = nil
 local panes = {}
 local caffeine_enabled = false
 local pane_margin = dpi(50)
+local hibernate_disabled = false
+do
+    local vendor_file = io.open("/sys/class/dmi/id/sys_vendor", "r")
+    if vendor_file then
+        local vendor = vendor_file:read("*l")
+        vendor_file:close()
+        hibernate_disabled = vendor and vendor:match("^%s*Framework%s*$") ~= nil
+    end
+end
+
+local function spawn_hibernate()
+    if not hibernate_disabled then
+        awful.spawn("systemctl hibernate")
+    end
+end
 
 local footerw = {
     {
@@ -231,7 +246,7 @@ function show_panel()
                     awful.spawn("systemctl poweroff")
                 end},
                 {{ "Shift", }, "H", function()
-                    awful.spawn("systemctl hibernate")
+                    spawn_hibernate()
                 end},
                 {{ "Shift", }, "U", function()
                     awful.spawn("systemctl suspend")
@@ -593,9 +608,9 @@ return function(s)
                                 },
                                 widget = wibox.container.background,
                                 id = "system",
-                                command = function()
-                                    awful.spawn("systemctl hibernate")
-                                end
+                                disabled = hibernate_disabled,
+                                fg = hibernate_disabled and "#777777" or nil,
+                                command = spawn_hibernate,
                             },
                             layout = wibox.layout.fixed.horizontal,
                             spacing = dpi(8)
@@ -666,6 +681,7 @@ return function(s)
 
     for _, system_action in ipairs(mypanel:get_children_by_id("system")) do
         system_action:connect_signal("mouse::enter", function()
+            if system_action.disabled then return end
             for _, child in ipairs(system_action:get_all_children()) do
                 local textboxtype = "wibox.widget.textbox"
                 if string.sub(tostring(child), 1, string.len(textboxtype)) == textboxtype then
@@ -676,6 +692,7 @@ return function(s)
             end
         end)
         system_action:connect_signal("mouse::leave", function()
+            if system_action.disabled then return end
             for _, child in ipairs(system_action:get_all_children()) do
                 local textboxtype = "wibox.widget.textbox"
                 if string.sub(tostring(child), 1, string.len(textboxtype)) == textboxtype and child.oldtext then
@@ -684,6 +701,7 @@ return function(s)
             end
         end)
         system_action:connect_signal("mouse::click", function()
+            if system_action.disabled then return end
             system_action.command()
             if system_action.opts and system_action.opts.hide_system_action_on_click then
                 mypanel:hide()

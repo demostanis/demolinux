@@ -312,7 +312,7 @@ _make_packages() {
     _msg_info "Installing packages to '${pacstrap_dir}/'..."
 
     # Unset TMPDIR to work around https://bugs.archlinux.org/task/70580
-    local -a install_command=(env -u TMPDIR pacstrap -C "${work_dir}/image.pacman.conf" -c -G -M -- "${pacstrap_dir}" "${install_pkg_list[@]}")
+    local -a install_command=(env -u TMPDIR pacstrap -C "${work_dir}/image.pacman.conf" -c -G -M -- "${pacstrap_dir}" "${install_pkg_list[@]}" --overwrite etc/ufw/after.init)
     if [[ "${quiet}" = "y" ]]; then
         _run_build_with_download_retries "${work_dir}/install-packages.log" "${install_command[@]}" &> /dev/null
     else

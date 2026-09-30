@@ -76,7 +76,14 @@ _make_disk_root() {
     _make_custom_airootfs
     _make_chroot
     install_pkg_list=("${pkg_list[@]}")
+    # ufw now ships this hook; install our override after the package transaction.
+    if [[ -f "${profile}/airootfs/etc/ufw/after.init" ]]; then
+        rm -f -- "${pacstrap_dir}/etc/ufw/after.init"
+    fi
     _make_packages
+    if [[ -f "${profile}/airootfs/etc/ufw/after.init" ]]; then
+        install -m 0755 -o 0 -g 0 -- "${profile}/airootfs/etc/ufw/after.init" "${pacstrap_dir}/etc/ufw/after.init"
+    fi
 
     if [[ -n "$cache" ]]; then
         _msg_info "Caching installed root filesystem before customization and SSH keys..."

@@ -31,14 +31,6 @@ nvim() {
 	fi
 }
 
-#ssh() {
-#	SSH_USER=...
-#	SSH_HOST=...
-#	SSH_PORT=...
-#
-#	if [ $# = 0 ]; then
-#		ssh -p $SSH_PORT $SSH_USER@$SSH_HOST
-#	else
-#		command ssh "$@"
-#	fi
-#}
+terminal_tab_hex() {
+	print -rn -- "$1" | od -An -v -tx1 | tr -d ' \n'
+}

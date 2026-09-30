@@ -1,6 +1,29 @@
-tab_masters = {}
+tab_masters = tab_masters or {}
 local tabbed_clients = {"URxvt"}
 local is_launching_tab = false
+local terminal_process = require("terminal-process")
+
+awesome.register_xproperty("_DEMOLINUX_CWD", "string")
+
+local function shell_quote(value)
+    return "'"..value:gsub("'", "'\"'\"'").."'"
+end
+
+function terminal_tab_pwd(window, pwd)
+    for _, master in pairs(tab_masters) do
+        for _, tab in ipairs(master.tabs) do
+            if tab.client and tab.client.window == window then
+                tab.pwd = pwd
+            end
+        end
+    end
+end
+
+function terminal_tab_decode(hex)
+    return (hex:gsub("%x%x", function(byte)
+        return string.char(tonumber(byte, 16))
+    end))
+end
 
 local titlebar_args = {
     position = "bottom",
@@ -181,17 +204,48 @@ local function spawn_new_tab_in(master)
 
     local tabs = master.tabs
     local c = master.active_slave
-    local command = io.open("/proc/"..c.pid.."/cmdline"):read()
+    local command = terminal_process.command(c.pid)
+    if not command or #command == 0 then
+        is_launching_tab = false
+        controlling_tabs = false
+        return
+    end
+    -- A tab starts a fresh shell, not the previous terminal's -e command.
+    for i, arg in ipairs(command) do
+        if arg == "-e" then
+            while #command >= i do table.remove(command) end
+            break
+        end
+    end
     local shell_command = command
     local pwd = nil
+    local ssh_args = terminal_process.foreground_ssh(c.pid, c.window)
     for _, tab in ipairs(tabs) do
-        if tab.active and tab.pwd then
+        if tab.active then
             pwd = tab.pwd
         end
     end
-    if pwd then
-        pwd = pwd:gsub("'", "'\"'\"'") -- escapes single quotes
-        shell_command = {"/bin/sh", "-c", "NEWPWD='"..pwd.."' "..command}
+    if ssh_args then
+        local uri = c:get_xproperty("_DEMOLINUX_CWD") or ""
+        local remote_pwd = uri:match("^file://[^/]*(/.*)$") or ""
+        remote_pwd = remote_pwd:gsub("%%(%x%x)", function(byte)
+            return string.char(tonumber(byte, 16))
+        end)
+        local reconnect = "command ssh -t -o ClearAllForwardings=yes"
+        for _, arg in ipairs(ssh_args) do
+            reconnect = reconnect.." "..shell_quote(arg)
+        end
+        if remote_pwd ~= "" and not remote_pwd:find("%z") then
+            local login = "cd -- "..shell_quote(remote_pwd).." && exec \"$SHELL\" -l"
+            reconnect = reconnect.." "..shell_quote(login)
+        end
+        reconnect = reconnect.."; exec zsh"
+        for _, arg in ipairs({"-e", "zsh", "-ic", reconnect}) do
+            table.insert(command, arg)
+        end
+    elseif pwd then
+        shell_command = {"env", "NEWPWD="..pwd}
+        for _, arg in ipairs(command) do table.insert(shell_command, arg) end
     end
 
     deactivate(tabs)

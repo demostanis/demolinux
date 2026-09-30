@@ -19,6 +19,8 @@ export SAVEHIST=10000
 [ -n "$NEWPWD" ] && cd "$NEWPWD"
 
 preexec() {
+	# The next SSH prompt must report its own directory, not inherit a local one.
+	[[ -z "$SSH_CONNECTION" ]] && printf '\033]7;\a'
 	# set window title
 	1="$(sed 's/%/%%/g;s/\\//g'<<<"$1")"
 	1="$(tr \\n \ <<<"$1")"
@@ -32,6 +34,7 @@ preexec() {
 }
 
 precmd() {
+	terminal_report_pwd
 	[[ "$(fc -l -1)" = *pacman*-S* ]] && rehash
 	[[ "$(fc -l -1)" = *paru*-S* ]] && rehash
 
@@ -156,16 +159,20 @@ if [ `tty` != /dev/tty1 ]; then
 	FAST_HIGHLIGHT[chroma-man]=
 fi
 
-if [[ $(tty) == /dev/pts/* ]]; then
-	chpwd() {
-		awesome-client "
-			for _, master in pairs(tab_masters or {}) do
-				for _, tab in ipairs(master.tabs) do
-					if tab.client == client.focus then
-						tab.pwd = [[$PWD]]
-					end
-				end
-			end
-		"
-	}
-fi
+terminal_report_pwd() {
+	[[ -t 1 ]] || return
+	local LC_ALL=C encoded= char i
+	for (( i=1; i<=${#PWD}; i++ )); do
+		char=${PWD[i]}
+		case "$char" in
+			[a-zA-Z0-9/._~-]) encoded+=$char ;;
+			*) printf -v char '%%%02X' "'$char"; encoded+=$char ;;
+		esac
+	done
+	printf '\033]7;file://%s%s\a' "$HOST" "$encoded"
+	if [[ -n "$WINDOWID" && -z "$SSH_CONNECTION" ]]; then
+		awesome-client "if terminal_tab_pwd then terminal_tab_pwd($WINDOWID, terminal_tab_decode('$(terminal_tab_hex "$PWD")')) end" >/dev/null 2>&1
+	fi
+}
+
+chpwd() { terminal_report_pwd }

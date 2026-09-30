@@ -1,0 +1,14 @@
+#:META:OSC:7:track shell working directory
+
+sub on_osc_seq {
+    my ($self, $op, $uri) = @_;
+    return unless $op == 7;
+    return unless $uri eq '' || $uri =~ m{\Afile://[^/]*(/[^\x00-\x1f\x7f]*)\z};
+    $self->XChangeProperty(
+        $self->parent,
+        $self->XInternAtom('_DEMOLINUX_CWD'),
+        $self->XInternAtom('UTF8_STRING'),
+        8, $uri
+    );
+    return 1;
+}

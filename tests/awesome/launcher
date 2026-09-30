@@ -1,5 +1,6 @@
 #!/bin/bash
 
+spawndummywin 'launcher test owner'
 modkeypress space
 expectawesome 'local launcher = screen.primary.app_launcher
     return launcher and launcher.visible'
@@ -26,4 +27,6 @@ xdotool key Enter
 # nemo
 expectwin Home
 
+quitwin
+expectfocus 'launcher test owner'
 quitwin

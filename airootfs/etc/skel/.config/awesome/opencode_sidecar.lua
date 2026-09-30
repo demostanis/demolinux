@@ -761,7 +761,6 @@ local function close_hosted(tab, restore_focus)
             hosted.skip_taskbar = original.skip_taskbar
             hosted.size_hints_honor = original.size_hints_honor
             hosted.buttons = original.buttons
-            hosted:geometry(original.geometry)
             hosted.maximized = original.maximized
             hosted.fullscreen = original.fullscreen
             hosted.hidden = original.hidden
@@ -769,6 +768,7 @@ local function close_hosted(tab, restore_focus)
             for position, size in pairs(original.titlebars) do
                 hosted["titlebar_"..position](hosted, size)
             end
+            hosted:geometry(original.geometry)
         else
             hosted:kill()
         end

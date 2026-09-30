@@ -1,8 +1,8 @@
 # Maintainer: Carl Smedstad <carsme@archlinux.org>
 
 pkgname=opencode
-pkgver=3.0.2+demolinux
-_pkgver=3.0.2-demolinux
+pkgver=3.0.3+demolinux
+_pkgver=3.0.3-demolinux
 pkgrel=1
 pkgdesc='The open source coding agent'
 arch=('x86_64')
@@ -35,7 +35,7 @@ _opentui_ver=0.1.79
 source=(
   "https://github.com/demostanis/opencode/archive/refs/tags/$_pkgver.tar.gz"
 )
-sha256sums=('cd553c55e9af2ad47715265bdd78d0a42cb422c75b4ad94dd3ddd9a2e33c514b')
+sha256sums=('675b2acfa9ae2bff78ccb34c8bfe52bd575c60b5497d22f2b378f0a515948de7')
 
 prepare() {
   cd "$srcdir/$pkgname-$_pkgver" || return

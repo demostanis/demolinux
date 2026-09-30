@@ -6,6 +6,7 @@ Things useful to move to persistfs:
 /home/demostanis/.gitidentity
 /home/demostanis/.local/share/agentgraph/nodes
 /home/demostanis/.local/share/opencode (/auth.json if no conversation history)
+/home/demostanis/.local/state/opencode/machine-id (for sync)
 /home/demostanis/.ssh (keys, authorized hosts)
 /home/demostanis/.zbookmarks (for local projects)
 /home/demostanis/.mozilla/firefox/default.profile/bookmarks.html
@@ -20,3 +21,4 @@ Can be dataized:
 /var/lib/containerd (too large)
 /var/lib/docker (too large)
 /var/lib/tailscale (for files)
+/home/demostanis/.local/state/syncthing

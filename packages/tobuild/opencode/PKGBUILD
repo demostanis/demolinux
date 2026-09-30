@@ -3,7 +3,7 @@
 pkgname=opencode
 pkgver=3.0.3+demolinux
 _pkgver=3.0.3-demolinux
-pkgrel=1
+pkgrel=2
 pkgdesc='The open source coding agent'
 arch=('x86_64')
 url='https://github.com/anomalyco/opencode'
@@ -13,7 +13,7 @@ depends=(
   'gcc-libs'
   'glibc'
   'icu'
-  'opencode-voice>=1.2.27-3'
+  'opencode-voice>=3.0.3+demolinux-1'
   'ripgrep'
   'tar'
   'xdotool'

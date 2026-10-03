@@ -2,10 +2,9 @@
 
 # tests for Xorg security extension patches (to allow clipboard in untrusted clients)
 
-cookie=/tmp/cookiieieieiie$RANDOM
-
-touch "$cookie"
-xauth -f "$cookie" generate $DISPLAY . untrusted
+cookie=$(mktemp)
+trap 'rm -f "$cookie"' EXIT
+xauth -f "$cookie" generate "$DISPLAY" . untrusted timeout 600
 
 exec_as_untrusted() {
 	# some apps don't respect $XAUTHORITY
@@ -39,3 +38,5 @@ if [ "$(exec_as_untrusted xsel -ob)" != world ]; then
 	echo xsel wasn"'"t able to access the clipboard 2>&1
 	exit 1
 fi
+
+python3 "$(dirname "$0")/xorg-clipboard.py" "$cookie"

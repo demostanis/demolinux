@@ -241,7 +241,7 @@ local function place_hosted(state, tab)
     hosted.hidden = false
     hosted.minimized = false
 
-    local geometry = {
+    local geometry = hosted.fullscreen and owner.screen.geometry or {
         x = owner.x + owner.width,
         y = owner.y + header_height,
         width = math.max(1, math.floor(state.current_width)),
@@ -277,7 +277,9 @@ local function refresh(state)
     end
     local visible = selected ~= nil and (state.expanded or state.animating)
         and owner_is_visible(state.client)
-    state.titlebar.visible = visible
+    local fullscreen = selected and is_valid(selected.hosted_client)
+        and selected.hosted_client.fullscreen
+    state.titlebar.visible = visible and not fullscreen
     state.panel.visible = visible and not has_hosted
     update_titlebar(state)
     update_titlebar_style(state)
@@ -873,11 +875,6 @@ local function attach_hosted(tab, hosted, kind, expand_on_attach, adopt)
         awful.titlebar.hide(hosted, position)
     end
 
-    hosted:connect_signal("property::fullscreen", function(c)
-        if tab.hosted_client == c and c.fullscreen then
-            c.fullscreen = false
-        end
-    end)
     hosted:connect_signal("request::activate", function(c, context)
         if tab.hosted_client ~= c then
             return
@@ -925,7 +922,7 @@ local function attach_hosted(tab, hosted, kind, expand_on_attach, adopt)
     for _, signal in ipairs({
         "property::x", "property::y", "property::width", "property::height",
         "property::screen", "property::minimized", "property::hidden",
-        "property::active", "tagged", "untagged",
+        "property::active", "property::fullscreen", "tagged", "untagged",
     }) do
         hosted:connect_signal(signal, function(c)
             if tab.hosted_client == c then

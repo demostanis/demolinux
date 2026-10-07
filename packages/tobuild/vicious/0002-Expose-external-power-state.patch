@@ -1,0 +1,52 @@
+diff --git a/widgets/bat_linux.lua b/widgets/bat_linux.lua
+--- a/widgets/bat_linux.lua
++++ b/widgets/bat_linux.lua
+@@ -59,6 +59,22 @@
+     -- Get state information
+     local state = battery_state[battery.status] or battery_state["Unknown\n"]
+ 
++    -- External power and battery charging are independent (e.g. charge thresholds).
++    local online = nil
++    local supplies = io.popen("for supply in /sys/class/power_supply/*; do "
++        .. "[ -r \"$supply/online\" ] || continue; "
++        .. "read -r value < \"$supply/online\"; "
++        .. "printf '%s\\n' \"$value\"; done")
++    if supplies then
++        for value in supplies:lines() do
++            if value == "1" then online = true
++            elseif value == "0" and online == nil then online = false end
++        end
++        supplies:close()
++    end
++    if online == nil then online = state == "+" end
++    local external_power = online and 1 or 0
++
+     -- Get capacity information
+     local remaining, capacity, capacity_design
+     if battery.charge_now then
+@@ -82,7 +98,7 @@
+     elseif battery.power_now then
+         rate = tonumber(battery.power_now)
+     else
+-        return {state, percent, "N/A", wear, curpower}
++        return {state, percent, "N/A", wear, curpower, external_power}
+     end
+ 
+     -- Calculate remaining (charging or discharging) time
+@@ -95,7 +111,7 @@
+         elseif state == "-" then
+             timeleft = tonumber(remaining) / tonumber(rate)
+         else
+-            return {state, percent, time, wear, curpower}
++            return {state, percent, time, wear, curpower, external_power}
+         end
+ 
+         -- Calculate time
+@@ -105,6 +121,6 @@
+         time = string.format("%02d:%02d", hoursleft, minutesleft)
+     end
+ 
+-    return {state, percent, time, wear, curpower}
++    return {state, percent, time, wear, curpower, external_power}
+ end)
+ -- }}}

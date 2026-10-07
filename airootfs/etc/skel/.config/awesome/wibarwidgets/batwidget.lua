@@ -285,8 +285,9 @@ local function update_battery_warning(state, level)
 end
 
 vicious.register(statusw, vicious.widgets.bat, function(widget, args)
-    update_battery_warning(args[1], tonumber(args[2]))
-    if args[1] == "+" then -- charging
+    local plugged_in = args[6] == 1 or (args[6] == nil and args[1] == "+")
+    update_battery_warning(plugged_in and "+" or args[1], tonumber(args[2]))
+    if plugged_in then
         set_battery_icon("\u{f376}")
     else
         local ratio = 100 / #icons

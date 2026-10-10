@@ -1,11 +1,11 @@
 #!/bin/sh
 # disable blur if running inside a VM/old PC
+set --
 
 if grep -q QEMU /proc/cpuinfo || \
 	(glxinfo | grep -q llvmpipe) || \
 	(glxinfo | grep 'OpenGL version string' | grep -qv ': 4\.'); then
-	sed 25,\$d -i ~/.config/picom/picom.conf
-	echo 'backend = "xrender";' >> ~/.config/picom/picom.conf
+	set -- --backend xrender --blur-method none
 fi
 
 dpi=$(xrdb -get Xft.dpi 2>/dev/null || true)
@@ -22,6 +22,7 @@ scale() {
 corner_radius=$(scale 5)
 shadow_radius=$(scale 50)
 exec picom \
+	"$@" \
 	--corner-radius "$corner_radius" \
 	--shadow-radius "$shadow_radius" \
 	--shadow-offset-x "-$shadow_radius" \

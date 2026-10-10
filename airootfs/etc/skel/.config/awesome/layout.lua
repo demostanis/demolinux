@@ -155,38 +155,13 @@ else
 	global_x_restored = true
 end
 
-local timed = nil
 local last_new = nil
 local function set_global_x(new)
-	-- so we don't abort 1000 times when holding the switch key
 	if new == last_new then return end
 	last_new = new
 
-	if timed and timed.started then
-		timed:abort()
-	end
-
-	local ended = false
-	timed = rubato.timed{
-		pos = global_x,
-		duration = 0.3,
-		subscribed = function(w)
-			-- rubato sometimes generates weird curves that go
-			-- past the target value... so correct it...
-			if new > global_x and w > new then
-				w = new
-			elseif new < global_x and w < new then
-				w = new
-			end
-			if ended then return end
-			if w == new then
-				ended = true
-			end
-			global_x = w
-			awful.layout.arrange(mouse.screen)
-		end
-	}
-	timed.target = new
+	global_x = new
+	awful.layout.arrange(mouse.screen)
 
 	global_x_file = assert(io.open(global_x_filename, "w"))
 	global_x_file:write(tostring(new))

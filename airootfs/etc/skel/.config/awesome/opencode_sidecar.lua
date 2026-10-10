@@ -2,6 +2,7 @@ local awful = require"awful"
 local beautiful = require"beautiful"
 local gears = require"gears"
 local wibox = require"wibox"
+awesome.register_xproperty("WM_NAME", "string")
 local dpi = require"beautiful.xresources".apply_dpi
 local source_dir = debug.getinfo(1, "S").source:match("@(.*/)")
 
@@ -18,8 +19,6 @@ local active_state
 local get_state
 local image_viewer_instance_prefix = "opencode-sidewindow-imv-"
 
-local animation_frames = 11
-local animation_interval = 1 / 60
 local titlebar_height = gears.math.round(
     beautiful.get_font_height() * 1.5)
 local titlebar_navigation_width = dpi(82)
@@ -321,10 +320,9 @@ local function reclamp_state(state)
     refresh(state)
 end
 
-local function set_expanded(state, expanded, immediate)
+local function set_expanded(state, expanded)
     if expanded and #state.tabs == 0 then
         expanded = false
-        immediate = true
     end
     if state.expanded == expanded and not state.animating then
         refresh(state)
@@ -343,49 +341,13 @@ local function set_expanded(state, expanded, immediate)
         active_state = nil
     end
 
-    local from = state.current_width
-    local target = expanded and expanded_width(state) or 0
-    if immediate then
-        state.current_width = target
-        update_layout_reservation(state)
-        refresh(state)
-        if not expanded then
-            state.titlebar.visible = false
-            state.panel.visible = false
-        end
-        return
-    end
-
-    state.animating = true
+    state.current_width = expanded and expanded_width(state) or 0
+    update_layout_reservation(state)
     refresh(state)
-
-    local frame = 0
-    state.animation = gears.timer.start_new(animation_interval, function()
-        if not is_valid(state.client) then
-            state.animation = nil
-            state.animating = false
-            state.titlebar.visible = false
-            state.panel.visible = false
-            return false
-        end
-
-        frame = frame + 1
-        local progress = math.min(1, frame / animation_frames)
-        local eased = progress * progress * (3 - 2 * progress)
-        state.current_width = from + (target - from) * eased
-        update_layout_reservation(state)
-        refresh(state)
-
-        if progress == 1 then
-            state.current_width = target
-            state.animation = nil
-            state.animating = false
-            update_layout_reservation(state)
-            refresh(state)
-            return false
-        end
-        return true
-    end)
+    if not expanded then
+        state.titlebar.visible = false
+        state.panel.visible = false
+    end
 end
 
 local function resize_state(state, width)
@@ -1085,6 +1047,8 @@ local function make_state(c)
         border_color = beautiful.opencode_sidecar_border_color
             or beautiful.color3 or beautiful.bg_focus,
     })
+    titlebar:set_xproperty("WM_NAME", "opencode_sidewindow_titlebar")
+    panel:set_xproperty("WM_NAME", "opencode_sidewindow_panel")
     local content_container = wibox.widget({
         margins = dpi(12),
         widget = wibox.container.margin,

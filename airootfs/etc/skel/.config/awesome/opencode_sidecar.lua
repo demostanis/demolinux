@@ -1065,9 +1065,9 @@ local function make_state(c)
     local border_width = 0
     local titlebar = wibox({
         screen = c.screen,
-        ontop = true,
+        ontop = false,
         visible = false,
-        type = "utility",
+        type = "dock",
         bg = beautiful.opencode_sidecar_titlebar_bg
             or beautiful.bg_focus,
         fg = beautiful.fg_focus,
@@ -1077,9 +1077,9 @@ local function make_state(c)
     })
     local panel = wibox({
         screen = c.screen,
-        ontop = true,
+        ontop = false,
         visible = false,
-        type = "utility",
+        type = "dock",
         bg = sidecar_background(),
         border_width = border_width,
         border_color = beautiful.opencode_sidecar_border_color

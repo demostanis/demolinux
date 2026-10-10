@@ -3,6 +3,7 @@ local beautiful = require"beautiful"
 local gears = require"gears"
 local wibox = require"wibox"
 awesome.register_xproperty("WM_NAME", "string")
+awesome.register_xproperty("OPENCODE_SIDEWINDOW", "number")
 local dpi = require"beautiful.xresources".apply_dpi
 local source_dir = debug.getinfo(1, "S").source:match("@(.*/)")
 
@@ -197,6 +198,7 @@ local function chrome_height(state)
 end
 
 local function place_chrome(state)
+    if state.current_width <= 0 then return end
     local c = state.client
     local width = math.max(1, math.floor(state.current_width))
     local x = c.x + c.width
@@ -718,6 +720,7 @@ local function close_hosted(tab, restore_focus)
     if is_valid(hosted) then
         if original then
             hosted.opencode_sidecar_hosted = nil
+            hosted:set_xproperty("OPENCODE_SIDEWINDOW", 0)
             hosted.opencode_sidecar_owner = nil
             hosted.screen = original.screen
             hosted:tags(original.tags)
@@ -825,6 +828,7 @@ local function attach_hosted(tab, hosted, kind, expand_on_attach, adopt)
     tab.hosted_pid = hosted.pid
     tab.launching = false
     hosted.opencode_sidecar_hosted = true
+    hosted:set_xproperty("OPENCODE_SIDEWINDOW", 1)
     hosted.opencode_sidecar_owner = state.client
     hosted.floating = true
     hosted.skip_taskbar = true

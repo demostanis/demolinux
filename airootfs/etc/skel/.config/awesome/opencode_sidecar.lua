@@ -971,7 +971,7 @@ function sidecar.capture_window(c, window_id, name)
     local state = get_state(c)
     local tab, index = append_tab(state, unique_name(state, normalized), "window")
     activate_index(state, index)
-    attach_hosted(tab, hosted, "window", true, true)
+    attach_hosted(tab, hosted, "window", false, true)
     return sidecar.status(c)
 end
 
@@ -1050,7 +1050,7 @@ function sidecar.launch(c, argv, name)
     local launched_pid
     watch_for_hosted(tab, function(candidate)
         return launched_pid ~= nil and candidate.pid == launched_pid
-    end, "launch", true)
+    end, "launch", false)
     local pid = awful.spawn(argv)
     if type(pid) ~= "number" then
         remove_tab_from_state(state, tab)

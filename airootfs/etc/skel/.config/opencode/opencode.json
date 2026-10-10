@@ -20,6 +20,9 @@
     }
   },
   "agent": {
+    "general": {
+      "model": "openai/gpt-6.1-sol"
+    },
     "browser": {
       "ultra_mode_allowed": true,
       "subagent_model": "lightweight_model",

@@ -197,6 +197,7 @@ return function(s)
         input_passthrough = true,
         bg = beautiful.window_preview_bg or beautiful.bg_normal,
     }
+    require("ui-animation")(zoom_popup, "window-preview")
 
     local function hide_zoom(c)
         if c and zoom_client ~= c then

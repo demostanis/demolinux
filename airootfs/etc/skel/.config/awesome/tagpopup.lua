@@ -61,6 +61,7 @@ local popup = awful.popup{
     bg = beautiful.color8,
     widget = taglist,
 }
+require("ui-animation")(popup, "tags")
 
 local timer = nil
 awesome.connect_signal("tag::switched", function()

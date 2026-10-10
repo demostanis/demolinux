@@ -139,7 +139,11 @@ local function mkpanew(icon, text, command, opts)
 end
 
 function show_panel()
-    mypanel.visible = not mypanel.visible
+    if mypanel.visible then
+        mypanel:hide()
+        return
+    end
+    mypanel.visible = true
     -- this should probably be renamed
     overview_shown = mypanel.visible
     awesome.emit_signal("overview::display", mypanel.visible)
@@ -268,13 +272,16 @@ return function(s)
         height = panel_height,
         bg = beautiful.bg_focus,
     }
+    require("ui-animation")(mypanel, "panel")
     s.mypanel = mypanel
 
     function mypanel:hide()
+        if not mypanel.visible then return end
         mypanel.visible = false
-        if old_client_focus then
+        if old_client_focus and old_client_focus.valid then
             client.focus = old_client_focus
         end
+        old_client_focus = nil
         overview_shown = false
         if mykeygrabber then
             mykeygrabber:stop()

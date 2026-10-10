@@ -168,6 +168,7 @@ return function(s)
         },
         buttons = tasklist_buttons,
         update_function = function(w, b, l, d, clients, a)
+            if s.mydock and s.mydock.overview_frozen then return end
             local n = #clients+#mylaunchers:get_children()
             local bs = item_size
             s.mydock.width = bs*n
@@ -191,6 +192,11 @@ return function(s)
         shape = rrect(),
     }
     mydock:set_xproperty("WM_NAME", "picom_fade_in")
+
+    function mydock:set_overview_frozen(frozen)
+        rawset(self, "overview_frozen", frozen)
+        if not frozen then mytasklist._do_tasklist_update_now() end
+    end
 
     return mydock
 end

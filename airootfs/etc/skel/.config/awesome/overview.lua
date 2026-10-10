@@ -1,9 +1,11 @@
--- This is used to give a specific name to icon popups,
--- to tell picom not to give them a shadow
 awesome.register_xproperty("WM_NAME", "string")
+awesome.register_xproperty("OVERVIEW_SHADOW_SUPPRESSED", "number")
+awesome.register_xproperty("OVERVIEW_REAL_HIDDEN", "number")
+awesome.register_xproperty("OVERVIEW_PARTICIPANT", "number")
 
 local schedule_image_gc = require("imagegc")
 local content_cache = {}
+local active_quit
 local last_visible_content = setmetatable({}, { __mode = "k" })
 
 local function snapshot_visible_content(c)
@@ -25,7 +27,7 @@ local function snapshot_visible_content(c)
             end
         end
         if not image then
-            image = cairo.ImageSurface.create(cairo.Format.ARGB24, width, height)
+            image = cairo.ImageSurface.create(cairo.Format.ARGB32, width, height)
             last_visible_content[c] = image
         end
         local cr = cairo.Context(image)
@@ -46,9 +48,9 @@ gears.timer.delayed_call(function()
     end
 end)
 
-function draw(c, cache_content)
+local function draw(c, cache_content, active)
     local geo = c:geometry()
-    local content = cairo.ImageSurface.create(cairo.Format.ARGB24, geo.width, geo.height)
+    local content = cairo.ImageSurface.create(cairo.Format.ARGB32, geo.width, geo.height)
     local cr = cairo.Context(content)
     local su
 
@@ -64,13 +66,6 @@ function draw(c, cache_content)
     local titlebarheight = 0
     if c._private.titlebars then
         local titlebar = c._private.titlebars.top.drawable
-        if c.active_in_overview then
-            titlebar:set_bg(beautiful.bg_focus)
-            titlebar:set_fg(beautiful.fg_focus)
-        else
-            titlebar:set_bg(beautiful.bg_normal)
-            titlebar:set_fg(beautiful.fg_normal)
-        end
         titlebar:_do_redraw()
         local titlebarsu = gears.surface(titlebar.drawable.surface)
         titlebarheight = titlebar.drawable:geometry().height
@@ -83,25 +78,128 @@ function draw(c, cache_content)
         cr:paint()
     end
 
+    for side, bar in pairs(c._private.titlebars or {}) do
+        if side ~= "top" then
+            local drawable = bar.drawable
+            local native = drawable.drawable
+            local bar_geometry = native:geometry()
+            if bar_geometry.width > 0 and bar_geometry.height > 0 then
+                drawable:_do_redraw()
+                cr:set_source_surface(gears.surface(native.surface),
+                    bar_geometry.x - geo.x, bar_geometry.y - geo.y)
+                cr:paint()
+            end
+        end
+    end
+
+    if not active then
+        cr:set_source_rgba(0, 0, 0, 0.3)
+        cr:paint()
+    end
+
     schedule_image_gc()
     return content
 end
 
-return function()
+local function show_overview()
+    if overview_shown then return end
     local s = mouse.screen
     local all_popups = {}
     local has_quitted_overview = false
-    local previously_visible_clients = {}
     local previous_client_focus = client.focus
+    local overview_clients = {}
     local filter_popup = nil
     local grabber = nil
+    local entering = true
+    local previews = {}
+    local original_geometries = {}
+    local pending_focus = nil
+    local transition_duration = 0.3
+    local chrome_snapshots = {}
+    local chrome_layers = {}
+    local preview_images = {}
+    local thaw_dock
+    local input_shield
 
-    function free_popups()
+    local function raise_chrome()
+        local command = {"xdotool"}
+        for _, saved in ipairs(chrome_layers) do
+            saved.bar.ontop = true
+            command[#command+1] = "windowraise"
+            command[#command+1] = string.format("%.0f", saved.bar.window)
+        end
+        for _, frozen in ipairs(chrome_snapshots) do
+            frozen.ontop = true
+            command[#command+1] = "windowraise"
+            command[#command+1] = string.format("%.0f", frozen.window)
+        end
+        if #command > 1 then awful.spawn(command) end
+    end
+
+    local function freeze_dock_updates()
+        s.mydock:set_overview_frozen(true)
+        thaw_dock = function()
+            s.mydock:set_overview_frozen(false)
+            thaw_dock = nil
+        end
+    end
+
+    local function freeze_chrome()
+        freeze_dock_updates()
+        local filename = os.tmpname()
+        local captured = os.execute("import -window root png:"..string.format("%q", filename))
+        local screen_image
+        if captured then
+            local ok, image = pcall(cairo.ImageSurface.create_from_png, filename)
+            if ok then screen_image = image end
+        end
+        os.remove(filename)
+        for _, name in ipairs({"mywibar", "mydock"}) do
+            local bar = s[name]
+            if bar and bar.visible then
+                table.insert(chrome_layers, {bar = bar, ontop = bar.ontop})
+                local geometry = bar:geometry()
+                local image = cairo.ImageSurface.create(cairo.Format.ARGB32,
+                    geometry.width, geometry.height)
+                local cr = cairo.Context(image)
+                cr:set_operator(cairo.Operator.SOURCE)
+                if screen_image then
+                    cr:set_source_surface(screen_image, -geometry.x, -geometry.y)
+                else
+                    cr:set_source_surface(gears.surface(bar.drawable.surface), 0, 0)
+                end
+                cr:paint()
+                image:flush()
+                local frozen = wibox{
+                    screen = s,
+                    x = geometry.x, y = geometry.y,
+                    width = geometry.width, height = geometry.height,
+                    ontop = true, visible = false,
+                    input_passthrough = false,
+                    bg = gears.color.transparent,
+                    widget = wibox.widget{
+                        image = image,
+                        widget = wibox.widget.imagebox,
+                    },
+                }
+                frozen:set_xproperty("WM_NAME", "overview_chrome_snapshot")
+                frozen.visible = true
+                table.insert(chrome_snapshots, frozen)
+            end
+        end
+        schedule_image_gc()
+    end
+
+    local function resize_preview(popup, geometry)
+        popup:geometry(geometry)
+    end
+
+    local function free_popups()
         for i, popup in ipairs(all_popups) do
             popup.is_free = true
         end
     end
-    function hide_free_popups()
+    local function hide_free_popups()
         for i, popup in ipairs(all_popups) do
             if popup.is_free then
                 popup.visible = false
@@ -109,29 +207,64 @@ return function()
         end
     end
 
-    local function quit_overview(clients, did_focus_client)
-        if filter_popup then
-            filter_popup.visible = false
-        end
+    local function quit_overview()
+        if has_quitted_overview then return end
         has_quitted_overview = true
-        content_cache = {}
-        free_popups()
-        hide_free_popups()
-        for _, c in ipairs(previously_visible_clients) do
-            c.minimized = false
+        if grabber then awful.keygrabber.stop(grabber) end
+        if filter_popup then filter_popup.visible = false end
+        for _, popup in ipairs(all_popups) do
+            if not popup.overview_preview then popup.visible = false end
         end
-        if not did_focus_client then
-            client.focus = previous_client_focus
-            if client.focus then -- possible if all windows are minimized
-                client.focus:raise()
+        for c, popup in pairs(previews) do
+            if c.valid and popup.visible and popup.overview_client == c
+                and original_geometries[c] then
+                resize_preview(popup, original_geometries[c])
             end
         end
-        for _, c in ipairs(clients) do
-            c.keybinds = nil
-        end
-        awful.keygrabber.stop(grabber)
-        overview_shown = false
-        awesome.emit_signal("overview::display", false)
+        gears.timer.start_new(transition_duration + 0.06, function()
+            local target = pending_focus or previous_client_focus
+            if target and target.valid then
+                if pending_focus then target.minimized = false end
+                client.focus = target
+                target:raise()
+            end
+            awful.layout.arrange(s)
+            for c in pairs(original_geometries) do
+                if c.valid then c:set_xproperty("OVERVIEW_REAL_HIDDEN", 0) end
+            end
+            awesome.emit_signal("overview::display", false)
+            gears.timer.start_new(0.12, function()
+                for _, popup in ipairs(all_popups) do popup.visible = false end
+                for c in pairs(original_geometries) do
+                    if c.valid then
+                        c:set_xproperty("OVERVIEW_SHADOW_SUPPRESSED", 0)
+                    end
+                end
+                for _, saved in ipairs(chrome_layers) do saved.bar.ontop = saved.ontop end
+                if thaw_dock then thaw_dock() end
+                for _, c in ipairs(overview_clients) do
+                    if c.valid then c.keybinds = nil end
+                end
+                content_cache = {}
+                gears.timer.start_new(0.08, function()
+                    for _, frozen in ipairs(chrome_snapshots) do frozen.visible = false end
+                    if input_shield then input_shield.visible = false end
+                    for c in pairs(original_geometries) do
+                        if c.valid then c:set_xproperty("OVERVIEW_PARTICIPANT", 0) end
+                    end
+                    overview_shown = false
+                    active_quit = nil
+                    for _, popup in ipairs(all_popups) do
+                        popup:buttons({})
+                        popup.widget = nil
+                    end
+                    preview_images = {}
+                    return false
+                end)
+                return false
+            end)
+            return false
+        end)
     end
 
     local keys = "fjdksla"
@@ -151,14 +284,12 @@ return function()
         end
     end
 
-    local function focus_client(clients, c)
-        quit_overview(clients, true)
-        c.minimized = false
-        client.focus = c
-        c:raise()
+    local function focus_client(c)
+        pending_focus = c
+        quit_overview()
     end
 
-    function draw_clients(clients, filter)
+    local function draw_clients(clients, filter)
         for _, c in ipairs(clients) do
             if not c.keybinds then
                 local comb = comb_1
@@ -203,7 +334,7 @@ return function()
             local cdw = math.sqrt(geo.width^2+geo.height^2)
             diagonal = diagonal + cdw
         end
-        local ratio = screen_diagonal/diagonal+0.05*(#lines-1)
+        local ratio = diagonal > 0 and (screen_diagonal/diagonal+0.05*(#lines-1)) or 1
 
         -- Calculate the height of all lines by
         -- summing the biggest clients of each line
@@ -234,28 +365,42 @@ return function()
             end
 
             for j, c in ipairs(line) do
-                c.active_in_overview = false
                 local geo = c:geometry()
-                local content = draw(c, true)
+                if not original_geometries[c] then
+                    original_geometries[c] = {x=geo.x, y=geo.y, width=geo.width, height=geo.height}
+                end
+                local content = preview_images[c]
+                if not content then
+                    content = draw(c, true, c == previous_client_focus)
+                    preview_images[c] = content
+                end
+                c:set_xproperty("OVERVIEW_SHADOW_SUPPRESSED", 1)
+                c:set_xproperty("OVERVIEW_PARTICIPANT", 1)
 
                 local popups = {}
                 local function new_popup(args)
                     local mypopup
                     local found_popup = false
                     for _, free_popup in ipairs(all_popups) do
-                        if free_popup.is_free then
+                        if free_popup.is_free
+                            and (free_popup.overview_preview == true) == (args.overview_preview == true) then
                             free_popup.is_free = false
                             found_popup = true
                             for k, v in pairs(args) do
                                 free_popup[k] = v
                             end
-                            free_popup.visible = true
+                            free_popup.visible = args.visible ~= false
                             mypopup = free_popup
                             break
                         end
                     end
                     if not found_popup then
-                        mypopup = awful.popup(args)
+                        if args.overview_preview then
+                            args.overview_preview = nil
+                            mypopup = wibox(args)
+                        else
+                            mypopup = awful.popup(args)
+                        end
                         table.insert(all_popups, mypopup)
                     end
                     table.insert(popups, mypopup)
@@ -263,25 +408,48 @@ return function()
                 end
 
                 if not c.minimized then
-                    table.insert(previously_visible_clients, c)
-                    c.minimized = true
+                    original_geometries[c].was_visible = true
+                    if not entering then c:set_xproperty("OVERVIEW_REAL_HIDDEN", 1) end
                 end
 
-                local popup_x = last_widths+(s.geometry.width-line_width)/(#line+1)*j
-                local popup_y = (last_height+(s.geometry.height-total_height)/(#lines+1)*i)-(beautiful.wibar_height-beautiful.dock_width)/2+(biggest_client_in_line-geo.height*ratio)/2
+                local popup_x = s.geometry.x+last_widths+(s.geometry.width-line_width)/(#line+1)*j
+                local popup_y = s.geometry.y+(last_height+(s.geometry.height-total_height)/(#lines+1)*i)-(beautiful.wibar_height-beautiful.dock_width)/2+(biggest_client_in_line-geo.height*ratio)/2
 
+                local target_geometry = {
+                    x = math.floor(popup_x), y = math.floor(popup_y),
+                    width = math.max(1, math.floor(geo.width*ratio)),
+                    height = math.max(1, math.floor(geo.height*ratio)),
+                }
+                local animate = entering and original_geometries[c].was_visible
+                local initial_geometry = animate and original_geometries[c] or target_geometry
                 local content_popup = new_popup{
+                    overview_preview = true,
+                    visible = false,
                     widget = wibox.widget{
                         widget = wibox.widget.imagebox,
                         image = content,
-                        forced_width = geo.width*ratio,
-                        forced_height = geo.height*ratio,
                     },
-                    x = popup_x,
-                    y = popup_y,
+                    x = initial_geometry.x,
+                    y = initial_geometry.y,
+                    width = initial_geometry.width,
+                    height = initial_geometry.height,
+                    ontop = true,
                 }
+                content_popup.overview_preview = true
+                content_popup.overview_client = c
+                content_popup:set_xproperty("WM_NAME", "overview_client_preview")
+                content_popup.visible = true
+                previews[c] = content_popup
+                if animate then
+                    gears.timer.start_new(0.06, function()
+                        if has_quitted_overview then return false end
+                        if c.valid then c:set_xproperty("OVERVIEW_REAL_HIDDEN", 1) end
+                        resize_preview(content_popup, target_geometry)
+                        return false
+                    end)
+                end
 
-                new_popup{
+                local icon_popup = new_popup{
                     widget = wibox.widget{
                         widget = awful.widget.clienticon,
                         forced_width = dpi(64),
@@ -290,8 +458,12 @@ return function()
                     },
                     x = popup_x+(geo.width*ratio/2)-dpi(32),
                     y = popup_y+geo.height*ratio-dpi(32),
-                    bg = gears.color.transparent
-                }:set_xproperty("WM_NAME", "overview_client_icon")
+                    bg = gears.color.transparent,
+                    visible = false,
+                    ontop = true,
+                }
+                icon_popup:set_xproperty("WM_NAME", "overview_client_icon")
+                icon_popup.visible = not animate
 
                 local titlew = wibox.widget{
                     {
@@ -309,37 +481,33 @@ return function()
                 }
                 local w, h = wibox.widget.base.fit_widget(titlew,
                     {dpi = xresources.get_dpi()}, titlew, 9999, 9999)
-                new_popup{
+                local label_popup = new_popup{
                     widget = titlew,
                     x = popup_x+(geo.width*ratio/2)-w/2,
-                    y = popup_y+(geo.height*ratio/2)-h/2
+                    y = popup_y+(geo.height*ratio/2)-h/2,
+                    visible = false,
+                    ontop = true,
                 }
+                label_popup:set_xproperty("WM_NAME", "overview_client_label")
+                label_popup.visible = not animate
+
+                if animate then
+                    gears.timer.start_new(transition_duration + 0.08, function()
+                        if not has_quitted_overview then
+                            for _, popup in ipairs(popups) do popup.visible = true end
+                            raise_chrome()
+                        end
+                        return false
+                    end)
+                end
 
                 for _, popup in ipairs(popups) do
                     popup._signals["mouse::enter"] = nil
                     popup._signals["mouse::leave"] = nil
 
-                    local function force_redraw()
-                        content_popup.widget = wibox.widget{
-                            widget = wibox.widget.imagebox,
-                            image = draw(c),
-                            forced_width = content_popup.widget.forced_width,
-                            forced_height = content_popup.widget.forced_height
-                        }
-                    end
-                    popup:connect_signal("mouse::enter", function()
-                        c.active_in_overview = true
-                        force_redraw()
-                    end)
-                    popup:connect_signal("mouse::leave", function()
-                        if has_quitted_overview then return end
-                        c.active_in_overview = false
-                        force_redraw()
-                    end)
-
                     popup:buttons(gears.table.join(
                         awful.button({ }, 1, function()
-                            focus_client(clients, c)
+                            focus_client(c)
                         end)
                     ))
                 end
@@ -368,8 +536,8 @@ return function()
             local w, h = wibox.widget.base.fit_widget(filterw,
                 {dpi = xresources.get_dpi()}, filterw, 9999, 9999)
 
-            local x = s.geometry.width/2-w/2
-            local y = s.geometry.height*0.8
+            local x = s.geometry.x+s.geometry.width/2-w/2
+            local y = s.geometry.y+s.geometry.height*0.8
             if filter_popup then
                 filter_popup.x = x
                 filter_popup.y = y
@@ -377,15 +545,18 @@ return function()
             else
                 filter_popup = awful.popup{
                     ontop = true,
+                    visible = false,
                     x = x,
                     y = y,
                     widget = filterw
                 }
+                filter_popup:set_xproperty("WM_NAME", "overview_filter")
             end
         end
         if filter_popup then
             filter_popup.visible = filter ~= ""
         end
+        raise_chrome()
     end
 
     local all_clients = s.selected_tag:clients()
@@ -397,15 +568,31 @@ return function()
     end
     if #clients <= 1 then return end
     table.sort(clients, function(a, b) return a.x < b.x end)
-    s.mypanel:hide()
-    draw_clients(clients)
-
+    overview_clients = clients
+    active_quit = quit_overview
+    if s.mypanel.visible then
+        s.mypanel:hide()
+        previous_client_focus = client.focus
+    end
+    freeze_chrome()
+    input_shield = wibox{
+        screen = s,
+        x = s.geometry.x, y = s.geometry.y,
+        width = s.geometry.width, height = s.geometry.height,
+        ontop = true, visible = false,
+        input_passthrough = false,
+        bg = gears.color.transparent,
+    }
+    input_shield:set_xproperty("WM_NAME", "overview_input_shield")
+    input_shield.visible = true
     overview_shown = true
+    draw_clients(clients)
+    entering = false
     awesome.emit_signal("overview::display", true)
 
     local filter = ""
     local is_ctrling = false
-    local grabber = awful.keygrabber.run(function(mods, key, status)
+    grabber = awful.keygrabber.run(function(mods, key, status)
         if status == "release" then return end
 
         local is_mod4 = false
@@ -415,9 +602,8 @@ return function()
             end
         end
 
-        local focus_first = false
         if key == "Escape" or (is_mod4 and key == "o") then
-            quit_overview(clients)
+            quit_overview()
             return
         elseif key == "Shift_L" then
             -- ignore key
@@ -435,19 +621,31 @@ return function()
 
         local filtered_clients = {}
         for _, c in ipairs(clients) do
-            if c.keybinds:lower():match("^"..filter:lower()) then
+            if c.valid and c.keybinds and c.keybinds:lower():sub(1, #filter) == filter:lower() then
                 table.insert(filtered_clients, c)
             end
         end
         free_popups()
         if #filtered_clients == 1 then
             local c = filtered_clients[1]
-            focus_client(clients, c)
+            focus_client(c)
         else
             draw_clients(filtered_clients, filter)
             hide_free_popups()
         end
     end)
+end
+
+awesome.connect_signal("overview::hide", function()
+    if active_quit then active_quit() end
+end)
+
+return function()
+    local ok, err = xpcall(show_overview, debug.traceback)
+    if not ok then
+        if active_quit then active_quit() end
+        gears.debug.print_error(err)
+    end
 end
 
 -- vim:set et sw=4 ts=4:

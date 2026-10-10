@@ -220,6 +220,7 @@ popup = awful.popup{
         layout = wibox.layout.align.vertical
     }
 }
+require("ui-animation")(popup, "emoji")
 print_active_emoji()
 
 local function redraw_grid()
@@ -288,6 +289,8 @@ local function print_filter()
 end
 
 return function()
+    if mouse.screen.mypanel.visible then mouse.screen.mypanel:hide() end
+    old_client_focus = client.focus
     filter = ""
     cursor = 1
 
@@ -297,10 +300,7 @@ return function()
     redraw_grid()
     popup.visible = true
 
-    old_client_focus = client.focus
-    mouse.screen.mypanel:hide()
-
-    local timer, grabber
+    local timer
     grabber = awful.keygrabber.run(function(mod, key, status)
         if status == "release" then return end
         local should_redraw = false

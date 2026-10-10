@@ -4,8 +4,14 @@ awesome.register_xproperty("OVERVIEW_REAL_HIDDEN", "number")
 awesome.register_xproperty("OVERVIEW_PARTICIPANT", "number")
 
 local schedule_image_gc = require("imagegc")
+local lgi = require("lgi")
+local Gdk = lgi.require("Gdk", "3.0")
+Gdk.init({})
 local content_cache = {}
 local active_quit
+local closing = false
+local reopen_requested = false
+local request_overview
 local last_visible_content = setmetatable({}, { __mode = "k" })
 
 local function snapshot_visible_content(c)
@@ -102,8 +108,8 @@ local function draw(c, cache_content, active)
 end
 
 local function show_overview()
-    if overview_shown then return end
     local s = mouse.screen
+    if active_quit or (overview_shown and not s.mypanel.visible) then return end
     local all_popups = {}
     local has_quitted_overview = false
     local previous_client_focus = client.focus
@@ -146,14 +152,7 @@ local function show_overview()
 
     local function freeze_chrome()
         freeze_dock_updates()
-        local filename = os.tmpname()
-        local captured = os.execute("import -window root png:"..string.format("%q", filename))
-        local screen_image
-        if captured then
-            local ok, image = pcall(cairo.ImageSurface.create_from_png, filename)
-            if ok then screen_image = image end
-        end
-        os.remove(filename)
+        local root_window = Gdk.get_default_root_window()
         for _, name in ipairs({"mywibar", "mydock"}) do
             local bar = s[name]
             if bar and bar.visible then
@@ -163,8 +162,10 @@ local function show_overview()
                     geometry.width, geometry.height)
                 local cr = cairo.Context(image)
                 cr:set_operator(cairo.Operator.SOURCE)
-                if screen_image then
-                    cr:set_source_surface(screen_image, -geometry.x, -geometry.y)
+                local pixbuf = root_window and Gdk.pixbuf_get_from_window(root_window,
+                    geometry.x, geometry.y, geometry.width, geometry.height)
+                if pixbuf then
+                    Gdk.cairo_set_source_pixbuf(cr, pixbuf, 0, 0)
                 else
                     cr:set_source_surface(gears.surface(bar.drawable.surface), 0, 0)
                 end
@@ -210,6 +211,7 @@ local function show_overview()
     local function quit_overview()
         if has_quitted_overview then return end
         has_quitted_overview = true
+        closing = true
         if grabber then awful.keygrabber.stop(grabber) end
         if filter_popup then filter_popup.visible = false end
         for _, popup in ipairs(all_popups) do
@@ -254,11 +256,16 @@ local function show_overview()
                     end
                     overview_shown = false
                     active_quit = nil
+                    closing = false
                     for _, popup in ipairs(all_popups) do
                         popup:buttons({})
                         popup.widget = nil
                     end
                     preview_images = {}
+                    if reopen_requested then
+                        reopen_requested = false
+                        gears.timer.delayed_call(request_overview)
+                    end
                     return false
                 end)
                 return false
@@ -335,6 +342,21 @@ local function show_overview()
             diagonal = diagonal + cdw
         end
         local ratio = diagonal > 0 and (screen_diagonal/diagonal+0.05*(#lines-1)) or 1
+        local widest_row, unscaled_height = 0, 0
+        for _, line in ipairs(lines) do
+            local row_width, row_height = 0, 0
+            for _, c in ipairs(line) do
+                row_width = row_width + c.width
+                row_height = math.max(row_height, c.height)
+            end
+            widest_row = math.max(widest_row, row_width)
+            unscaled_height = unscaled_height + row_height
+        end
+        if widest_row > 0 and unscaled_height > 0 then
+            ratio = math.min(ratio, 1,
+                (s.geometry.width - dpi(100)) / widest_row,
+                (s.geometry.height - beautiful.wibar_height - beautiful.dock_width - dpi(100)) / unscaled_height)
+        end
 
         -- Calculate the height of all lines by
         -- summing the biggest clients of each line
@@ -566,7 +588,7 @@ local function show_overview()
             table.insert(clients, c)
         end
     end
-    if #clients <= 1 then return end
+    if #clients == 0 then return end
     table.sort(clients, function(a, b) return a.x < b.x end)
     overview_clients = clients
     active_quit = quit_overview
@@ -640,12 +662,22 @@ awesome.connect_signal("overview::hide", function()
     if active_quit then active_quit() end
 end)
 
-return function()
+request_overview = function()
+    if closing then
+        reopen_requested = true
+        return
+    end
+    if active_quit then
+        active_quit()
+        return
+    end
     local ok, err = xpcall(show_overview, debug.traceback)
     if not ok then
         if active_quit then active_quit() end
         gears.debug.print_error(err)
     end
 end
+
+return request_overview
 
 -- vim:set et sw=4 ts=4:

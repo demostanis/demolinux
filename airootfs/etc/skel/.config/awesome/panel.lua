@@ -229,6 +229,10 @@ function show_panel()
         mykeygrabber = awful.keygrabber{
             keybindings = {
                 {{ }, "Escape", mypanel.hide},
+                {{ modkey }, "o", function()
+                    mypanel:hide()
+                    require("overview")()
+                end},
                 {{ }, "w", function()
                     spawn_wifi()
                     mypanel:hide()

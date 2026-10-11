@@ -60,6 +60,22 @@ expectfocus "layout window 3"
 modkeypress h
 expectfocus "layout window 2"
 
+# Dispatch a burst before Awesome can apply a pending layout arrangement.
+awesome-client 'layout.move_left_window(); layout.move_right_window(); layout.move_right_window()'
+expectfocus "layout window 3"
+expectviewport
+awesome-client 'layout.move_left_window(); layout.move_left_window()'
+expectfocus "layout window 1"
+expectviewport
+
+# An old X11 FocusIn must not replace the last requested navigation target.
+awesome-client 'local old = client.focus; layout.move_right_window(); client.focus = old; layout.move_right_window()'
+expectfocus "layout window 3"
+expectviewport
+awesome-client 'local old = client.focus; layout.move_left_window(); client.focus = old; layout.move_left_window()'
+expectfocus "layout window 1"
+expectviewport
+
 quitwin
 quitwin
 quitwin

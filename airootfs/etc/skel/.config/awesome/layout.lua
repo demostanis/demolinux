@@ -156,7 +156,11 @@ else
 end
 
 local last_new = nil
-local function set_global_x(new)
+local scroll_revision = 0
+local navigation_target
+local function set_global_x(new, target)
+	navigation_target = target
+	scroll_revision = scroll_revision + 1
 	if new == last_new then return end
 	last_new = new
 
@@ -211,26 +215,37 @@ local function global_x_of_client(c)
 	return -new_global_x
 end
 
+local function navigation_client()
+	-- X11 can deliver an older FocusIn between consecutive keypresses.
+	if navigation_target and navigation_target.valid
+		and navigation_target.screen == mouse.screen
+		and navigation_target:isvisible() then
+		return navigation_target
+	end
+	return client.focus
+end
+
 local function move_left_window()
 	if any_floatyfloaty() then return end
 
-	local lefthand = lefthand_window()
+	local lefthand = lefthand_window(navigation_client())
 	if not lefthand then return end
-	set_global_x(global_x_of_client(lefthand))
+	set_global_x(global_x_of_client(lefthand), lefthand)
 	client.focus = lefthand
 end
 
 local function move_right_window()
 	if any_floatyfloaty() then return end
 
-	local righthand = righthand_window()
+	local righthand = righthand_window(navigation_client())
 	if not righthand then return end
-	set_global_x(global_x_of_client(righthand))
+	set_global_x(global_x_of_client(righthand), righthand)
 	client.focus = righthand
 end
 
 local function cycle_window_focus()
 	if any_floatyfloaty() then return end
+	navigation_target = nil
 
 	local windows_in_viewport = {}
 	local visible_host_by_owner = {}
@@ -280,7 +295,11 @@ local function on_window_appearance_change(c, allow_sidewindow)
 		or (c and any_floatyfloaty())
 		or controlling_tabs then return end
 
+	scroll_revision = scroll_revision + 1
+	local revision = scroll_revision
 	delayed(function()
+		-- A newer navigation request takes priority over deferred recentering.
+		if revision ~= scroll_revision then return end
 		local is_valid = pcall(function() return c.valid end) and c.valid
 		if is_valid and is_sidewindow_host(c) and not allow_sidewindow then
 			return
@@ -315,6 +334,7 @@ client.connect_signal("request::activate", function(c, context, o)
 	if require"opencode_sidecar".activation_filter(c, context) == false then
 		return
 	end
+	navigation_target = nil
 	if o.raise then
 		on_window_appearance_change(c, true)
 	end
@@ -503,6 +523,7 @@ awesome.connect_signal("tag::switching", function()
 	global_x_by_tag[t.index] = global_x
 end)
 awesome.connect_signal("tag::switched", function()
+	navigation_target = nil
 	local t = awful.screen.focused().selected_tag
 	global_x = global_x_by_tag[t.index] or 0
 	awful.layout.arrange(mouse.screen)

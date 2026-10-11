@@ -159,7 +159,7 @@ npm
 yarn
 python-pipx
 python-pip
-local agent-skills
+#local agent-skills
 uv
 ty
 gdb

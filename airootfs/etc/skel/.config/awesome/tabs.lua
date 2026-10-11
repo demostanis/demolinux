@@ -2,6 +2,7 @@ tab_masters = tab_masters or {}
 local tabbed_clients = {"URxvt"}
 local is_launching_tab = false
 local terminal_process = require("terminal-process")
+local bypass_animation = require("animation-bypass")
 
 awesome.register_xproperty("_DEMOLINUX_CWD", "string")
 
@@ -95,6 +96,8 @@ local function switch_to_tab(master, tab)
     tab.active = true
 
     delayed(function()
+        bypass_animation(previous_active_slave)
+        bypass_animation(tab.client)
         tab.client.x = previous_active_slave.x
         tab.client.y = previous_active_slave.y
         tab.client.width = previous_active_slave.width
@@ -178,6 +181,7 @@ local function delete_tab_in(master, tab_to_delete)
         previous_tab.active = true
 
         delayed(function()
+            bypass_animation(previous_tab.client)
             previous_tab.client.x = last.x
             previous_tab.client.y = last.y
             previous_tab.client.width = last.width
@@ -261,6 +265,7 @@ local function spawn_new_tab_in(master)
         width = c.width,
         height = c.height,
     }, function(new_client)
+        bypass_animation(new_client)
         is_launching_tab = false
         tab.client = new_client
         new_client.is_tab = true
@@ -269,6 +274,8 @@ local function spawn_new_tab_in(master)
         tab.pwd = pwd
 
         delayed(function()
+            bypass_animation(c)
+            bypass_animation(new_client)
             c.minimized = true
             c.is_minimized_tab = true
             new_client:raise()
@@ -322,6 +329,7 @@ end
 
 local function show_tabs_on_client(c)
     if wants_tabs(c) then
+        if is_launching_tab then bypass_animation(c) end
         local tabsl
 
         if not is_launching_tab then

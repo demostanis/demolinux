@@ -2,6 +2,7 @@ local awful = require"awful"
 local beautiful = require"beautiful"
 local gears = require"gears"
 local wibox = require"wibox"
+local bypass_animation = require"animation-bypass"
 awesome.register_xproperty("WM_NAME", "string")
 awesome.register_xproperty("OPENCODE_SIDEWINDOW", "number")
 local dpi = require"beautiful.xresources".apply_dpi
@@ -626,6 +627,10 @@ activate_index = function(state, index)
 
     local previous = active_tab(state)
     local focused = client.focus
+    if state.expanded then
+        bypass_animation(previous and previous.hosted_client)
+        bypass_animation(state.tabs[index].hosted_client)
+    end
     state.active_index = index
     refresh(state)
     if previous and is_valid(previous.hosted_client)

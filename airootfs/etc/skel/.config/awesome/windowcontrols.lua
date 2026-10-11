@@ -1,3 +1,5 @@
+awesome.register_xproperty("DEMOLINUX_MANUAL_RESIZE", "number")
+
 local cursors = {
     ["left"] = "sb_h_double_arrow",
     ["right"] = "sb_h_double_arrow",
@@ -141,9 +143,20 @@ return gears.table.join(
             end
         end
 
+        -- Scrolling resize also moves neighboring windows on this screen.
+        local resizing_clients = floating and {c} or c.screen.clients
+        for _, resized in ipairs(resizing_clients) do
+            resized:set_xproperty("DEMOLINUX_MANUAL_RESIZE", 1)
+        end
+
         mousegrabber.run(function(coords)
-            if not coords.buttons[3] then
-                if not floating and resizing_off_view then
+            if not c.valid or not coords.buttons[3] then
+                for _, resized in ipairs(resizing_clients) do
+                    if resized.valid then
+                        resized:set_xproperty("DEMOLINUX_MANUAL_RESIZE", 0)
+                    end
+                end
+                if c.valid and not floating and resizing_off_view and lefthand.valid then
                     client.focus = lefthand
                     lefthand:raise()
                     layout.on_window_appearance_change(lefthand)

@@ -588,7 +588,7 @@ local function show_overview()
             table.insert(clients, c)
         end
     end
-    if #clients == 0 then return end
+    if #clients < 2 then return end
     table.sort(clients, function(a, b) return a.x < b.x end)
     overview_clients = clients
     active_quit = quit_overview
@@ -610,6 +610,7 @@ local function show_overview()
     overview_shown = true
     draw_clients(clients)
     entering = false
+    client.focus = nil
     awesome.emit_signal("overview::display", true)
 
     local filter = ""

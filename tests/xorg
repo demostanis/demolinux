@@ -2,8 +2,26 @@
 
 # tests for Xorg security extension patches (to allow clipboard in untrusted clients)
 
-cookie=$(mktemp)
-trap 'rm -f "$cookie"' EXIT
+clipboard_tmp=$(mktemp -d)
+cookie="$clipboard_tmp/auth"
+clipboard_owner=
+copyq_monitoring=false
+cleanup_clipboard() {
+	if [ -n "$clipboard_owner" ]; then
+		kill "$clipboard_owner" 2>/dev/null || :
+		wait "$clipboard_owner" 2>/dev/null || :
+	fi
+	if [ "$copyq_monitoring" = true ]; then
+		copyq enable || :
+	fi
+	rm -rf "$clipboard_tmp"
+}
+trap cleanup_clipboard EXIT
+# CopyQ can replace the selection owner while an INCR transfer is in flight.
+copyq_monitoring=$(copyq monitoring 2>/dev/null) || copyq_monitoring=false
+if [ "$copyq_monitoring" = true ]; then
+	copyq disable
+fi
 xauth -f "$cookie" generate "$DISPLAY" . untrusted timeout 600
 
 exec_as_untrusted() {
@@ -39,4 +57,57 @@ if [ "$(exec_as_untrusted xsel -ob)" != world ]; then
 	exit 1
 fi
 
-python3 "$(dirname "$0")/xorg-clipboard.py" "$cookie"
+printf 'Clipboard: caf\303\251\n' > "$clipboard_tmp/small"
+LC_ALL=C awk 'BEGIN { for (i = 0; i < 400000; i++) printf "caf\303\251\n" }' > "$clipboard_tmp/large"
+# Exceed the INCR threshold, with NULs to prevent text fallback.
+LC_ALL=C awk 'BEGIN { for (i = 0; i < 8192; i++) for (j = 0; j < 256; j++) printf "%c", j }' > "$clipboard_tmp/binary"
+
+clipboard_client() {
+	local trust=$1
+	shift
+	if [ "$trust" = untrusted ]; then
+		XAUTHORITY="$cookie" "$@"
+	else
+		"$@"
+	fi
+}
+
+for selection in primary clipboard; do
+	for owner in trusted untrusted; do
+		owner_auth=${XAUTHORITY:-$HOME/.Xauthority}
+		[ "$owner" != untrusted ] || owner_auth=$cookie
+		for reader in trusted untrusted; do
+			for payload in small large binary; do
+				target=UTF8_STRING
+				[ "$payload" != binary ] || target=application/octet-stream
+				label="$selection $owner -> $reader, $target, $payload"
+				# Keep the foreground owner bounded even if a transfer hangs.
+				XAUTHORITY="$owner_auth" timeout --kill-after=1s 35s \
+					xclip -selection "$selection" -target "$target" -in -quiet \
+					< "$clipboard_tmp/$payload" > /dev/null 2> "$clipboard_tmp/owner.log" &
+				clipboard_owner=$!
+				sleep 0.1
+				for attempt in 1 2 3; do
+					if ! clipboard_client "$reader" timeout --kill-after=1s 10s \
+						xclip -selection "$selection" -target "$target" -out \
+						> "$clipboard_tmp/received" \
+						|| ! cmp -s "$clipboard_tmp/$payload" "$clipboard_tmp/received"; then
+						echo "FAIL: $label (read $attempt)" >&2
+						wc -c "$clipboard_tmp/$payload" "$clipboard_tmp/received" >&2
+						cat "$clipboard_tmp/owner.log" >&2
+						exit 1
+					fi
+				done
+				kill "$clipboard_owner" 2>/dev/null || :
+				wait "$clipboard_owner" 2>/dev/null || :
+				clipboard_owner=
+				if grep -q 'X Error' "$clipboard_tmp/owner.log"; then
+					echo "FAIL: $label" >&2
+					cat "$clipboard_tmp/owner.log" >&2
+					exit 1
+				fi
+				echo "PASS: $label (3 consecutive reads)"
+			done
+		done
+	done
+done

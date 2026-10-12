@@ -28,6 +28,7 @@ xdotool key Enter
 
 # nemo
 expectwin Home
+expectfocus Home
 
 quitwin
 expectfocus 'launcher test owner'

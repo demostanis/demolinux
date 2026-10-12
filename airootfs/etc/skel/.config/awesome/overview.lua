@@ -48,6 +48,11 @@ local function snapshot_visible_content(c)
 end
 
 client.connect_signal("focus", snapshot_visible_content)
+client.connect_signal("focus", function()
+    if active_quit and not closing then
+        client.focus = nil
+    end
+end)
 gears.timer.delayed_call(function()
     for _, c in ipairs(client.get()) do
         snapshot_visible_content(c)
@@ -591,11 +596,11 @@ local function show_overview()
     if #clients < 2 then return end
     table.sort(clients, function(a, b) return a.x < b.x end)
     overview_clients = clients
-    active_quit = quit_overview
     if s.mypanel.visible then
         s.mypanel:hide()
         previous_client_focus = client.focus
     end
+    active_quit = quit_overview
     freeze_chrome()
     input_shield = wibox{
         screen = s,

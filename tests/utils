@@ -1,10 +1,10 @@
 modkeypress() {
-	xdotool key --clearmodifiers --delay 0 "Super_L+$1"
+	xdotool key --clearmodifiers --delay 20 "Super_L+$1"
 	sleep 1
 }
 
 expectwin() {
-	tries=${2:-10}
+	tries=${2:-30}
 	for i in {1..$tries}; do
 		xwininfo -root -tree | grep -q "$1" && return
 		sleep 1

@@ -232,8 +232,8 @@ local function show_overview()
             local target = pending_focus or previous_client_focus
             if target and target.valid then
                 if pending_focus then target.minimized = false end
-                client.focus = target
-                target:raise()
+                -- Raising an already-raised client does not notify the scrolling layout.
+                target:activate { context = "overview", raise = true }
             end
             awful.layout.arrange(s)
             for c in pairs(original_geometries) do

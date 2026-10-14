@@ -59,13 +59,23 @@ expectawesome 'return #client.get() == 0'
 spawndummywin "window 1"
 spawndummywin "window 2"
 
+awesome-client '
+overview_activation = nil
+overview_activation_handler = function(c, context, hints)
+    if context == "overview" and hints.raise then overview_activation = c.name end
+end
+client.connect_signal("request::activate", overview_activation_handler)
+' >/dev/null
 openoverview
 xdotool key f
 expectfocusandleftmost "window 1"
+expectawesome 'return overview_activation == "window 1"'
 
 openoverview
 xdotool key j
 expectfocusandleftmost "window 2"
+expectawesome 'return overview_activation == "window 2"'
+awesome-client 'client.disconnect_signal("request::activate", overview_activation_handler); overview_activation_handler = nil; overview_activation = nil' >/dev/null
 
 # no results
 openoverview

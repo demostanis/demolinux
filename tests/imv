@@ -234,6 +234,37 @@ if [[ "$launch_state" != *'true true true true'* ]]; then
 	exit 1
 fi
 
+independent_state=$(awesome-client '
+	local sidewindow = require"opencode_sidecar"
+	local first, second
+	for _, candidate in ipairs(client.get()) do
+		if candidate.name == "OC | sidewindow test" then
+			first = candidate
+		elseif candidate.name == "OC | sidewindow launch test" then
+			second = candidate
+		end
+	end
+	if not first or not second then return "missing" end
+	local function expanded(owner)
+		return sidewindow.status(owner):find("expanded right", 1, true) ~= nil
+			and owner.opencode_sidecar_width > 0
+	end
+	sidewindow.show(first)
+	sidewindow.show(second)
+	local both_expanded = expanded(first) and expanded(second)
+	sidewindow.hide(first)
+	local second_preserved = expanded(second)
+	sidewindow.show(first)
+	local first_preserved = expanded(first) and expanded(second)
+	sidewindow.toggle(second)
+	return tostring(both_expanded).." "..tostring(second_preserved)
+		.." "..tostring(first_preserved).." "..tostring(expanded(first))
+')
+if [[ "$independent_state" != *'true true true true'* ]]; then
+	echo "sidewindow expansion affected another owner: $independent_state" >&2
+	exit 1
+fi
+
 awesome-client '
 	local sidewindow = require"opencode_sidecar"
 	for _, candidate in ipairs(client.get()) do

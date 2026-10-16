@@ -17,7 +17,6 @@ local arrow_icons = {
 
 local sidecar = {}
 local states = setmetatable({}, {__mode = "k"})
-local active_state
 local get_state
 local image_viewer_instance_prefix = "opencode-sidewindow-imv-"
 
@@ -334,15 +333,6 @@ local function set_expanded(state, expanded)
 
     stop_animation(state)
     state.expanded = expanded
-
-    if expanded and active_state and active_state ~= state then
-        set_expanded(active_state, false)
-    end
-    if expanded then
-        active_state = state
-    elseif active_state == state then
-        active_state = nil
-    end
 
     state.current_width = expanded and expanded_width(state) or 0
     update_layout_reservation(state)
@@ -1152,9 +1142,6 @@ local function make_state(c)
         state.panel.visible = false
         for _, tab in ipairs(state.tabs) do
             destroy_tab(tab)
-        end
-        if active_state == state then
-            active_state = nil
         end
         states[c] = nil
     end)

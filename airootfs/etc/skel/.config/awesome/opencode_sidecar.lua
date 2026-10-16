@@ -5,6 +5,7 @@ local wibox = require"wibox"
 local bypass_animation = require"animation-bypass"
 awesome.register_xproperty("WM_NAME", "string")
 awesome.register_xproperty("OPENCODE_SIDEWINDOW", "number")
+awesome.register_xproperty("DEMOLINUX_MANUAL_RESIZE", "number")
 local dpi = require"beautiful.xresources".apply_dpi
 local source_dir = debug.getinfo(1, "S").source:match("@(.*/)")
 
@@ -363,9 +364,33 @@ local function begin_resize(state)
     stop_animation(state)
     local initial_x = mouse.coords().x
     local initial_width = state.current_width
+    local resizing_clients = state.client.screen.clients
+    local resizing_chrome = {}
+    for _, resized in ipairs(resizing_clients) do
+        resized:set_xproperty("DEMOLINUX_MANUAL_RESIZE", 1)
+        local resized_state = states[resized]
+        if resized_state then
+            for _, chrome in ipairs({resized_state.titlebar, resized_state.panel}) do
+                chrome:set_xproperty("DEMOLINUX_MANUAL_RESIZE", 1)
+                table.insert(resizing_chrome, chrome)
+            end
+        end
+    end
+
     mousegrabber.run(function(coords)
+        if not is_valid(state.client) or not coords.buttons[3] then
+            for _, resized in ipairs(resizing_clients) do
+                if is_valid(resized) then
+                    resized:set_xproperty("DEMOLINUX_MANUAL_RESIZE", 0)
+                end
+            end
+            for _, chrome in ipairs(resizing_chrome) do
+                chrome:set_xproperty("DEMOLINUX_MANUAL_RESIZE", 0)
+            end
+            return false
+        end
         resize_state(state, initial_width + coords.x - initial_x)
-        return coords.buttons[3]
+        return true
     end, "sb_h_double_arrow")
 end
 

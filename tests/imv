@@ -181,6 +181,21 @@ custom_state=$(awesome-client '
 		and result:match("expanded right") ~= nil
 	local rejected = sidewindow.capture_window(owner, custom.window)
 		== "error: window is already managed by OpenCode"
+	local parts = sidewindow.overview_parts(owner)
+	local grouped = #parts == 2
+		and parts[2].geometry.x == custom.x
+		and parts[2].geometry.width == custom.width
+	local reserved = owner.opencode_sidecar_width
+	awesome.emit_signal("overview::display", true)
+	local overview_hidden = custom.hidden
+		and #sidewindow.overview_parts(owner) == 0
+		and owner.opencode_sidecar_width == reserved
+	awesome.emit_signal("overview::display", false)
+	local overview_restored = not custom.hidden
+		and #sidewindow.overview_parts(owner) == 2
+	if not grouped or not overview_hidden or not overview_restored then
+		return "sidewindow overview grouping/visibility failed"
+	end
 	sidewindow.remove(owner, "Custom app")
 	local restored_buttons = custom.buttons
 	local buttons_match = #restored_buttons == #original_buttons

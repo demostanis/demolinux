@@ -19,6 +19,7 @@ local arrow_icons = {
 local sidecar = {}
 local states = setmetatable({}, {__mode = "k"})
 local get_state
+local overview_active = false
 local image_viewer_instance_prefix = "opencode-sidewindow-imv-"
 
 local titlebar_height = gears.math.round(
@@ -231,7 +232,7 @@ local function place_hosted(state, tab)
     local owner = state.client
     local visible = active_tab(state) == tab
         and (state.expanded or state.animating)
-        and owner_is_visible(owner)
+        and owner_is_visible(owner) and not overview_active
     if not visible then
         hosted.hidden = true
         return true
@@ -278,7 +279,7 @@ local function refresh(state)
         state.content_container:set_widget(selected.imagebox)
     end
     local visible = selected ~= nil and (state.expanded or state.animating)
-        and owner_is_visible(state.client)
+        and owner_is_visible(state.client) and not overview_active
     local fullscreen = selected and is_valid(selected.hosted_client)
         and selected.hosted_client.fullscreen
     state.titlebar.visible = visible and not fullscreen
@@ -1465,6 +1466,35 @@ function sidecar.clear_image(c)
     refresh(state)
     return sidecar.status(c)
 end
+
+function sidecar.overview_parts(c)
+    local state = states[c]
+    local parts = {}
+    if not state then return parts end
+    for _, bar in ipairs({state.titlebar, state.panel}) do
+        if bar.visible then
+            bar._drawable:_do_redraw()
+            parts[#parts + 1] = {
+                geometry = bar:geometry(),
+                surface = gears.surface(bar.drawable.surface),
+            }
+        end
+    end
+    local tab = active_tab(state)
+    local hosted = tab and tab.hosted_client
+    if is_valid(hosted) and not hosted.hidden and not hosted.minimized then
+        parts[#parts + 1] = {
+            geometry = hosted:geometry(),
+            surface = gears.surface(hosted.content),
+        }
+    end
+    return parts
+end
+
+awesome.connect_signal("overview::display", function(shown)
+    overview_active = shown
+    for _, state in pairs(states) do refresh(state) end
+end)
 
 function sidecar.status(c)
     local state = states[c]

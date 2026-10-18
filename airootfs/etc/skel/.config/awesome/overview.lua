@@ -4,6 +4,7 @@ awesome.register_xproperty("OVERVIEW_REAL_HIDDEN", "number")
 awesome.register_xproperty("OVERVIEW_PARTICIPANT", "number")
 
 local schedule_image_gc = require("imagegc")
+local sidecar = require("opencode_sidecar")
 local lgi = require("lgi")
 local Gdk = lgi.require("Gdk", "3.0")
 Gdk.init({})
@@ -59,10 +60,11 @@ gears.timer.delayed_call(function()
     end
 end)
 
-local function draw(c, cache_content, active)
-    local geo = c:geometry()
+local function draw(c, cache_content, active, geo, parts)
     local content = cairo.ImageSurface.create(cairo.Format.ARGB32, geo.width, geo.height)
     local cr = cairo.Context(content)
+    local owner_geo = c:geometry()
+    local owner_x, owner_y = owner_geo.x - geo.x, owner_geo.y - geo.y
     local su
 
     su = content_cache[c] or snapshot_visible_content(c) or last_visible_content[c]
@@ -81,11 +83,11 @@ local function draw(c, cache_content, active)
         local titlebarsu = gears.surface(titlebar.drawable.surface)
         titlebarheight = titlebar.drawable:geometry().height
 
-        cr:set_source_surface(titlebarsu, 0, 0)
+        cr:set_source_surface(titlebarsu, owner_x, owner_y)
         cr:paint()
     end
     if su then
-        cr:set_source_surface(su, 0, titlebarheight)
+        cr:set_source_surface(su, owner_x, owner_y + titlebarheight)
         cr:paint()
     end
 
@@ -103,6 +105,17 @@ local function draw(c, cache_content, active)
         end
     end
 
+    for _, part in ipairs(parts) do
+        cr:save()
+        cr:rectangle(part.geometry.x - geo.x, part.geometry.y - geo.y,
+            part.geometry.width, part.geometry.height)
+        cr:clip()
+        cr:set_source_surface(part.surface,
+            part.geometry.x - geo.x, part.geometry.y - geo.y)
+        cr:paint()
+        cr:restore()
+    end
+
     if not active then
         cr:set_source_rgba(0, 0, 0, 0.3)
         cr:paint()
@@ -118,12 +131,21 @@ local function show_overview()
     local all_popups = {}
     local has_quitted_overview = false
     local previous_client_focus = client.focus
+    if previous_client_focus and previous_client_focus.opencode_sidecar_owner then
+        previous_client_focus = previous_client_focus.opencode_sidecar_owner
+    end
     local overview_clients = {}
     local filter_popup = nil
     local grabber = nil
     local entering = true
+    local entry_finished = false
     local previews = {}
     local original_geometries = {}
+    local group_geometries = {}
+    local group_parts = {}
+    local function preview_geometry(c)
+        return group_geometries[c] or c:geometry()
+    end
     local pending_focus = nil
     local transition_duration = 0.3
     local chrome_snapshots = {}
@@ -225,7 +247,11 @@ local function show_overview()
         for c, popup in pairs(previews) do
             if c.valid and popup.visible and popup.overview_client == c
                 and original_geometries[c] then
-                resize_preview(popup, original_geometries[c])
+                if original_geometries[c].was_visible then
+                    resize_preview(popup, original_geometries[c])
+                else
+                    popup.visible = false
+                end
             end
         end
         gears.timer.start_new(transition_duration + 0.06, function()
@@ -267,6 +293,7 @@ local function show_overview()
                         popup.widget = nil
                     end
                     preview_images = {}
+                    group_parts = {}
                     if reopen_requested then
                         reopen_requested = false
                         gears.timer.delayed_call(request_overview)
@@ -342,7 +369,7 @@ local function show_overview()
         local total_height = 0
         local diagonal = 0
         for _, c in ipairs(clients) do
-            local geo = c:geometry()
+            local geo = preview_geometry(c)
             local cdw = math.sqrt(geo.width^2+geo.height^2)
             diagonal = diagonal + cdw
         end
@@ -351,8 +378,9 @@ local function show_overview()
         for _, line in ipairs(lines) do
             local row_width, row_height = 0, 0
             for _, c in ipairs(line) do
-                row_width = row_width + c.width
-                row_height = math.max(row_height, c.height)
+                local geo = preview_geometry(c)
+                row_width = row_width + geo.width
+                row_height = math.max(row_height, geo.height)
             end
             widest_row = math.max(widest_row, row_width)
             unscaled_height = unscaled_height + row_height
@@ -369,8 +397,8 @@ local function show_overview()
         for i, line in ipairs(lines) do
             local biggest_client = 0
             for _, c in ipairs(line) do
-                if c:geometry().height > biggest_client then
-                    biggest_client = c:geometry().height*ratio
+                if preview_geometry(c).height*ratio > biggest_client then
+                    biggest_client = preview_geometry(c).height*ratio
                 end
             end
             total_height = total_height + biggest_client
@@ -383,22 +411,23 @@ local function show_overview()
             local biggest_client_in_line = 0
 
             for _, c in ipairs(line) do
-                if c:geometry().height > biggest_client_in_line then
-                    biggest_client_in_line = c:geometry().height*ratio
+                if preview_geometry(c).height*ratio > biggest_client_in_line then
+                    biggest_client_in_line = preview_geometry(c).height*ratio
                 end
             end
             for _, c in ipairs(line) do
-                line_width = line_width + c:geometry().width*ratio
+                line_width = line_width + preview_geometry(c).width*ratio
             end
 
             for j, c in ipairs(line) do
-                local geo = c:geometry()
+                local geo = preview_geometry(c)
                 if not original_geometries[c] then
                     original_geometries[c] = {x=geo.x, y=geo.y, width=geo.width, height=geo.height}
                 end
                 local content = preview_images[c]
                 if not content then
-                    content = draw(c, true, c == previous_client_focus)
+                    content = draw(c, true, c == previous_client_focus,
+                        geo, group_parts[c])
                     preview_images[c] = content
                 end
                 c:set_xproperty("OVERVIEW_SHADOW_SUPPRESSED", 1)
@@ -465,13 +494,15 @@ local function show_overview()
                 content_popup.overview_preview = true
                 content_popup.overview_client = c
                 content_popup:set_xproperty("WM_NAME", "overview_client_preview")
-                content_popup.visible = true
+                content_popup.visible = entry_finished or not c.minimized
                 previews[c] = content_popup
                 if animate then
                     gears.timer.start_new(0.06, function()
                         if has_quitted_overview then return false end
                         if c.valid then c:set_xproperty("OVERVIEW_REAL_HIDDEN", 1) end
-                        resize_preview(content_popup, target_geometry)
+                        if not content_popup.is_free and content_popup.overview_client == c then
+                            resize_preview(content_popup, target_geometry)
+                        end
                         return false
                     end)
                 end
@@ -490,7 +521,7 @@ local function show_overview()
                     ontop = true,
                 }
                 icon_popup:set_xproperty("WM_NAME", "overview_client_icon")
-                icon_popup.visible = not animate
+                icon_popup.visible = entry_finished
 
                 local titlew = wibox.widget{
                     {
@@ -516,17 +547,7 @@ local function show_overview()
                     ontop = true,
                 }
                 label_popup:set_xproperty("WM_NAME", "overview_client_label")
-                label_popup.visible = not animate
-
-                if animate then
-                    gears.timer.start_new(transition_duration + 0.08, function()
-                        if not has_quitted_overview then
-                            for _, popup in ipairs(popups) do popup.visible = true end
-                            raise_chrome()
-                        end
-                        return false
-                    end)
-                end
+                label_popup.visible = entry_finished
 
                 for _, popup in ipairs(popups) do
                     popup._signals["mouse::enter"] = nil
@@ -600,6 +621,19 @@ local function show_overview()
         s.mypanel:hide()
         previous_client_focus = client.focus
     end
+    for _, c in ipairs(clients) do
+        local geo = c:geometry()
+        local right, bottom = geo.x + geo.width, geo.y + geo.height
+        local parts = sidecar.overview_parts(c)
+        group_parts[c] = parts
+        for _, part in ipairs(parts) do
+            local p = part.geometry
+            right, bottom = math.max(right, p.x + p.width), math.max(bottom, p.y + p.height)
+            geo.x, geo.y = math.min(geo.x, p.x), math.min(geo.y, p.y)
+        end
+        geo.width, geo.height = right - geo.x, bottom - geo.y
+        group_geometries[c] = geo
+    end
     active_quit = quit_overview
     freeze_chrome()
     input_shield = wibox{
@@ -614,6 +648,16 @@ local function show_overview()
     input_shield.visible = true
     overview_shown = true
     draw_clients(clients)
+    gears.timer.start_new(transition_duration + 0.08, function()
+        if not has_quitted_overview then
+            entry_finished = true
+            for _, popup in ipairs(all_popups) do
+                if not popup.is_free then popup.visible = true end
+            end
+            raise_chrome()
+        end
+        return false
+    end)
     entering = false
     client.focus = nil
     awesome.emit_signal("overview::display", true)

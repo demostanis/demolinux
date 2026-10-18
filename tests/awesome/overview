@@ -49,6 +49,46 @@ modkeypress o
 expectawesome 'return overview_shown ~= true'
 expectnofocus
 
+# The real hosted app disappears while its owner preview includes the sidewindow.
+urxvt -title "OC | overview owner" -e sleep 120 &
+expectwin "OC | overview owner"
+spawndummywin "overview hosted app"
+spawndummywin "overview spacer"
+awesome-client '
+    local owner, hosted
+    for _, c in ipairs(client.get()) do
+        if c.name == "OC | overview owner" then owner = c end
+        if c.name == "overview hosted app" then hosted = c end
+    end
+    require"opencode_sidecar".capture_window(owner, hosted.window, "Overview app")
+' >/dev/null
+expectawesome '
+    for _, c in ipairs(client.get()) do
+        if c.name == "OC | overview owner" then
+            local parts = require"opencode_sidecar".overview_parts(c)
+            return #parts == 2 and parts[2].geometry.width > 1
+        end
+    end
+    return false
+'
+openoverview
+expectawesome '
+    for _, c in ipairs(client.get()) do
+        if c.opencode_sidecar_hosted then return c.hidden end
+    end
+    return false
+'
+xdotool key Escape
+expectawesome 'return overview_shown ~= true'
+expectawesome '
+    for _, c in ipairs(client.get()) do
+        if c.opencode_sidecar_hosted then return not c.hidden end
+    end
+    return false
+'
+awesome-client 'for _, c in ipairs(client.get()) do c:kill() end' >/dev/null
+expectawesome 'return #client.get() == 0'
+
 spawndummywin "single window"
 modkeypress o
 expectawesome 'return overview_shown ~= true'
@@ -58,6 +98,49 @@ expectawesome 'return #client.get() == 0'
 
 spawndummywin "window 1"
 spawndummywin "window 2"
+
+awesome-client '
+    overview_visible_previews = function()
+        local count = 0
+        for _, d in ipairs(drawin.get()) do
+            if d.visible and d:get_xproperty("WM_NAME") == "overview_client_preview" then
+                count = count + 1
+            end
+        end
+        return count
+    end
+    for _, c in ipairs(client.get()) do
+        if c.name == "window 2" then c.minimized = true end
+    end
+    require"overview"()
+    overview_entry_previews = overview_visible_previews()
+' >/dev/null
+expectawesome 'return overview_shown and overview_entry_previews == 1'
+expectawesome 'return overview_visible_previews() == 2'
+awesome-client '
+    awesome.emit_signal("overview::hide")
+    overview_exit_previews = overview_visible_previews()
+' >/dev/null
+expectawesome 'return overview_exit_previews == 1'
+expectawesome 'return overview_shown ~= true'
+expectawesome '
+    for _, c in ipairs(client.get()) do
+        if c.name == "window 2" then return c.minimized end
+    end
+    return false
+'
+awesome-client '
+    overview_visible_previews = nil
+    overview_entry_previews = nil
+    overview_exit_previews = nil
+    for _, c in ipairs(client.get()) do
+        if c.name == "window 2" then
+            c.minimized = false
+            c:activate { context = "test", raise = true }
+        end
+    end
+' >/dev/null
+expectfocusandleftmost "window 2"
 
 awesome-client '
 overview_activation = nil

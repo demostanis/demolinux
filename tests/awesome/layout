@@ -76,6 +76,36 @@ awesome-client 'local old = client.focus; layout.move_left_window(); client.focu
 expectfocus "layout window 1"
 expectviewport
 
+# Focusing a neighbor without scrolling must not change the navigation anchor.
+awesome-client 'for _, c in ipairs(client.get()) do if c.name == "layout window 2" then c:activate { raise = false }; break end end'
+expectfocus "layout window 2"
+expectawesome 'return layout.leftmost_window().name == "layout window 1"'
+modkeypress l
+expectfocus "layout window 2"
+expectviewport
+modkeypress h
+expectfocus "layout window 1"
+expectviewport
+
+# The same rule applies when navigating left from a differently focused window.
+modkeypress l
+expectfocus "layout window 2"
+expectviewport
+awesome-client 'for _, c in ipairs(client.get()) do if c.name == "layout window 3" then c:activate { raise = false }; break end end'
+expectfocus "layout window 3"
+expectawesome 'return layout.leftmost_window().name == "layout window 2"'
+modkeypress h
+expectfocus "layout window 1"
+expectviewport
+
+# Focus-only activation between queued moves must not discard the pending viewport.
+awesome-client 'layout.move_right_window(); for _, c in ipairs(client.get()) do if c.name == "layout window 1" then c:activate { raise = false }; break end end; layout.move_right_window()'
+expectfocus "layout window 3"
+expectviewport
+awesome-client 'layout.move_left_window(); layout.move_left_window()'
+expectfocus "layout window 1"
+expectviewport
+
 quitwin
 quitwin
 quitwin

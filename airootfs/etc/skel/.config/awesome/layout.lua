@@ -2,6 +2,7 @@ local step = dpi(500)
 local margin_before_window_on_focus = dpi(56)
 
 local global_x = 0
+local pending_leftmost
 
 local runtime = os.getenv("XDG_RUNTIME_DIR")
 if not runtime then runtime = "/run/user/1000" end
@@ -44,6 +45,9 @@ function scroll.arrange(p)
 		p.geometries[c] = g
 
 		x = x + layout_width(c)
+	end
+	if t == mouse.screen.selected_tag then
+		pending_leftmost = nil
 	end
 end
 
@@ -157,9 +161,8 @@ end
 
 local last_new = nil
 local scroll_revision = 0
-local navigation_target
 local function set_global_x(new, target)
-	navigation_target = target
+	pending_leftmost = target
 	scroll_revision = scroll_revision + 1
 	if new == last_new then return end
 	last_new = new
@@ -216,13 +219,13 @@ local function global_x_of_client(c)
 end
 
 local function navigation_client()
-	-- X11 can deliver an older FocusIn between consecutive keypresses.
-	if navigation_target and navigation_target.valid
-		and navigation_target.screen == mouse.screen
-		and navigation_target:isvisible() then
-		return navigation_target
+	-- Until arrange runs, use the requested viewport rather than stale geometry.
+	if pending_leftmost and pending_leftmost.valid
+		and pending_leftmost.screen == mouse.screen
+		and pending_leftmost:isvisible() then
+		return pending_leftmost
 	end
-	return client.focus
+	return leftmost_window()
 end
 
 local function move_left_window()
@@ -245,7 +248,6 @@ end
 
 local function cycle_window_focus()
 	if any_floatyfloaty() then return end
-	navigation_target = nil
 
 	local windows_in_viewport = {}
 	local visible_host_by_owner = {}
@@ -334,7 +336,6 @@ client.connect_signal("request::activate", function(c, context, o)
 	if require"opencode_sidecar".activation_filter(c, context) == false then
 		return
 	end
-	navigation_target = nil
 	if o.raise then
 		on_window_appearance_change(c, true)
 	end
@@ -523,7 +524,7 @@ awesome.connect_signal("tag::switching", function()
 	global_x_by_tag[t.index] = global_x
 end)
 awesome.connect_signal("tag::switched", function()
-	navigation_target = nil
+	pending_leftmost = nil
 	local t = awful.screen.focused().selected_tag
 	global_x = global_x_by_tag[t.index] or 0
 	awful.layout.arrange(mouse.screen)

@@ -60,7 +60,9 @@ awesome-client '
         if c.name == "OC | overview owner" then owner = c end
         if c.name == "overview hosted app" then hosted = c end
     end
-    require"opencode_sidecar".capture_window(owner, hosted.window, "Overview app")
+    local sidecar = require"opencode_sidecar"
+    sidecar.capture_window(owner, hosted.window, "Overview app")
+    sidecar.show(owner)
 ' >/dev/null
 expectawesome '
     for _, c in ipairs(client.get()) do

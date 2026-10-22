@@ -50,6 +50,7 @@ safe_source() {
 }
 
 indexed_files=()
+declare -A indexed_lookup=()
 
 check_conflicts() {
 	local source="$1" saved="$pfs_dir/upperdir$1" child
@@ -70,10 +71,8 @@ check_conflicts() {
 }
 
 index_add() {
-	local entry
-	for entry in "${indexed_files[@]}"; do
-		[[ "$entry" = "$1" ]] && return 0
-	done
+	[[ -n "${indexed_lookup[$1]:-}" ]] && return 0
+	indexed_lookup["$1"]=1
 	indexed_files+=( "$1" )
 }
 
@@ -83,6 +82,8 @@ index_remove() {
 	for entry in "${indexed_files[@]}"; do
 		if [[ "$entry" != "$1" && "$entry" != "$1/"* ]]; then
 			kept+=( "$entry" )
+		else
+			unset 'indexed_lookup[$entry]'
 		fi
 	done
 	indexed_files=( "${kept[@]}" )
@@ -99,15 +100,30 @@ prune_empty_parents() {
 }
 
 load_index() {
-	local entry delimiter=''
+	local entry delimiter='' fd pid status
+	local -a entries=() paths=() normalized=()
 	[[ -e "$pfs_dir/upperdir/index" ]] || return 0
 	# Read the old line-based index until the next mutation migrates it.
 	IFS= read -r -d '' entry < "$pfs_dir/upperdir/index" || delimiter=$'\n'
-	while IFS= read -r -d "$delimiter" entry || [[ -n "$entry" ]]; do
-		[[ -n "$entry" ]] || continue
-		absolute_path "$entry" || return 1
-		index_add "$REPLY"
-	done < "$pfs_dir/upperdir/index"
+	mapfile -d "$delimiter" -t entries < "$pfs_dir/upperdir/index" || return 1
+	for entry in "${entries[@]}"; do
+		[[ -z "$entry" ]] || paths+=( "$entry" )
+	done
+	[[ ${#paths[@]} != 0 ]] || return 0
+	# Bound argument sizes while preserving order and NUL-delimited filenames.
+	exec {fd}< <(
+		set -o pipefail
+		printf '%s\0' "${paths[@]}" | xargs -0 -r realpath -msz --
+	) || return 1
+	pid=$!
+	mapfile -d '' -t normalized <&"$fd"
+	status=$?
+	exec {fd}<&-
+	wait "$pid" || return 1
+	[[ "$status" = 0 ]] || return 1
+	for entry in "${normalized[@]}"; do
+		index_add "$entry"
+	done
 }
 
 save_index() {

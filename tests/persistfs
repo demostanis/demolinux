@@ -248,6 +248,37 @@ test_legacy_index_migration() {
 	cmp "$root/expected-index" "$index"
 }
 
+test_index_bulk_normalization() {
+	local n
+	mkdir "$root/target"
+	ln -s target "$root/link"
+	: > "$index"
+	: > "$root/expected-index"
+	for (( n=0; n<2500; n++ )); do
+		printf '%s\0' "$root/link/../link/entry-$n" "$root/link/entry-$n" >> "$index"
+		printf '%s\0' "$root/link/entry-$n" >> "$root/expected-index"
+	done
+	printf '%s\0' '' "$root/"$'line\nbreak' "$root/square[1]" >> "$index"
+	printf '%s\0' "$root/"$'line\nbreak' "$root/square[1]" >> "$root/expected-index"
+	cp "$index" "$root/index.input"
+	pfs list --all --null
+	cmp "$root/expected-index" "$root/stdout"
+	cmp "$root/index.input" "$index"
+	touch "$root/square[1]"
+	pfs add "$root/square[1]" "$root/square[1]"
+	cmp "$root/expected-index" "$index"
+}
+
+test_index_normalization_failure() {
+	mkdir "$root/bin"
+	printf '#!/bin/sh\nprintf "/partial\\0"\nexit 1\n' > "$root/bin/realpath"
+	chmod +x "$root/bin/realpath"
+	printf '%s\0' "$root/file" > "$index"
+	cp "$index" "$root/index.input"
+	expect_failure env PATH="$root/bin:$PATH" persistfs list --all --null
+	cmp "$root/index.input" "$index"
+}
+
 test_dangling_symlink_roundtrip() {
 	ln -s missing-target "$root/dangling"
 	pfs add "$root/dangling"
@@ -626,6 +657,8 @@ for test in \
 	test_normalized_remove_updates_index \
 	test_index_normalizes_directory_spellings \
 	test_legacy_index_migration \
+	test_index_bulk_normalization \
+	test_index_normalization_failure \
 	test_dangling_symlink_roundtrip \
 	test_dataize_rejects_persisted_directory \
 	test_pfs_rejects_directory_symlink_conflicts_without_changes \

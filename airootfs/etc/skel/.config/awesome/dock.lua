@@ -1,3 +1,53 @@
+local glib = require("lgi").GLib
+local states = setmetatable({}, { __mode = "k" })
+local active = {}
+local duration = 0.3
+
+local function paint(indicator, width)
+    indicator.shape = function(cr)
+        cr:rectangle(dpi(6) - width, 0, width * 2, indicator.forced_height)
+    end
+end
+
+local timer
+timer = gears.timer {
+    timeout = 1 / 60,
+    callback = function()
+        local now = glib.get_monotonic_time() / 1000000
+        for indicator, state in pairs(active) do
+            if not state.client.valid then
+                active[indicator] = nil
+                states[indicator] = nil
+            else
+                local progress = math.min(1, (now - state.start) / duration)
+                state.width = state.from + (state.target - state.from) * progress
+                paint(indicator, state.width)
+                if progress == 1 then active[indicator] = nil end
+            end
+        end
+        if not next(active) then timer:stop() end
+    end,
+}
+
+local function update_indicator(indicator, c)
+    if not c.valid then return end
+    local focused = c == client.focus or (c.master and c.master.active_slave == client.focus)
+    local target = dpi(focused and 6 or 2)
+    local state = states[indicator]
+    if state and state.target == target then return end
+    if not state then
+        state = { width = dpi(focused and 2 or 6) }
+        states[indicator] = state
+    end
+    state.client = c
+    state.from = state.width
+    state.target = target
+    state.start = glib.get_monotonic_time() / 1000000
+    active[indicator] = state
+    paint(indicator, state.width)
+    if not timer.started then timer:start() end
+end
+
 local tasklist_buttons = gears.table.join(
     awful.button({ }, 1, function (c)
         if overview_shown then return end
@@ -138,26 +188,7 @@ return function(s)
             update_callback = function(self, c)
                 local indicator = self:get_children_by_id("indicator")[1]
 
-                pos = dpi(6)
-                target = dpi(2)
-                if c == client.focus or (c.master and c.master.active_slave == client.focus) then
-                    pos = dpi(2)
-                    target = dpi(6)
-                end
-
-                if indicator.lastpos == pos then return end
-                indicator.lastpos = pos
-
-                rubato.timed{
-                    duration = 0.3,
-                    easing = rubato.easing.zero,
-                    pos = pos,
-                    subscribed = function(w)
-                        indicator.shape = function(cr)
-                            cr:rectangle(dpi(6)-w, 0, w*2, indicator.forced_height)
-                        end
-                    end
-                }.target = target
+                update_indicator(indicator, c)
             end,
             create_callback = function(self, c)
                 local icon = self:get_children_by_id("icon")[1]

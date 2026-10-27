@@ -22,7 +22,7 @@
   },
   "agent": {
     "general": {
-      "model": "openai/gpt-6.1-sol"
+      "model": "openai/gpt-6.1-sol-fast"
     },
     "review": {
       "model": "openai/gpt-6-astra",

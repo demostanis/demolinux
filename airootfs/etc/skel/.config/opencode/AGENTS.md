@@ -12,3 +12,5 @@ Avoid activating or moving X11 windows unless really necessary. Use `import` if 
 Do not include unnecessary taglines, eyebrow text, subheadings, numbering, redundant context labels, decorative spacing, pills, cards in generated UI.
 
 On projects using Git, frequently commit on your own branch into separate small atomic commits, choosing specific hunks instead of whole files. Prohibit committing multiple features at once, ideally there should be no "and" in commit messages (unless necessary and justifiable).
+
+When you want to use subagents, think about whether the task can be split and use multiple subagents to work on the subtasks. Prohibit reusing subagents unless necessary, prefer fresh contexts.

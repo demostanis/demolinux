@@ -14,3 +14,4 @@ Do not include unnecessary taglines, eyebrow text, subheadings, numbering, redun
 On projects using Git, frequently commit on your own branch into separate small atomic commits, choosing specific hunks instead of whole files. Prohibit committing multiple features at once, ideally there should be no "and" in commit messages (unless necessary and justifiable).
 
 When you want to use subagents, think about whether the task can be split and use multiple subagents to work on the subtasks. Prohibit reusing subagents unless necessary, prefer fresh contexts.
+Do not use subagents for really small fixes like margin changes, text changes, etc. that you can already do yourself.

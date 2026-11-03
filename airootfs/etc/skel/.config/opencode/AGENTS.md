@@ -15,3 +15,5 @@ On projects using Git, frequently commit on your own branch into separate small 
 
 When you want to use subagents, think about whether the task can be split and use multiple subagents to work on the subtasks. Prohibit reusing subagents unless necessary, prefer fresh contexts.
 Do not use subagents for really small fixes like margin changes, text changes, etc. that you can already do yourself.
+
+If you are running in a subagent, do not use opencode run for review. Instead, tell the parent agent at the end of your task to do the review separately using its task tool or use playwright for short checks requiring a browser.

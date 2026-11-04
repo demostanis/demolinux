@@ -37,7 +37,18 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             f"Browser condition did not become true: {sys.argv[2]} (URL bar: {value!r})"
         )
 
-    enabled_addons = eval("""
+    expected_addons = {
+        "uBlock0@raymondhill.net",
+        "mellow-purple@demostanis",
+        "VimFx-unlisted@akhodakivskiy.github.com",
+        "CanvasBlocker@kkapsner.de",
+        "{446900e4-71c2-419f-a6a7-df9c091e268b}",  # Bitwarden
+    }
+    print("checking if firefox addons are enabled...")
+    deadline = time.monotonic() + 15
+    while True:
+        enabled_addons = set(
+            eval("""
             await (async () => {
                 const addons = await AddonManager.getAllAddons()
 
@@ -48,14 +59,13 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 return enabledAddons
             })()
          """)
-
-    print("checking if firefox addons are enabled...")
-    assert "uBlock0@raymondhill.net" in enabled_addons
-    assert "mellow-purple@demostanis" in enabled_addons
-    assert "VimFx-unlisted@akhodakivskiy.github.com" in enabled_addons
-    assert "CanvasBlocker@kkapsner.de" in enabled_addons
-    assert "mellow-purple@demostanis" in enabled_addons
-    assert "{446900e4-71c2-419f-a6a7-df9c091e268b}" in enabled_addons  # Bitwarden
+        )
+        if expected_addons <= enabled_addons:
+            break
+        assert time.monotonic() < deadline, (
+            f"Firefox addons did not become active: {expected_addons - enabled_addons}"
+        )
+        time.sleep(0.1)
 
     # taken from https://searchfox.org/mozilla-central/source/toolkit/content/aboutSupport.js#1670
     eval("""

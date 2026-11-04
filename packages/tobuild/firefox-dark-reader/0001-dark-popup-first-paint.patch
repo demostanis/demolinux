@@ -1,0 +1,23 @@
+diff --git a/tasks/bundle-html.js b/tasks/bundle-html.js
+--- a/tasks/bundle-html.js
++++ b/tasks/bundle-html.js
+@@ -12,6 +12,7 @@ function html(platform, title, hasLoader, hasStyleSheet, compatibility) {
+         '<html>',
+         '    <head>',
+         '        <meta charset="utf-8" />',
++        hasLoader ? '        <style>html { background-color: #141e24; color: #53a1b3; color-scheme: dark; }</style>' : null,
+         `        <title>${title}</title>`,
+         hasStyleSheet ? [
+             '        <meta name="theme-color" content="#0B2228" />',
+diff --git a/src/ui/popup/style.less b/src/ui/popup/style.less
+--- a/src/ui/popup/style.less
++++ b/src/ui/popup/style.less
+@@ -378,7 +378,7 @@ footer {
+ // across platforms and browser versions
+ 
+ body {
+-    border: 2px solid white;
++    border: 2px solid @color-back;
+ }
+ 
+ html:not(.mobile):not(.preview) body.ext-tall {

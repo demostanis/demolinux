@@ -27,6 +27,7 @@ die() {
 	timeout 5 python3 .github/scripts/qmp-screenshot.py "$log_dir/boot.png" || :
 	echo awesome log:
 	timeout 2 ./dctrl shell 'cat ~/.awesome.log /tmp/mpv.log /tmp/record-playback.log 2>/dev/null' | tee "$log_dir/awesome.log"
+	timeout 3 ./dctrl shell 'cat ~/.local/share/opencode/log/*.log 2>/dev/null' | tee "$log_dir/opencode.log"
 	timeout 3 ./dctrl pull /data/screenshot.png "$log_dir/screenshot.png"
 	echo tests failed
 	exit 1

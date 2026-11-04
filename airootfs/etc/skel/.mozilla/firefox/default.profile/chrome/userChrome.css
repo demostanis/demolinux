@@ -4,6 +4,8 @@
 /* ugly */
 #ff2mpv_yossarian_net-BAP { display: none; }
 
+#sidebar-button { display: none !important; }
+
 /* Avoid the X11 popup shadow buffer rendering as an opaque pale strip. */
 #notification-popup {
   --panel-box-shadow-margin: 0px !important;

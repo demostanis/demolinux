@@ -4,7 +4,7 @@ prompt="write ONLY yes if you are working correctly"
 
 run_model() {
 	local result=0
-	timeout 120 opencode run --format json -m "opencode/$1" "$prompt" \
+	timeout 20 opencode run --format json -m "opencode/$1" "$prompt" \
 		</dev/null >"/tmp/opencode-$2.jsonl" || result=$?
 	jq -Rj 'fromjson? | select(.type? == "text") | .part.text? | strings' \
 		"/tmp/opencode-$2.jsonl" || result=$?

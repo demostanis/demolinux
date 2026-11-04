@@ -1,0 +1,27 @@
+--- a/apps/browser/src/popup/index.ejs
++++ b/apps/browser/src/popup/index.ejs
+@@ -1,10 +1,23 @@
+ <!doctype html>
+-<html class="browser_<%= htmlWebpackPlugin.options.browser %>">
++<html class="theme_dark browser_<%= htmlWebpackPlugin.options.browser %>">
+   <head>
+     <meta charset="UTF-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1" />
+     <title>Bitwarden</title>
+     <base href="" />
++    <style>
++      html {
++        color-scheme: dark;
++      }
++      html.theme_light {
++        color-scheme: light;
++      }
++      html,
++      body {
++        background-color: rgb(var(--color-background-alt, 18 26 39));
++        color: rgb(var(--color-text-main, 243 246 249));
++      }
++    </style>
+   </head>
+   <body>
+     <app-root>

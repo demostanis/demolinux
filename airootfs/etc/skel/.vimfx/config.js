@@ -39,6 +39,7 @@ for (const patch of ["ctrl-w", "mcp-container", "history-swipes", "popup-contain
 	Services.scriptloader.loadSubScriptWithOptions(`${__dirname.replace(/\/$/, "")}/monkeypatches/${patch}.js`, {
 		target: { vimfx, Services },
 		charset: "UTF-8",
+		allowUnsafeURL: true,
 		ignoreCache: true,
 	});
 }

@@ -1,19 +1,33 @@
 pkgname=firefox-vimfx
 pkgver=0.27.7
-pkgrel=1
+pkgrel=2
 pkgdesc="Vim keyboard shortcuts for Firefox"
 url="https://github.com/akhodakivskiy/VimFx"
 license=('MIT')
 arch=('any')
 depends=('legacyfox>=5.1')
+makedepends=('zip')
 groups=('firefox-addons')
-source=("$pkgname-$pkgver.xpi::https://github.com/akhodakivskiy/VimFx/releases/download/v$pkgver/VimFx.xpi")
+source=("$pkgname-$pkgver.xpi::https://github.com/akhodakivskiy/VimFx/releases/download/v$pkgver/VimFx.xpi"
+        'allow-config-subscript.patch')
 noextract=("$pkgname-$pkgver.xpi")
 
+prepare() {
+    mkdir -p extension
+    bsdtar -xf "$pkgname-$pkgver.xpi" -C extension
+    patch -d extension -p1 -i "$srcdir/allow-config-subscript.patch"
+}
+
+build() {
+    cd extension
+    zip -qr "$srcdir/patched.xpi" .
+}
+
 package() {
-    install -Dm644 "$pkgname-$pkgver.xpi" \
+    install -Dm644 patched.xpi \
         "${pkgdir}/usr/lib/firefox/browser/extensions/VimFx-unlisted@akhodakivskiy.github.com.xpi"
     install -d "$pkgdir/usr/share/licenses/$pkgname"
     bsdtar -xOf "$pkgname-$pkgver.xpi" LICENSE > "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }
-sha256sums=('339257029a92bfcec0bd651fcf23e3e3b322d8723f6f49e8265fe4026cd163a2')
+sha256sums=('339257029a92bfcec0bd651fcf23e3e3b322d8723f6f49e8265fe4026cd163a2'
+            'ae534bfd0f1b7eec07df62f759d8c7571378c7b13b0f528e30cb4d7b34984273')

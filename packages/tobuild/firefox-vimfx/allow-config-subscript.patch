@@ -1,0 +1,9 @@
+--- a/lib/config.js
++++ b/lib/config.js
+@@ -73,5 +73,6 @@
+       }, scope),
+       charset: 'UTF-8',
++      allowUnsafeURL: true,
+       ignoreCache: true
+     });
+     return null;

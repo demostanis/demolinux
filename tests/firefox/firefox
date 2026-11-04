@@ -50,5 +50,12 @@ xdotool key ctrl+w # remapped to deleteWordBackward in .vimfx/config.js
 sleep 1
 expectfocus 'Demolinux browser test — Mozilla Firefox'
 
+xdotool key --clearmodifiers o
+timeout 20 python firefox/browsereval.py --wait "$urlbar.focused"
+xdotool type --clearmodifiers 'delete lastword'
+xdotool key ctrl+w
+timeout 20 python firefox/browsereval.py --wait "$urlbar.value === 'delete '"
+xdotool key Escape
+
 quitwin
 pkill firefox || :

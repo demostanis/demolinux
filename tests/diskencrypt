@@ -235,7 +235,8 @@ tar -xf /tmp/diskencrypt-source.tar -C /tmp/diskencrypt-package
     test -x packaged/usr/local/bin/diskencrypt
     test -x packaged/usr/local/lib/diskencrypt/kexec
 )
-growpart /dev/vda 3
+# First boot may already have expanded the partition (growpart exits 1).
+growpart /dev/vda 3 || test "$?" -eq 1
 partprobe /dev/vda
 btrfs filesystem resize max /run/archiso/data
 mkdir -p /mnt/diskencrypt-test

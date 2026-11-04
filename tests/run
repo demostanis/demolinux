@@ -167,6 +167,10 @@ fi
 # One connection and one stream instead of an scp handshake for every test.
 tar -C tests -cf - -- "${selected[@]}" utils | ./dctrl shell 'mkdir -p /tmp/tests && tar -xf - -C /tmp/tests' || die 'Could not transfer tests.'
 
+if [[ " ${selected[*]} " == *" opencode "* && -n "${OPENCODE_GO_API_KEY:-}" ]]; then
+	printf '%s' "$OPENCODE_GO_API_KEY" | ./dctrl shell 'umask 077; cat > /tmp/opencode-go-api-key' || die 'Could not transfer Go credential.'
+fi
+
 ./dctrl shell <<'EOC' || die
 
 export DISPLAY=:0

@@ -4,7 +4,7 @@ prompt="write ONLY yes if you are working correctly"
 
 run_model() {
 	local result=0
-	timeout 20 opencode run --format json -m "opencode/$1" "$prompt" \
+	timeout 20 opencode run --format json -m "$1" "$prompt" \
 		</dev/null >"/tmp/opencode-$2.jsonl" || result=$?
 	jq -Rj 'fromjson? | select(.type? == "text") | .part.text? | strings' \
 		"/tmp/opencode-$2.jsonl" || result=$?
@@ -12,33 +12,42 @@ run_model() {
 	return "$result"
 }
 
-model=big-pickle
+model=opencode/big-pickle
 out=$(run_model "$model" primary) || :
 
 if ! grep -q yes <<<"$out"; then
+	if [ ! -s /tmp/opencode-go-api-key ]; then
+		echo 'big-pickle failed and no OpenCode Go credential is available' >&2
+		exit 1
+	fi
 	models=$(curl -fsSL --max-time 30 https://models.dev/api.json | jq -r '
-		.opencode.models
-		| to_entries[]
-		| select(.key != "big-pickle")
-		| select((.value.status // "") != "deprecated")
-		| select((.value.cost.input // -1) == 0 and (.value.cost.output // -1) == 0)
-		| .key
-	' | shuf -n5)
+		."opencode-go".models
+		| to_entries
+		| map(select(
+			(.value.status // "") != "deprecated"
+			and .value.tool_call == true
+			and .value.cost.input != null and .value.cost.output != null
+		))
+		| sort_by(.value.cost.input + .value.cost.output, .value.cost.input, .key)
+		| .[:5][] | "opencode-go/" + .key
+	')
 
 	if [ -z "$models" ]; then
-		echo "could not pick a free opencode model from models.dev" >&2
+		rm -f /tmp/opencode-go-api-key
+		echo "could not pick OpenCode Go models from models.dev" >&2
 		exit 1
 	fi
 
 	while IFS= read -r model; do
-		out=$(run_model "$model" fallback) || :
+		out=$(OPENCODE_CONFIG_CONTENT='{"provider":{"opencode-go":{"options":{"apiKey":"{file:/tmp/opencode-go-api-key}"}}}}' run_model "$model" fallback) || :
 		if grep -q yes <<<"$out"; then
 			break
 		fi
 	done <<<"$models"
 fi
 
+rm -f /tmp/opencode-go-api-key
 if ! grep -q yes <<<"$out"; then
-	echo "$model in opencode didn't run" >&2
+	echo "none of the attempted OpenCode models returned yes" >&2
 	exit 1
 fi

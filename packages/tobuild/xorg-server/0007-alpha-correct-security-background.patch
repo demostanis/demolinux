@@ -1,0 +1,90 @@
+Subject: [PATCH] dix: use opaque theme color for SECURITY forced backgrounds
+
+SECURITY must replace BackgroundNone with initialized pixels for untrusted
+clients. Use the theme background #1a092d instead of the root's whitePixel
+for TrueColor and DirectColor windows, including fully opaque alpha planes.
+
+Scale each channel to the visual's masks, rather than assuming ARGB8888.
+Planes within the drawable depth outside the RGB masks are set, making alpha
+fully opaque without depending on RENDER. Indexed visuals retain whitePixel.
+Trusted behavior, access checks, forcedBG flags and mandatory clearing remain
+unchanged.
+
+--- a/dix/window.c
++++ b/dix/window.c
+@@ -147,6 +147,39 @@
+ 
+ Bool bgNoneRoot = FALSE;
+ 
++static unsigned long
++BackgroundChannel(unsigned int value, unsigned long mask)
++{
++    unsigned long unit;
++
++    if (!mask)
++        return 0;
++    unit = mask & (~mask + 1);
++    return ((CARD64) value * (mask / unit) + 127) / 255 * unit;
++}
++
++static unsigned long
++BackgroundNonePixel(WindowPtr pWin)
++{
++    VisualPtr visual;
++    unsigned long rgb, planes;
++    unsigned int depth = pWin->drawable.depth;
++
++    if (!pWin->forcedBG || pWin->drawable.class != InputOutput ||
++        depth == 0 || depth > 32)
++        return pWin->drawable.pScreen->whitePixel;
++    visual = WindowGetVisual(pWin);
++    if (!visual || (visual->class != TrueColor && visual->class != DirectColor))
++        return pWin->drawable.pScreen->whitePixel;
++
++    rgb = visual->redMask | visual->greenMask | visual->blueMask;
++    planes = 0xffffffffUL >> (32 - depth);
++    /* Set every non-RGB plane within depth, including all alpha bits. */
++    return (BackgroundChannel(0x1a, visual->redMask) |
++            BackgroundChannel(0x09, visual->greenMask) |
++            BackgroundChannel(0x2d, visual->blueMask) | (planes & ~rgb)) & planes;
++}
++
+ static unsigned char _back_lsb[4] = { 0x88, 0x22, 0x44, 0x11 };
+ static unsigned char _back_msb[4] = { 0x11, 0x44, 0x22, 0x88 };
+ 
+@@ -676,7 +709,7 @@
+     }
+     else if (pScreen->canDoBGNoneRoot && bgNoneRoot) {
+         pWin->backgroundState = XaceBackgroundNoneState(pWin);
+-        pWin->background.pixel = pScreen->whitePixel;
++        pWin->background.pixel = BackgroundNonePixel(pWin);
+         backFlag |= CWBackPixmap;
+     }
+     else {
+@@ -874,7 +907,7 @@
+     }
+ 
+     pWin->backgroundState = XaceBackgroundNoneState(pWin);
+-    pWin->background.pixel = pScreen->whitePixel;
++    pWin->background.pixel = BackgroundNonePixel(pWin);
+ 
+     pWin->borderIsPixel = pParent->borderIsPixel;
+     pWin->border = pParent->border;
+@@ -1131,7 +1164,7 @@
+      * None or ParentRelative restores the default background pixmap" */
+     if (bgNoneRoot) {
+         pWin->backgroundState = XaceBackgroundNoneState(pWin);
+-        pWin->background.pixel = pScreen->whitePixel;
++        pWin->background.pixel = BackgroundNonePixel(pWin);
+     }
+     else if (party_like_its_1989)
+         MakeRootTile(pWin);
+@@ -1195,7 +1228,7 @@
+                     SetRootWindowBackground(pWin, pScreen, &index2);
+                 else {
+                     pWin->backgroundState = XaceBackgroundNoneState(pWin);
+-                    pWin->background.pixel = pScreen->whitePixel;
++                    pWin->background.pixel = BackgroundNonePixel(pWin);
+                 }
+             }
+             else if (pixID == ParentRelative) {

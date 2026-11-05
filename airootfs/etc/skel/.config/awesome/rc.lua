@@ -38,17 +38,35 @@ local function is_opencode_sidewindow_host(c)
     return c.opencode_sidecar_hosted
 end
 
-local function hide_splash()
-    awful.spawn.with_shell([[
+local function reveal_desktop()
+    awful.spawn.easy_async_with_shell([[
         if [ -e ~/.feh.pid ]; then
             kill $(<~/.feh.pid)
             rm ~/.feh.pid
-            sleep 1
+        else
+            # An Awesome restart must pick up changed DPI-dependent radii.
+            pkill -x -u "$(id -u)" picom || true
+            attempts=0
+            while pgrep -x -u "$(id -u)" picom >/dev/null; do
+                attempts=$((attempts + 1))
+                [ "$attempts" -lt 100 ] || exit 1
+                sleep 0.05
+            done
+            picom-wrapper --daemon
         fi
-        # current picom is loading ~/.config/picom/picom.splash.conf,
-        # kill it so autospawn loads ~/.config/picom/picom.conf
-        pkill picom
-    ]])
+    ]], function(_, err, _, code)
+        if code ~= 0 then
+            gears.debug.print_warning("Desktop compositor startup failed: " .. err)
+        end
+        delayed(function()
+            for s in screen do
+                s.mywibar.visible = true
+                s.mydock.visible = true
+                s.mywibar.ontop = true
+                s.mydock.ontop = true
+            end
+        end, 0.6)
+    end)
 end
 
 local c = 0
@@ -74,18 +92,20 @@ awful.screen.connect_for_each_screen(function(s)
 
     if c == screen.count() then
         -- Hide the boot splash when last screen is ready
-        hide_splash()
-        delayed(function()
-            s.mywibar.visible = true
-            s.mydock.visible = true
-            s.mywibar.ontop = true
-            s.mydock.ontop = true
-        end, 2)
+        gears.timer.delayed_call(reveal_desktop)
         print("awesomeWM started!")
     end
 end)
 
 client.connect_signal("manage", function(c)
+    -- Preserve feh's screen-sized boot replica instead of adding it to the layout.
+    if c.class == "splash" then
+        c.floating = true
+        c.ontop = true
+        c.skip_taskbar = true
+        return
+    end
+
     if not c.icon and not c.transient_for then
         -- default icon
         local icon = gears.surface(beautiful.default_icon)._native
@@ -161,11 +181,15 @@ awful.rules.rules = {{
      }
 },
 {
-    rule_any = {class = "splash"}},
+    rule_any = {class = {"splash"}},
     properties = {
         ontop = true,
-        fullscreen = true
+        floating = true,
+        skip_taskbar = true,
+        titlebars_enabled = false,
+        focus = false
     }
+}
 }
 
 client.connect_signal("request::titlebars", function(c)

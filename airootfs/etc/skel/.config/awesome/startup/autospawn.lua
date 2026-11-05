@@ -7,16 +7,6 @@ autospawn("flameshot")
 
 autospawn("kdeconnectd")
 
--- We need a small timeout because
--- Picom acts weird on first start.
-gears.timer{
-    timeout = 0.5,
-    callback = function()
-        autospawn("picom-wrapper")
-    end,
-    single_shot = true
-}:start()
-
 autospawn("scc-daemon ~/.config/scc/profiles/default.sccprofile start")
 
 --autospawn("/usr/lib/xrandr.sh")

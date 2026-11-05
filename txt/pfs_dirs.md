@@ -3,6 +3,7 @@ Things useful to move to persistfs:
 /home/demostanis/.android (adb)
 /home/demostanis/.config/gh
 /home/demostanis/.config/kdeconnect
+/home/demostanis/.config/.global-dpi
 /home/demostanis/.gitidentity
 /home/demostanis/.local/share/agentgraph/nodes
 /home/demostanis/.local/share/opencode (/auth.json if no conversation history)

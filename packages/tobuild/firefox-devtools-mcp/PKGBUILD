@@ -1,13 +1,15 @@
 pkgname=firefox-devtools-mcp
 pkgver=0.7.4
-pkgrel=13
+pkgrel=14
+# Upstream removed the 0.7.4 tag; retain its original source revision.
+_commit=71752929703c548779947165f83cb4b8f828db83
 pkgdesc="Model Context Protocol (MCP) server for Firefox DevTools automation"
 arch=('any')
 url="https://github.com/freema/firefox-devtools-mcp"
 license=('MIT')
 depends=('nodejs' 'firefox' 'geckodriver')
 makedepends=('npm')
-source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/$pkgver.tar.gz"
+source=("$pkgname-$_commit.tar.gz::$url/archive/$_commit.tar.gz"
         "do-not-copy-lock-file-when-launching-selenium.patch"
         "stream-and-compress-selenium-profile.patch"
         "enable-evaluate-script.patch"
@@ -20,7 +22,7 @@ source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/$pkgver.tar.gz"
         "support-named-firefox-instances.patch"
         "capture-named-firefox-sidewindows.patch"
         "use-local-profile-copies.patch")
-sha256sums=('50507454043ee1c214aea7adb084915dbbd6d675c93c03f53adccc2531f52fc7'
+sha256sums=('b856ce1b9eff979e15e8d267e58b9ba177098ccc05a4f536b0512572bb2c48d1'
             '1f9591626c7d0fbce296f7b58693c41c2f960e0dc8dbdd8ded008b67520600a1'
             '98d5ab625a2dc593bb21ca4535f04d61d057cea3e3b38dbb05f0121d9bbb31f7'
             'ce84db60c3da781f958ae0d446d4986a401384b79de83311875c7ab144a8bc95'
@@ -35,7 +37,7 @@ sha256sums=('50507454043ee1c214aea7adb084915dbbd6d675c93c03f53adccc2531f52fc7'
               'ac53e768141721619b5b40acf32654aa8fb1a9c14f3b88e4fa01a8bfa958111d')
 
 prepare() {
-  cd "$pkgname-$pkgver"
+  cd "$pkgname-$_commit"
   npm install
   patch -p2 -i "$srcdir/do-not-copy-lock-file-when-launching-selenium.patch"
   patch -p2 -i "$srcdir/stream-and-compress-selenium-profile.patch"
@@ -52,14 +54,14 @@ prepare() {
 }
 
 build() {
-  cd "$pkgname-$pkgver"
+  cd "$pkgname-$_commit"
   npm run build
   # Prune as the build user; npm can deadlock under fakeroot.
   npm prune --omit=dev
 }
 
 package() {
-  cd "$pkgname-$pkgver"
+  cd "$pkgname-$_commit"
   
   local _node_dir="/usr/lib/node_modules/$pkgname"
   

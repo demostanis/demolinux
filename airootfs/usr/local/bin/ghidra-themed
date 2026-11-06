@@ -4,7 +4,9 @@ import getpass
 import os
 from pathlib import Path
 import re
+import subprocess
 import sys
+import tempfile
 
 
 THEME = Path("/usr/local/share/ghidra/cute.theme")
@@ -39,10 +41,31 @@ def configure(installation, home, config_home=None):
     preferences.write_text(content)
 
 
+def create_project(installation):
+    directory = Path(tempfile.mkdtemp(prefix="ghidra-", dir="/tmp"))
+    log = directory / "create-project.log"
+    with log.open("w") as output:
+        result = subprocess.run(
+            [str(installation / "support/analyzeHeadless"), str(directory), "scratch",
+             "-scriptPath", str(THEME.parent), "-preScript", "InitializeProject.java"],
+            stdout=output, stderr=subprocess.STDOUT,
+        )
+    project = directory / "scratch.gpr"
+    if result.returncode or not project.is_file():
+        raise RuntimeError(f"Could not create temporary Ghidra project; see {log}")
+    return str(project)
+
+
 if __name__ == "__main__":
+    installation = Path("/usr/bin/ghidra").resolve().parent
     try:
-        configure(Path("/usr/bin/ghidra").resolve().parent, Path.home(),
-                  os.environ.get("XDG_CONFIG_HOME"))
+        configure(installation, Path.home(), os.environ.get("XDG_CONFIG_HOME"))
     except (OSError, KeyError, ValueError) as error:
         print(f"Could not initialize Ghidra theme: {error}", file=sys.stderr)
-    os.execv("/usr/bin/ghidra", ["ghidra", *sys.argv[1:]])
+    arguments = sys.argv[1:]
+    if not arguments:
+        try:
+            arguments = [create_project(installation)]
+        except (OSError, RuntimeError) as error:
+            sys.exit(str(error))
+    os.execv("/usr/bin/ghidra", ["ghidra", *arguments])

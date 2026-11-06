@@ -1,0 +1,407 @@
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -24,6 +24,8 @@
+ #include <QSharedMemory>
+ #include <QTimer>
+ #include <QTranslator>
++#include <cstdio>
++#include <cstring>
+ #if defined(Q_OS_LINUX) || defined(Q_OS_UNIX)
+ #include "abstractlogger.h"
+ #include "src/core/flameshotdbusadapter.h"
+@@ -87,6 +89,10 @@
+ 
+ int main(int argc, char* argv[])
+ {
++    if (argc == 2 && std::strcmp(argv[1], "--external-actions-version") == 0) {
++        std::fputs("1", stdout);
++        return 0;
++    }
+ #ifdef Q_OS_LINUX
+     wayland_hacks();
+ #endif
+--- a/src/utils/CMakeLists.txt
++++ b/src/utils/CMakeLists.txt
+@@ -1,7 +1,8 @@
+ # Required to generate MOC
+ target_sources(
+   flameshot
+-  PRIVATE abstractlogger.h
++  PRIVATE externalactions.h
++          abstractlogger.h
+           filenamehandler.h
+           screengrabber.h
+           systemnotification.h
+@@ -12,7 +13,8 @@
+ 
+ target_sources(
+   flameshot
+-  PRIVATE abstractlogger.cpp
++  PRIVATE externalactions.cpp
++          abstractlogger.cpp
+           filenamehandler.cpp
+           screengrabber.cpp
+           confighandler.cpp
+--- /dev/null
++++ b/src/utils/externalactions.h
+@@ -0,0 +1,42 @@
++// SPDX-License-Identifier: GPL-3.0-or-later
++#pragma once
++
++#include <QObject>
++#include <QProcess>
++#include <QStringList>
++#include <QTimer>
++#include <QVector>
++
++struct ExternalAction
++{
++    QString name;
++    QString program;
++    QStringList arguments;
++    QString shortcut;
++    QString icon;
++    int timeout = 60000;
++};
++
++QVector<ExternalAction> loadExternalActions();
++
++class ExternalActionRunner : public QObject
++{
++    Q_OBJECT
++public:
++    explicit ExternalActionRunner(QObject* parent = nullptr);
++    ~ExternalActionRunner() override;
++    bool start(const ExternalAction& action, const QByteArray& png);
++    bool running() const { return m_running; }
++    void cancel();
++
++signals:
++    void finished(bool success, const QString& message);
++
++private:
++    void finish(bool success, const QString& message);
++    QProcess m_process;
++    QTimer m_timer;
++    QByteArray m_png;
++    QString m_failure;
++    bool m_running = false;
++};
+--- /dev/null
++++ b/src/utils/externalactions.cpp
+@@ -0,0 +1,136 @@
++// SPDX-License-Identifier: GPL-3.0-or-later
++#include "externalactions.h"
++#include <QDebug>
++#include <QDir>
++#include <QFile>
++#include <QJsonArray>
++#include <QJsonDocument>
++#include <QJsonObject>
++
++QVector<ExternalAction> loadExternalActions()
++{
++    QString config = qEnvironmentVariable("XDG_CONFIG_HOME");
++    if (config.isEmpty() || !QDir::isAbsolutePath(config)) {
++        config = QDir::homePath() + "/.config";
++    }
++    QDir dir(config + "/flameshot/actions.d");
++    QVector<ExternalAction> result;
++    int count = 0;
++    for (const QString& file : dir.entryList({ "*.json" }, QDir::Files, QDir::Name)) {
++        if (++count > 128) {
++            break;
++        }
++        QFile input(dir.filePath(file));
++        if (!input.open(QIODevice::ReadOnly) || input.size() > 65536) {
++            qWarning() << "Cannot read external action:" << input.fileName();
++            continue;
++        }
++        const auto doc = QJsonDocument::fromJson(input.read(65537));
++        const auto obj = doc.object();
++        ExternalAction action;
++        action.name = obj.value("name").toString();
++        action.program = obj.value("program").toString();
++        action.shortcut = obj.value("shortcut").toString();
++        action.icon = obj.value("icon").toString();
++        const auto timeout = obj.value("timeout");
++        action.timeout = timeout.isUndefined() ? 60000 : timeout.toInt(-1);
++        bool valid = doc.isObject() && !action.name.trimmed().isEmpty() &&
++                     action.name.size() <= 200 && action.program.size() <= 4096 &&
++                     QDir::isAbsolutePath(action.program) &&
++                     !action.program.contains(QChar::Null) &&
++                     action.shortcut.size() <= 128 && action.icon.size() <= 256 &&
++                     (obj.value("shortcut").isUndefined() || obj.value("shortcut").isString()) &&
++                     (obj.value("icon").isUndefined() || obj.value("icon").isString()) &&
++                     action.timeout >= 1 && action.timeout <= 300000 &&
++                     (timeout.isUndefined() || (timeout.isDouble() && timeout.toDouble() == action.timeout)) &&
++                     obj.value("arguments").isArray();
++        const auto args = obj.value("arguments").toArray();
++        valid = valid && args.size() <= 128;
++        for (const auto& arg : args) {
++            valid = valid && arg.isString() && arg.toString().size() <= 4096 &&
++                    !arg.toString().contains(QChar::Null);
++            action.arguments.append(arg.toString());
++        }
++        if (valid) {
++            result.append(action);
++        } else {
++            qWarning() << "Invalid external action:" << input.fileName();
++        }
++    }
++    return result;
++}
++
++ExternalActionRunner::ExternalActionRunner(QObject* parent)
++  : QObject(parent)
++{
++    m_timer.setSingleShot(true);
++    // Never buffer script output in Qt or interpret it as UI markup.
++    m_process.setStandardOutputFile(QProcess::nullDevice());
++    m_process.setStandardErrorFile(QProcess::nullDevice());
++    connect(&m_timer, &QTimer::timeout, this, [this]() {
++        m_failure = tr("External action timed out");
++        m_process.kill();
++    });
++    connect(&m_process, &QProcess::started, this, [this]() {
++        m_process.write(m_png);
++        m_png.clear();
++        m_process.closeWriteChannel();
++    });
++    connect(&m_process, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error) {
++        if (error == QProcess::FailedToStart) {
++            finish(false, tr("Could not start external action"));
++        } else if (error == QProcess::WriteError) {
++            m_failure = tr("Could not send PNG to external action");
++            m_process.kill();
++        }
++    });
++    connect(&m_process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
++            this, [this](int code, QProcess::ExitStatus status) {
++        const bool success = m_failure.isEmpty() && status == QProcess::NormalExit && code == 0;
++        finish(success, success ? QString() : (m_failure.isEmpty()
++            ? tr("External action failed (exit %1)").arg(code) : m_failure));
++    });
++}
++
++ExternalActionRunner::~ExternalActionRunner()
++{
++    m_timer.stop();
++    m_process.disconnect(this);
++    if (m_process.state() != QProcess::NotRunning) {
++        m_process.kill();
++        m_process.waitForFinished(1000);
++    }
++}
++
++bool ExternalActionRunner::start(const ExternalAction& action, const QByteArray& png)
++{
++    if (m_running || png.isEmpty() || png.size() > 64 * 1024 * 1024 ||
++        action.timeout < 1 || action.timeout > 300000) {
++        return false;
++    }
++    m_running = true;
++    m_failure.clear();
++    m_png = png;
++    m_timer.start(action.timeout);
++    m_process.start(action.program, action.arguments, QIODevice::WriteOnly);
++    return true;
++}
++
++void ExternalActionRunner::cancel()
++{
++    if (m_running) {
++        m_failure = tr("External action cancelled");
++        m_process.kill();
++    }
++}
++
++void ExternalActionRunner::finish(bool success, const QString& message)
++{
++    if (!m_running) {
++        return;
++    }
++    m_running = false;
++    m_timer.stop();
++    m_png.clear();
++    emit finished(success, message);
++}
+--- a/src/widgets/capture/capturewidget.h
++++ b/src/widgets/capture/capturewidget.h
+@@ -36,6 +36,9 @@
+ class UpdateNotificationWidget;
+ class UtilityPanel;
+ class SidePanelWidget;
++class QToolButton;
++class ExternalActionRunner;
++struct ExternalAction;
+ 
+ class CaptureWidget : public QWidget
+ {
+@@ -110,6 +113,9 @@
+     void initSelection();
+     void initShortcuts();
+     void initButtons();
++    void initExternalActions();
++    void runExternalAction(const ExternalAction& action);
++    void showExternalActionMessage(const QString& message);
+     void initHelpMessage();
+     void updateSizeIndicator();
+     void updateCursor();
+@@ -200,4 +206,7 @@
+     // For start moving after more than X offset
+     QPoint m_startMovePos;
+     bool m_startMove;
++    QToolButton* m_externalActionsButton = nullptr;
++    QLabel* m_externalActionsStatus = nullptr;
++    ExternalActionRunner* m_externalActionRunner = nullptr;
+ };
+--- a/src/widgets/capture/capturewidget.cpp
++++ b/src/widgets/capture/capturewidget.cpp
+@@ -17,6 +17,7 @@
+ #include "src/core/qguiappcurrentscreen.h"
+ #include "src/tools/toolfactory.h"
+ #include "src/utils/colorutils.h"
++#include "src/utils/externalactions.h"
+ #include "src/utils/screengrabber.h"
+ #include "src/utils/screenshotsaver.h"
+ #include "src/utils/systemnotification.h"
+@@ -30,6 +31,10 @@
+ #include "src/widgets/panel/utilitypanel.h"
+ #include "src/widgets/updatenotificationwidget.h"
+ #include <QApplication>
++#include <QBuffer>
++#include <QMenu>
++#include <QTimer>
++#include <QToolButton>
+ #include <QDateTime>
+ #include <QDebug>
+ #include <QDesktopWidget>
+@@ -218,6 +223,7 @@
+     });
+ 
+     initPanel();
++    initExternalActions();
+ 
+     m_config.checkAndHandleError();
+     if (m_config.hasError()) {
+@@ -248,6 +254,8 @@
+ 
+ CaptureWidget::~CaptureWidget()
+ {
++    // Stop callbacks before any capture state is destroyed.
++    delete m_externalActionRunner;
+ #if defined(Q_OS_MACOS)
+     for (QWidget* widget : qApp->topLevelWidgets()) {
+         QString className(widget->metaObject()->className());
+@@ -268,6 +276,110 @@
+           pixmap(), geometry, m_context.request);
+     } else {
+         emit Flameshot::instance()->captureFailed();
++    }
++}
++
++void CaptureWidget::initExternalActions()
++{
++    const auto actions = loadExternalActions();
++    if (actions.isEmpty()) {
++        return;
++    }
++    m_externalActionRunner = new ExternalActionRunner(this);
++    m_externalActionsButton = new QToolButton(this);
++    m_externalActionsButton->setObjectName("externalActionsButton");
++    m_externalActionsButton->setText(tr("External actions"));
++    m_externalActionsButton->setPopupMode(QToolButton::InstantPopup);
++    m_externalActionsButton->setAttribute(Qt::WA_NoMousePropagation);
++    auto* menu = new QMenu(m_externalActionsButton);
++    m_externalActionsButton->setMenu(menu);
++    for (const auto& action : actions) {
++        auto* item = menu->addAction(QIcon::fromTheme(action.icon), action.name);
++        item->setShortcut(QKeySequence(action.shortcut, QKeySequence::PortableText));
++        item->setShortcutContext(Qt::WidgetWithChildrenShortcut);
++        addAction(item);
++        connect(item, &QAction::triggered, this, [this, action]() {
++            runExternalAction(action);
++        });
++    }
++    menu->addSeparator();
++    auto* cancel = menu->addAction(tr("Cancel running action"));
++    cancel->setEnabled(false);
++    connect(cancel, &QAction::triggered, m_externalActionRunner, &ExternalActionRunner::cancel);
++    connect(menu, &QMenu::aboutToShow, this, [this, menu, cancel]() {
++        for (auto* item : menu->actions()) {
++            item->setEnabled(!m_externalActionRunner->running());
++        }
++        cancel->setEnabled(m_externalActionRunner->running());
++    });
++    connect(m_externalActionRunner, &ExternalActionRunner::finished, this,
++            [this, menu, cancel](bool success, const QString& message) {
++        for (auto* item : menu->actions()) {
++            item->setEnabled(true);
++        }
++        cancel->setEnabled(false);
++        if (success) {
++            m_captureDone = true;
++            close();
++        } else {
++            showExternalActionMessage(message);
++        }
++    });
++    makeChild(m_externalActionsButton);
++    m_externalActionsButton->adjustSize();
++    m_externalActionsButton->move(
++      mapFromGlobal(QGuiAppCurrentScreen().currentScreen()->geometry().topLeft()) + QPoint(12, 12));
++    m_externalActionsButton->show();
++    m_externalActionsButton->raise();
++    m_externalActionsStatus = new QLabel(this);
++    m_externalActionsStatus->setObjectName("externalActionsStatus");
++    m_externalActionsStatus->setTextFormat(Qt::PlainText);
++    m_externalActionsStatus->setWordWrap(true);
++    m_externalActionsStatus->setMargin(8);
++    m_externalActionsStatus->setFixedWidth(qMin(420, width() - 24));
++    m_externalActionsStatus->setAutoFillBackground(true);
++    auto palette = m_externalActionsStatus->palette();
++    palette.setColor(QPalette::Window, palette.color(QPalette::ToolTipBase));
++    palette.setColor(QPalette::WindowText, palette.color(QPalette::ToolTipText));
++    m_externalActionsStatus->setPalette(palette);
++    m_externalActionsStatus->setAttribute(Qt::WA_TransparentForMouseEvents);
++    auto* statusTimer = new QTimer(m_externalActionsStatus);
++    statusTimer->setSingleShot(true);
++    connect(statusTimer, &QTimer::timeout, m_externalActionsStatus, &QLabel::hide);
++    makeChild(m_externalActionsStatus);
++    m_externalActionsStatus->move(m_externalActionsButton->pos() +
++      QPoint(0, m_externalActionsButton->height() + 4));
++    m_externalActionsStatus->hide();
++}
++
++void CaptureWidget::showExternalActionMessage(const QString& message)
++{
++    m_externalActionsStatus->setText(message);
++    m_externalActionsStatus->adjustSize();
++    m_externalActionsStatus->show();
++    m_externalActionsStatus->raise();
++    m_externalActionsStatus->findChild<QTimer*>()->start(5000);
++}
++
++void CaptureWidget::runExternalAction(const ExternalAction& action)
++{
++    if (m_externalActionRunner->running()) {
++        return;
++    }
++    if (m_context.selection.isEmpty()) {
++        showExternalActionMessage(tr("Select an area before running an external action"));
++        return;
++    }
++    commitCurrentTool();
++    drawToolsData(false);
++    QByteArray png;
++    QBuffer buffer(&png);
++    buffer.open(QIODevice::WriteOnly);
++    if (!pixmap().save(&buffer, "PNG") ||
++        !m_externalActionRunner->start(action, png)) {
++        showExternalActionMessage(tr("Could not encode PNG (maximum 64 MiB)"));
++    } else {
++        showExternalActionMessage(tr("Running external action: %1").arg(action.name));
+     }
+ }
+ 

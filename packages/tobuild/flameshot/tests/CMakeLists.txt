@@ -1,0 +1,16 @@
+cmake_minimum_required(VERSION 3.16)
+project(flameshot_external_actions_tests LANGUAGES CXX)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_CXX_STANDARD 17)
+find_package(Qt5 REQUIRED COMPONENTS Core Test)
+if(NOT EXISTS "${FLAMESHOT_SOURCE}/src/utils/externalactions.cpp")
+    message(FATAL_ERROR "Set FLAMESHOT_SOURCE to the patched Flameshot source directory")
+endif()
+enable_testing()
+add_executable(external-actions-test externalactions_test.cpp
+    "${FLAMESHOT_SOURCE}/src/utils/externalactions.cpp"
+    "${FLAMESHOT_SOURCE}/src/utils/externalactions.h")
+target_include_directories(external-actions-test PRIVATE "${FLAMESHOT_SOURCE}/src/utils")
+target_compile_definitions(external-actions-test PRIVATE HELPER="${CMAKE_CURRENT_SOURCE_DIR}/helper.py")
+target_link_libraries(external-actions-test PRIVATE Qt5::Core Qt5::Test)
+add_test(NAME external-actions COMMAND external-actions-test)

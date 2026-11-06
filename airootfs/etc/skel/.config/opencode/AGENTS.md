@@ -17,3 +17,5 @@ When you want to use subagents, think about whether the task can be split and us
 Do not use subagents for really small fixes like margin changes, text changes, etc. that you can already do yourself.
 
 If you are running in a subagent, do not use opencode run for review. Instead, tell the parent agent at the end of your task to do the review separately using its task tool or use playwright for short checks requiring a browser.
+
+Either use headless (with Xephyr if needed) or put stuff in the sidewindow, do not spawn windows in my sight if I did not ask you,

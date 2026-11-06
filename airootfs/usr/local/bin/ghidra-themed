@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+
+import getpass
+import os
+from pathlib import Path
+import re
+import sys
+
+
+THEME = Path("/usr/local/share/ghidra/cute.theme")
+
+
+def configure(installation, home, config_home=None):
+    properties = dict(
+        line.strip().split("=", 1)
+        for line in (installation / "Ghidra/application.properties").read_text().splitlines()
+        if "=" in line and not line.lstrip().startswith("#")
+    )
+    version = properties["application.version"]
+    release = properties["application.release.name"]
+    name = f"ghidra_{version}_{release}"
+    if tuple(int(part) for part in version.split(".")[:2]) < (11, 1):
+        directory = home / ".ghidra" / f".{name}"
+    else:
+        root = Path(config_home) if config_home else home / ".config"
+        app = "ghidra" if root.is_relative_to(home) else f"{getpass.getuser()}-ghidra"
+        directory = root / app / name
+    preferences = directory / "preferences"
+    content = preferences.read_text() if preferences.exists() else ""
+    selection = re.search(r"^Theme\s*[=:].*$", content, re.MULTILINE)
+    if selection and "/.ghidra/.ghidra_11.0.3_DEV/themes/cute.theme" not in selection[0]:
+        return
+    theme = f"Theme=File\\:{THEME}"
+    if selection:
+        content = content[:selection.start()] + theme + content[selection.end():]
+    else:
+        content = content.rstrip("\n") + "\n" + theme + "\n"
+    directory.mkdir(parents=True, exist_ok=True)
+    preferences.write_text(content)
+
+
+if __name__ == "__main__":
+    try:
+        configure(Path("/usr/bin/ghidra").resolve().parent, Path.home(),
+                  os.environ.get("XDG_CONFIG_HOME"))
+    except (OSError, KeyError, ValueError) as error:
+        print(f"Could not initialize Ghidra theme: {error}", file=sys.stderr)
+    os.execv("/usr/bin/ghidra", ["ghidra", *sys.argv[1:]])

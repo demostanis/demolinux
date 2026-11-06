@@ -14,4 +14,9 @@ if ! which "$exe" >/dev/null 2>&1; then
 		--title="Installing $pkgname..."
 fi
 
+if [ "$#" -gt 2 ]; then
+	shift 2
+	exec "$@"
+fi
+
 exec "$exe"

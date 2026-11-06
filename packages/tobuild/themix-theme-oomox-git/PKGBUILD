@@ -4,7 +4,7 @@
 _pkgname=themix-theme-oomox
 _reponame=oomox-gtk-theme
 pkgname="${_pkgname}-git"
-pkgver=1.12.8
+pkgver=1.12.8.r15.ga7bcc6d4
 pkgrel=1
 pkgdesc="Oomox theme plugin
  (GTK2, GTK3, Cinnamon, Metacity, Openbox, Qt5ct, Qt6ct, Unity, Xfwm) for Themix GUI designer.
@@ -13,7 +13,7 @@ arch=('x86_64' 'i686')
 url="https://github.com/themix-project/oomox-gtk-theme"
 license=('GPL3')
 source=(
-	"${_reponame}::git+https://github.com/themix-project/oomox-gtk-theme.git#commit=7108790415f2ce906cb025ae6ae566fe395f14b8"
+	"${_reponame}::git+https://github.com/themix-project/oomox-gtk-theme.git#commit=a7bcc6d4a55f7b80d18294f240f091ce77a3ab43"
 )
 md5sums=('SKIP')
 depends=(

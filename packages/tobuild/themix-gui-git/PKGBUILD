@@ -1,17 +1,17 @@
 # Maintainer: Yauhen Kirylau <actionless DOT loveless PLUS aur AT gmail MF com>
-# Upstream URL: https://github.com/themix-project/oomox
+# Upstream URL: https://github.com/themix-project/themix-gui
 
 pkgname=themix-gui-git
-pkgver=1.15.1.r230.g948fde31
+pkgver=1.15.1.r320.ge733949a
 pkgrel=1
 pkgdesc="Plugin-based theme designer GUI for
  environments (like GTK2, GTK3, Cinnamon, GNOME, MATE, Openbox, Xfwm),
  icons and terminal palettes."
 arch=('x86_64' 'i686')
-url="https://github.com/themix-project/oomox"
+url="https://github.com/themix-project/themix-gui"
 license=('GPL3')
 source=(
-	"git+https://github.com/themix-project/oomox.git#commit=948fde318989533ef93fe442679d7af88f548e2d"
+	"oomox::git+https://github.com/themix-project/themix-gui.git#commit=e733949a267abb3ac4629a31366ecc9afc726d8c"
 )
 md5sums=('SKIP')
 depends=(
@@ -21,6 +21,7 @@ depends=(
 )
 makedepends=(
 	'git'
+	'gettext'
 )
 optdepends=(
 	'themix-import-images: Import palettes from images'

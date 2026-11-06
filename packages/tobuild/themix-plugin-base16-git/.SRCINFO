@@ -1,6 +1,6 @@
 pkgbase = themix-plugin-base16-git
 	pkgdesc = Import and export plugin for Themix GUI designer to use color palettes from Base16 project
-	pkgver = 1.5.4
+	pkgver = 1.6.2.r20.ga39104d
 	pkgrel = 1
 	url = https://github.com/themix-project/themix-plugin-base16
 	arch = x86_64
@@ -15,7 +15,9 @@ pkgbase = themix-plugin-base16-git
 	conflicts = oomox
 	conflicts = oomox-git
 	options = !strip
-	source = themix-plugin-base16::git+https://github.com/themix-project/themix-plugin-base16.git#branch=master
+	source = themix-plugin-base16::git+https://github.com/themix-project/themix-plugin-base16.git#commit=a39104d3a67b97710bfb3b1e77e29f8048d11d71
+	source = 0001-Make-oomox-generate-dark-themes.patch
 	md5sums = SKIP
+	md5sums = 2e7a4b79411820110e7e135b689da2a2
 
 pkgname = themix-plugin-base16-git

@@ -4,14 +4,14 @@
 _pkgname=themix-plugin-base16
 _reponame=$_pkgname
 pkgname="${_pkgname}-git"
-pkgver=1.5.4.r21.g3b05d8b
+pkgver=1.6.2.r20.ga39104d
 pkgrel=1
 pkgdesc="Import and export plugin for Themix GUI designer to use color palettes from Base16 project"
 arch=('x86_64' 'i686')
 url="https://github.com/themix-project/${_reponame}"
 license=('GPL3')
 source=(
-	"${_reponame}::git+https://github.com/themix-project/${_reponame}.git#commit=54e3df27d3c90ae5911a1c3371e69be43d92a788"
+	"${_reponame}::git+https://github.com/themix-project/${_reponame}.git#commit=a39104d3a67b97710bfb3b1e77e29f8048d11d71"
 	0001-Make-oomox-generate-dark-themes.patch
 )
 md5sums=('SKIP'

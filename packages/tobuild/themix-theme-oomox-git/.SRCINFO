@@ -1,6 +1,6 @@
 pkgbase = themix-theme-oomox-git
 	pkgdesc = Oomox theme plugin (GTK2, GTK3, Cinnamon, Metacity, Openbox, Qt5ct, Qt6ct, Unity, Xfwm) for Themix GUI designer. Have a hack for HiDPI in GTK2.
-	pkgver = 1.12.4
+	pkgver = 1.12.8.r15.ga7bcc6d4
 	pkgrel = 1
 	url = https://github.com/themix-project/oomox-gtk-theme
 	arch = x86_64
@@ -11,8 +11,6 @@ pkgbase = themix-theme-oomox-git
 	depends = gtk3
 	depends = glib2
 	depends = gdk-pixbuf2
-	depends = gtk-engine-murrine
-	depends = gtk-engines
 	depends = sassc
 	depends = librsvg
 	depends = sed
@@ -25,7 +23,7 @@ pkgbase = themix-theme-oomox-git
 	conflicts = oomox
 	conflicts = oomox-git
 	options = !strip
-	source = oomox-gtk-theme::git+https://github.com/themix-project/oomox-gtk-theme.git#branch=master
+	source = oomox-gtk-theme::git+https://github.com/themix-project/oomox-gtk-theme.git#commit=a7bcc6d4a55f7b80d18294f240f091ce77a3ab43
 	md5sums = SKIP
 
 pkgname = themix-theme-oomox-git

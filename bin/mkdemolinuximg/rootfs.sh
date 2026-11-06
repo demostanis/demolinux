@@ -109,6 +109,10 @@ _make_customize_airootfs() {
     _msg_info "Generating oomox theme..."
     chmod +x "${pacstrap_dir}/usr/share/oomox/run_oomox.sh"
     eval -- env -u TMPDIR arch-chroot "${pacstrap_dir}" "/usr/share/oomox/run_oomox.sh"
+    # Apply icon overrides after pacstrap to avoid package file conflicts.
+    eval -- env -u TMPDIR arch-chroot "${pacstrap_dir}" cp -a /usr/share/oomox/icon-overrides/. /usr/share/icons/
+    eval -- env -u TMPDIR arch-chroot "${pacstrap_dir}" ln -sfn 22x22-dark/ /usr/share/icons/la-capitaine/actions/22x22
+    eval -- env -u TMPDIR arch-chroot "${pacstrap_dir}" gtk-update-icon-cache -f /usr/share/icons/la-capitaine
 
     # Copy SSH public key
     local ssh_public_key="${DEMOLINUX_SSH_KEY:-$HOME/.ssh/id_ed25519}.pub"

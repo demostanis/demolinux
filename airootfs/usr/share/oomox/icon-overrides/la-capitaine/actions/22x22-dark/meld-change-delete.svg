@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!--
+    Derived from Meld 3.24.1, meld/resources/icons/16x16/actions/meld-change-delete.png.
+    Source: https://gitlab.gnome.org/GNOME/meld/-/tree/3.24.1/meld/resources/icons
+    SPDX-License-Identifier: GPL-2.0-or-later
+    License: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+    Distributed WITHOUT ANY WARRANTY; see the GNU General Public License.
+    Modified 2026-11-06: trace the original pixel mask as SVG and use #bebebe
+    for dark comparison backgrounds, matching the muted-volume override.
+  -->
+  <path fill="#bebebe" d="M3 2h2v1H3z M11 2h2v1h-2z M2 3h4v1H2z M10 3h4v1h-4z M2 4h5v1H2z M9 4h5v1H9z M3 5h10v1H3z M4 6h8v1H4z M5 7h6v2H5z M4 9h8v1H4z M3 10h10v1H3z M2 11h5v1H2z M9 11h5v1H9z M2 12h4v1H2z M10 12h4v1h-4z M3 13h2v1H3z M11 13h2v1h-2z"/>
+</svg>

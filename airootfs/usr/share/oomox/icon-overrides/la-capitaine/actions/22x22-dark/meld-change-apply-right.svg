@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!--
+    Derived from Meld 3.24.1, meld/resources/icons/16x16/actions/meld-change-apply-right.png.
+    Source: https://gitlab.gnome.org/GNOME/meld/-/tree/3.24.1/meld/resources/icons
+    SPDX-License-Identifier: GPL-2.0-or-later
+    License: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+    Distributed WITHOUT ANY WARRANTY; see the GNU General Public License.
+    Modified 2026-11-06: trace the original pixel mask as SVG and use #bebebe
+    for dark comparison backgrounds, matching the muted-volume override.
+  -->
+  <path fill="#bebebe" d="M8 2h1v1H8z M8 3h2v1H8z M8 4h3v1H8z M8 5h4v1H8z M1 6h12v1H1z M1 7h13v2H1z M1 9h12v1H1z M8 10h4v1H8z M8 11h3v1H8z M8 12h2v1H8z M8 13h1v1H8z"/>
+</svg>

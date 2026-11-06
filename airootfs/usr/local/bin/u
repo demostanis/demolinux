@@ -1,8 +1,12 @@
 #!/bin/sh
 
-term=$(echo ${@:-'ur stupid'} | sed 's/ /+/g')
-curl -G https://urbandictionary.com/define.php -sL --data "term=$term" | \
-  xmllint --html --xpath '//*[@class="break-words meaning mb-4"]' - 2>/dev/null | \
-  head -1 | xmllint --xpath '//text()' - | tr -d \\n | \
-  sed 's/&#13;/\n/g'
-echo
+term=${*:-ur stupid}
+response=$(curl -fsSL --connect-timeout 10 --max-time 30 \
+  --get --data-urlencode "term=$term" \
+  https://api.urbandictionary.com/v0/define) || exit "$?"
+
+printf '%s\n' "$response" | jq -er '
+  .list[0].definition // error("No definition found")
+  | gsub("\\[|\\]"; "")
+  | gsub("\r\n?"; "\n")
+'

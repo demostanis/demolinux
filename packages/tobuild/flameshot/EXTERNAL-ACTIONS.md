@@ -3,7 +3,8 @@
 ## Installer contract
 
 `flameshot --external-actions-version` exits with status 0 and writes exactly
-one byte, `2`, to stdout (no newline), with no stderr. Version 2 identifies native
+one byte, `3`, to stdout (no newline), with no stderr. Version 3 loads absolute
+icon file paths directly, independently of the icon theme. Version 2 introduced native
 toolbar icons; version 1 was the superseded floating menu. This sole-argument probe
 runs at the beginning of `main`, before any Qt application, display, desktop
 detection, single-instance mechanism, or DBus initialization. It works headless,

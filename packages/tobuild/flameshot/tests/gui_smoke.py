@@ -36,7 +36,7 @@ headless.update(
 probe = subprocess.run(
     [binary, "--external-actions-version"], env=headless, capture_output=True, timeout=3
 )
-assert (probe.returncode, probe.stdout, probe.stderr) == (0, b"2", b""), probe
+assert (probe.returncode, probe.stdout, probe.stderr) == (0, b"3", b""), probe
 
 with tempfile.TemporaryDirectory(prefix="flameshot-gui-test-") as scratch:
     root = Path(scratch)
@@ -95,6 +95,10 @@ with tempfile.TemporaryDirectory(prefix="flameshot-gui-test-") as scratch:
         check=True,
     )
     helper = Path(__file__).with_name("helper.py").resolve()
+    icon_file = root / "custom icon.svg"
+    icon_file.write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect x="8" y="8" width="16" height="16" fill="#00ffff"/></svg>'
+    )
     for name, mode, shortcut, args in (
         ("a-fail", "fail", "Ctrl+Shift+F", [str(root / "failed.txt")]),
         (
@@ -112,7 +116,7 @@ with tempfile.TemporaryDirectory(prefix="flameshot-gui-test-") as scratch:
                     "program": "/usr/bin/python3",
                     "arguments": [str(helper), mode] + args,
                     "shortcut": shortcut,
-                    "icon": "video-display",
+                    "icon": str(icon_file) if name == "b-send" else "video-display",
                     "timeout": 60000,
                 }
             )
@@ -216,6 +220,14 @@ with tempfile.TemporaryDirectory(prefix="flameshot-gui-test-") as scratch:
         extra = int(os.environ.get("FLAMESHOT_TEST_BUTTONS", "") == "0, 24")
         centers = toolbar_centers(355)
         assert len(centers) == 3 + extra, centers
+        toolbar_image = Image.open(root / "toolbar-355.png").convert("RGB")
+        icon_x, icon_y = centers[extra + 1]
+        icon_crop = toolbar_image.crop(
+            (icon_x - 12, icon_y - 5, icon_x + 12, icon_y + 25)
+        )
+        assert sum(pixel == (0, 255, 255) for pixel in icon_crop.getdata()) >= 30, (
+            "Absolute SVG icon replaced by theme fallback"
+        )
         command("xdotool", "mousemove", *map(str, centers[extra + 1]))
         time.sleep(1.2)
         command("import", "-window", "root", str(root / "action-tooltip.png"))

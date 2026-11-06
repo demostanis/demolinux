@@ -497,7 +497,7 @@
 +        for (auto* other : m_externalActionButtons) {
 +            other->setEnabled(other == button);
 +        }
-+        button->setActionPresentation(style()->standardIcon(QStyle::SP_DialogCancelButton),
++        button->setActionPresentation(QIcon(QStringLiteral(":/img/material/white/close.svg")),
 +          tr("Cancel %1").arg(button->toolTip()));
 +        showExternalActionMessage(tr("Running external action: %1 (click its icon to cancel)").arg(action.name));
      }

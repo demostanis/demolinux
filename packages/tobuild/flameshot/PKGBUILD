@@ -4,7 +4,7 @@
 
 pkgname=flameshot
 pkgver=12.1.0
-pkgrel=6
+pkgrel=7
 pkgdesc="Powerful yet simple to use screenshot software"
 arch=('x86_64')
 url="https://github.com/flameshot-org/flameshot"
@@ -22,7 +22,7 @@ source=("${pkgname}-v${pkgver}.tar.gz::${url}/archive/v${pkgver}.tar.gz"
 	EXTERNAL-ACTIONS.md)
 sha256sums=('c82c05d554e7a6d810aca8417ca12b21e4f74864455ab4ac94602668f85ac22a'
             '1287ed7955924f158af5dfdcde7739447811da60723c851c445c1ce98bebb785'
-            '5641d6a6ed9167adb1dc7b10135204be1a4af890fddd385a5f5febaa5f0889a2'
+            '22347fc20e66d48d1037e0a18f783678579d068cf15ab63c8e1531bef3418f63'
             'f076c089aee2aba1652b6d54c79b47989242d4226b6a1123c7c99a6c4ab636d1')
 
 prepare() {

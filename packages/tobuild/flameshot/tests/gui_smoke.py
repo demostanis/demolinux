@@ -262,6 +262,17 @@ with tempfile.TemporaryDirectory(prefix="flameshot-gui-test-") as scratch:
         wait_until(lambda: (root / "pid").exists())
         pid = int((root / "pid").read_text())
         centers = toolbar_centers(500)
+        cancel_x, cancel_y = centers[extra + 2]
+        cancel_image = Image.open(root / "toolbar-500.png").convert("RGB")
+        cancel_colors = cancel_image.crop(
+            (cancel_x - 12, cancel_y - 5, cancel_x + 12, cancel_y + 25)
+        ).getcolors(720)
+        assert (
+            sum(count for count, (r, g, b) in cancel_colors if min(r, g, b) > 220) >= 25
+        ), "Cancel cross is not white"
+        assert not any(
+            r > 180 and g < 100 and b < 100 for _, (r, g, b) in cancel_colors
+        ), "System red cancel icon leaked into toolbar"
         click(*centers[extra + 2])
 
         def child_gone():

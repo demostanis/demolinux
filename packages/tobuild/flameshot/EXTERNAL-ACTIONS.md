@@ -1,9 +1,10 @@
-# External script actions (DemoLinux Flameshot 12.1.0-4)
+# External script actions (DemoLinux Flameshot 12.1.0-5)
 
 ## Installer contract
 
 `flameshot --external-actions-version` exits with status 0 and writes exactly
-one byte, `1`, to stdout (no newline), with no stderr. This sole-argument probe
+one byte, `2`, to stdout (no newline), with no stderr. Version 2 identifies native
+toolbar icons; version 1 was the superseded floating menu. This sole-argument probe
 runs at the beginning of `main`, before any Qt application, display, desktop
 detection, single-instance mechanism, or DBus initialization. It works headless,
 including when `QT_QPA_PLATFORM` is invalid. An unpatched Flameshot does not
@@ -49,18 +50,22 @@ An absent/empty directory leaves Flameshot's original UI unchanged.
 
 ## Capture UI
 
-When valid actions exist, a separate **External actions** menu button appears
-12 logical pixels from the upper-left of the current capture screen. This is
-deliberately independent of Flameshot's configurable normal toolbar. An existing
-custom `buttons` setting, even an empty toolbar, does not hide these actions; the
-installer must not rewrite Qt INI toolbar serialization.
+Each valid action has its own circular icon in Flameshot's normal capture toolbar
+around the selection, with its name and shortcut in the tooltip. Icons follow
+JSON filename order and use the configured theme icon (a visible arrow fallback
+is used if missing). There is no floating External actions menu.
 
-The menu contains one item per action, including its theme icon and shortcut.
-Each configured shortcut also activates its action while the capture is active,
-without opening the menu. Menu order follows JSON filenames. Select a nonempty
-capture area first: triggering an action without one shows an explanation and
-does not launch anything. No action runs on capture creation, configuration load,
-annotation changes, or ordinary save/copy operations.
+The buttons are dynamic `CaptureToolButton` instances passed to the same
+`ButtonHandler` vector as the built-in tools: selection-relative placement,
+hiding/showing and inside-selection layout apply to both. They are appended after
+the user's chosen native tools, including when that list is empty. No finite
+action enum slots or serialized toolbar IDs are allocated. Retired DemoLinux TV
+button ID 24 is ignored on read without rewriting the config or hiding actions.
+
+Each configured shortcut also activates its action while the capture is active.
+Select a nonempty capture area first: triggering an action without one shows an
+explanation and does not launch anything. No action runs on capture creation,
+configuration load, annotation changes, or ordinary save/copy operations.
 
 The script receives a PNG of the selected capture **including annotations**, but
 without selection handles, tool preview/selection outlines, menus, or status UI.
@@ -69,14 +74,17 @@ the process's stdin, followed by EOF; there is no screenshot filename argument
 or temporary screenshot file. PNG input is limited to 64 MiB per invocation.
 
 Only one external action runs per capture at a time. Other action invocations
-are ignored while busy. A plain-text status below the button reports progress
+are ignored while busy, except that repeating the running action cancels it.
+Other action icons are disabled. A mouse-transparent plain-text status at the
+upper-left reports progress
 and failure. The status is mouse-transparent and disappears after five seconds,
 so it cannot block selection or editing after a failure. Exit 0 closes/completes the capture using Flameshot's existing
 capture-completion path. Nonzero exit, a crash, failure to start, input write
 failure, timeout, or cancellation leaves the capture open for retry or editing.
 
-Use **External actions > Cancel running action** to kill the direct child and
-keep editing. Closing the capture (normally Escape) also kills/reaps that child.
+The running action icon becomes **Cancel <action name>**. Click it again (or
+repeat its shortcut) to kill the direct child and keep editing. Its original
+icon/tooltip and all action buttons are restored after failure or cancellation. Closing the capture (normally Escape) also kills/reaps that child.
 QObject connections are disconnected before capture state is destroyed, so late
 process events cannot access a destroyed capture. The deadline starts when the
 action is requested, including process startup. stdout and stderr are redirected
@@ -120,15 +128,30 @@ processes, reuse after failure, 16 MiB of discarded output, deadlines,
 cancellation, destruction/reaping, and input bounds.
 
 For actual capture integration, install Xvfb, xdotool, xsetroot, ImageMagick,
-xorg-xwininfo, and Python Pillow, then run:
+xorg-xwininfo, Python Pillow, a C++ compiler, pkg-config and Qt5Core headers, then run:
 
 ```sh
 dbus-run-session -- python3 tests/gui_smoke.py /tmp/flameshot-build/src/flameshot
 ```
 
 This uses its own Xvfb and session bus, never the user's desktop. It checks the
-exact headless probe, no implicit execution, annotated selected PNG dimensions,
-actual failure/continued capture, successful menu and shortcut activation,
-availability with an empty normal toolbar, menu cancellation, and child reaping
-when the capture is closed. Failure artifacts are retained in
-the reported `/tmp/flameshot-gui-test-*-failed` directory.
+exact headless probe, no floating upper-left control, no implicit execution,
+annotated selected PNG dimensions, failure/continued capture and retry, three
+individual action icons, mouse and shortcut success, icon cancellation, and child
+reaping when the capture is closed. The toolbar list is written by the small
+`toolbar_config.cpp` helper using Flameshot's actual Qt custom metatype format,
+not a plain string that Qt would silently interpret as an empty list.
+
+Run the GUI matrix sequentially (upstream's single-instance shared memory is not
+isolated by DBus alone):
+
+```sh
+FLAMESHOT_TEST_BUTTONS=24 dbus-run-session -- python3 tests/gui_smoke.py /tmp/flameshot-build/src/flameshot
+FLAMESHOT_TEST_BUTTONS='0, 24' dbus-run-session -- python3 tests/gui_smoke.py /tmp/flameshot-build/src/flameshot
+```
+
+The default uses an empty native toolbar, `24` exercises a retired-ID-only config,
+and `0, 24` exercises a customized native pencil beside the three dynamic icons.
+Set `FLAMESHOT_TEST_ARTIFACTS=/tmp/flameshot-toolbar-evidence` to retain successful
+screenshots and config files. Failure artifacts are always retained in the
+reported `/tmp/flameshot-gui-test-*-failed` directory.

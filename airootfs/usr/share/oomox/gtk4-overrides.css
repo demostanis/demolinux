@@ -1,0 +1,27 @@
+
+/* Prefer recolorable controls over fixed dark icons from the icon theme. */
+button image {
+    -gtk-icon-style: symbolic;
+    color: inherit;
+}
+
+filechooser {
+    -gtk-icon-style: symbolic;
+}
+
+columnview > header > button > box,
+treeview.view > header > button > box {
+    color: alpha(currentColor, 0.8);
+}
+
+.toolbar button:disabled {
+    opacity: 1;
+    filter: opacity(0.65);
+}
+
+.toolbar button:disabled image {
+    color: @headerbar_fg_color;
+    opacity: 1;
+    filter: none;
+    -gtk-icon-filter: none;
+}

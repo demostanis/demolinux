@@ -7,7 +7,7 @@ When producing simple demo web apps:
 
 Never start git merges. Always prefer rebases.
 
-Avoid activating or moving X11 windows unless really necessary. Use `import` if you need to take screenshots of windows outside the viewport.
+Avoid activating or moving X11 windows unless really necessary. Use `import` if you need to take screenshots of windows outside the viewport. That includes not opening windows in my view, prefer putting them in the sidewindow or spawn them headlessly. Prefer Xephyr if you need to run tools like xdotool.
 
 Do not include unnecessary taglines, eyebrow text, subheadings, numbering, redundant context labels, decorative spacing, pills, cards in generated UI.
 

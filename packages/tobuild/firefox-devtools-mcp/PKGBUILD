@@ -1,6 +1,6 @@
 pkgname=firefox-devtools-mcp
 pkgver=0.7.4
-pkgrel=14
+pkgrel=15
 # Upstream removed the 0.7.4 tag; retain its original source revision.
 _commit=71752929703c548779947165f83cb4b8f828db83
 pkgdesc="Model Context Protocol (MCP) server for Firefox DevTools automation"
@@ -21,7 +21,8 @@ source=("$pkgname-$_commit.tar.gz::$url/archive/$_commit.tar.gz"
         "start-on-about-blank.patch"
         "support-named-firefox-instances.patch"
         "capture-named-firefox-sidewindows.patch"
-        "use-local-profile-copies.patch")
+        "use-local-profile-copies.patch"
+        "normalize-snapshot-dom-properties.patch")
 sha256sums=('b856ce1b9eff979e15e8d267e58b9ba177098ccc05a4f536b0512572bb2c48d1'
             '1f9591626c7d0fbce296f7b58693c41c2f960e0dc8dbdd8ded008b67520600a1'
             '98d5ab625a2dc593bb21ca4535f04d61d057cea3e3b38dbb05f0121d9bbb31f7'
@@ -34,7 +35,8 @@ sha256sums=('b856ce1b9eff979e15e8d267e58b9ba177098ccc05a4f536b0512572bb2c48d1'
               'fa8bce768b296cdf987e141cb393ec6eb5e84b652e876da29aed60b880502850'
               '4fd91103ea8fec949a5d1adc313b0ba6425f7e862ca0b431c9b5dc041fc8cfda'
               '56e0b0ec92b4dde05f93467819a1c86c4eb61be071d02f5af009cc88d4a5353b'
-              'ac53e768141721619b5b40acf32654aa8fb1a9c14f3b88e4fa01a8bfa958111d')
+               'ac53e768141721619b5b40acf32654aa8fb1a9c14f3b88e4fa01a8bfa958111d'
+               'cf2daed22e92f05ba587c766deff39cbdb3c155c92cd1c4962eb00feb09a3f9a')
 
 prepare() {
   cd "$pkgname-$_commit"
@@ -51,6 +53,7 @@ prepare() {
   patch -p2 -i "$srcdir/support-named-firefox-instances.patch"
   patch -p2 -i "$srcdir/capture-named-firefox-sidewindows.patch"
   patch -p2 -i "$srcdir/use-local-profile-copies.patch"
+  patch -p2 -i "$srcdir/normalize-snapshot-dom-properties.patch"
 }
 
 build() {

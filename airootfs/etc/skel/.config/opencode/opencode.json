@@ -26,10 +26,10 @@
       "model": "openai/gpt-6.1-terra-fast"
     },
     "general": {
-      "model": "openai/gpt-6.1-sol-ultrafast"
+      "model": "openai/gpt-6.2-sol-fast"
     },
     "review": {
-      "model": "openai/gpt-6-astra",
+      "model": "openai/gpt-6.2-astra",
       "reasoningEffort": "high",
       "mode": "subagent",
       "description": "Review code changes for bugs, regressions, security issues, and missing tests without modifying files.",

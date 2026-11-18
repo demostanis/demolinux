@@ -18,6 +18,11 @@ are not supported.
 - `update-deps-lock`: explicitly refresh pinned AUR, Neovim, and Zsh commits.
 
 The shell modules are sourced by `build`, not executed independently.
+When a build finds a new AUR, Neovim, or Zsh source in the profile manifests,
+it resolves only the missing Git commits and appends them to `deps.lock`.
+Commit the resulting lockfile change with the manifest. A fully pinned build
+does not query remote heads during lock validation. Use `update-deps-lock`
+only when you intend to refresh all pins.
 `profiledef.sh` sets `image_id`, `image_version`, package configuration,
 SSH access, data directories, and file permissions.
 

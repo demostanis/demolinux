@@ -31,3 +31,26 @@ _run_once() {
 _parse_file() {
     sed '/^[[:blank:]]*#.*/d;s/[[:blank:]]\?#.*//;/^[[:blank:]]*$/d' "$1"
 }
+
+_resolve_source_commit() {
+    local kind=$1 source=$2 url response commit
+    if [[ $kind == aur ]]; then
+        url="https://aur.archlinux.org/${source}.git"
+    elif [[ $source == https://* ]]; then
+        url=$source
+    else
+        url="https://github.com/${source}"
+    fi
+    if ! response=$(git ls-remote "$url" HEAD); then
+        if [[ $kind != aur ]] || ! response=$(git ls-remote https://github.com/archlinux/aur.git "refs/heads/$source"); then
+            printf 'Failed to query %s source %s.\n' "$kind" "$source" >&2
+            return 1
+        fi
+    fi
+    read -r commit _ <<< "$response"
+    if [[ ! $commit =~ ^[0-9a-f]{40}$ ]]; then
+        printf 'No commit found for %s source %s.\n' "$kind" "$source" >&2
+        return 1
+    fi
+    printf '%s\n' "$commit"
+}

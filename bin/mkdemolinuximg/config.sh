@@ -79,18 +79,27 @@ _validate_packages() {
 }
 
 _validate_deps_lock() {
+    # Lock the directory: replacing deps.lock changes its inode.
+    { flock -x 9 && _load_deps_lock; } 9< "$(dirname -- "$deps_lock")"
+}
+
+_load_deps_lock() {
     local line kind source commit extra key
     local -A expected_commits=()
+    local -a entries=() additions=()
 
     locked_commits=()
     for source in "${aur_pkg_list[@]}"; do
-        expected_commits["aur:${source}"]=1
+        entries+=("aur:${source}")
     done
     for source in "${nvim_pkg_list[@]}"; do
-        expected_commits["nvim:${source}"]=1
+        entries+=("nvim:${source}")
     done
     for source in "${zsh_pkg_list[@]}"; do
-        expected_commits["zsh:${source}"]=1
+        entries+=("zsh:${source}")
+    done
+    for key in "${entries[@]}"; do
+        expected_commits[$key]=1
     done
 
     if [[ ! -e "$deps_lock" ]]; then
@@ -99,7 +108,7 @@ _validate_deps_lock() {
         return
     fi
 
-    while IFS= read -r line; do
+    while IFS= read -r line || [[ -n $line ]]; do
         kind=""
         source=""
         commit=""
@@ -126,12 +135,32 @@ _validate_deps_lock() {
         fi
     done < <(_parse_file "$deps_lock")
 
-    for key in "${!expected_commits[@]}"; do
+    (( validation_error == 0 )) || return 0
+    for key in "${entries[@]}"; do
         if [[ -z "${locked_commits[$key]-}" ]]; then
-            (( validation_error=validation_error+1 ))
-            _msg_error "dependency lock has no entry for ${key%%:*} source '${key#*:}'." 0
+            kind=${key%%:*}
+            source=${key#*:}
+            if ! commit=$(_resolve_source_commit "$kind" "$source"); then
+                (( validation_error+=1 ))
+                return 0
+            fi
+            additions+=("$kind $source $commit")
+            locked_commits[$key]=$commit
         fi
     done
+    if (( ${#additions[@]} )); then
+        (
+            tmp=$(mktemp -- "${deps_lock}.tmp.XXXXXX")
+            trap 'rm -f -- "$tmp"' EXIT
+            cp --preserve=mode,ownership -- "$deps_lock" "$tmp"
+            if [[ -s $tmp && -n $(tail -c 1 -- "$tmp") ]]; then
+                printf '\n' >> "$tmp"
+            fi
+            printf '%s\n' "${additions[@]}" >> "$tmp"
+            mv -- "$tmp" "$deps_lock"
+        )
+        _msg_info "Added ${#additions[@]} new source pin(s) to ${deps_lock}."
+    fi
 }
 
 _read_profile() {

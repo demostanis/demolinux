@@ -14,9 +14,9 @@ fi
 root="$(realpath -- "$(dirname -- "$0")/../..")"
 lock_file="${root}/deps.lock"
 jobs="${DEPS_LOCK_JOBS:-8}"
-git_dir="$(git -C "$root" rev-parse --absolute-git-dir)"
+source "${root}/bin/mkdemolinuximg/common.sh"
 
-exec {update_lock_fd}> "${git_dir}/deps-lock.update.lock"
+exec {update_lock_fd}< "$root"
 if ! flock -n "$update_lock_fd"; then
     printf 'Another dependency lock update is already running.\n' >&2
     exit 1
@@ -27,13 +27,8 @@ if [[ ! "$jobs" =~ ^[1-9][0-9]*$ ]]; then
     exit 1
 fi
 
-_parse_file() {
-    sed '/^[[:blank:]]*#.*/d;s/[[:blank:]]\?#.*//;/^[[:blank:]]*$/d' "$1"
-}
-
 declare -a kinds=()
 declare -a sources=()
-declare -a urls=()
 declare -a pids=()
 declare -A seen=()
 
@@ -47,7 +42,6 @@ _add_dependency() {
     seen["$key"]=1
     kinds+=("$1")
     sources+=("$2")
-    urls+=("$3")
 }
 
 for manifest in available_packages nvim_packages zsh_plugins; do
@@ -61,49 +55,26 @@ available_packages="$(_parse_file "${root}/available_packages")"
 while IFS= read -r source; do
     [[ "$source" == aur\ * ]] || continue
     source="${source#aur }"
-    _add_dependency aur "$source" "https://aur.archlinux.org/${source}.git"
+    _add_dependency aur "$source"
 done <<< "$available_packages"
 
 nvim_packages="$(_parse_file "${root}/nvim_packages")"
 while IFS= read -r source; do
-    url="$source"
-    [[ "$source" == https://* ]] || url="https://github.com/${source}"
-    _add_dependency nvim "$source" "$url"
+    _add_dependency nvim "$source"
 done <<< "$nvim_packages"
 
 zsh_plugins="$(_parse_file "${root}/zsh_plugins")"
 while IFS= read -r source; do
-    url="$source"
-    [[ "$source" == https://* ]] || url="https://github.com/${source}"
-    _add_dependency zsh "$source" "$url"
+    _add_dependency zsh "$source"
 done <<< "$zsh_plugins"
 
 result_dir="$(mktemp -d)"
 output="$(mktemp "${lock_file}.tmp.XXXXXX")"
 trap 'rm -rf -- "$result_dir"; rm -f -- "$output"' EXIT
 
-_resolve_commit() {
-    local index="$1"
-    local response commit
-
-    if ! response="$(git ls-remote "${urls[$index]}" HEAD)"; then
-        if [[ "${kinds[$index]}" != "aur" ]] || \
-            ! response="$(git ls-remote https://github.com/archlinux/aur.git "refs/heads/${sources[$index]}")"; then
-            printf 'Failed to query %s source %s.\n' "${kinds[$index]}" "${sources[$index]}" >&2
-            return 1
-        fi
-    fi
-    read -r commit _ <<< "$response"
-    if [[ ! "$commit" =~ ^[0-9a-f]{40}$ ]]; then
-        printf 'No commit found for %s source %s.\n' "${kinds[$index]}" "${sources[$index]}" >&2
-        return 1
-    fi
-    printf '%s\n' "$commit" > "${result_dir}/${index}"
-}
-
 failed=0
 for (( index=0; index < ${#sources[@]}; index++ )); do
-    _resolve_commit "$index" &
+    _resolve_source_commit "${kinds[$index]}" "${sources[$index]}" > "${result_dir}/${index}" &
     pids+=("$!")
     if (( ${#pids[@]} >= jobs )); then
         if ! wait "${pids[0]}"; then

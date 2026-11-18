@@ -26,7 +26,7 @@
       "model": "openai/gpt-6.1-terra-fast"
     },
     "general": {
-      "model": "openai/gpt-6.1-sol-fast"
+      "model": "openai/gpt-6.1-sol-ultrafast"
     },
     "review": {
       "model": "openai/gpt-6-astra",

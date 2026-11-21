@@ -56,4 +56,4 @@ nvim mattn/vim-goimports 66e23a2a5f76d8a18eea0258c733f23969a607a3
 # Zsh plugins
 zsh zdharma-continuum/fast-syntax-highlighting 3d574ccf48804b10dca52625df13da5edae7f553
 zsh demostanis/vi-motions e1bc8cd7e3e08ba5c95867d79994dcd8d1ed41b1
-aur gcx 8a72629abea1c5be769e3d94fb5210d8ac16364f
+aur gcx-git ced1ea2f47c26bd0963ecab41b222bb945e81239

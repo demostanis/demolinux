@@ -134,7 +134,7 @@ aur paru
 openbsd-netcat
 tinyxxd
 scaleway-cli
-aur gcx
+aur gcx-git
 mesa-utils
 poppler
 tmux

@@ -19,6 +19,7 @@ aur python-ioctl-opt 680281abe08fe634a52c8f070d5c0ca88bbfbe98
 aur python-vdf 03356b92322e040a994692229ebaf3349b21e9ac
 aur libcprime 71635be88711232e599e5133d43e13996620b32e
 aur corekeyboard 7fd8a856deb60a9a364c85bcd0003fd20d440458
+aur gcx-git ced1ea2f47c26bd0963ecab41b222bb945e81239
 
 # Neovim packages
 nvim neovim/nvim-lspconfig 3928e638fdedf195b23ae5a18f024afa487982bc
@@ -56,4 +57,3 @@ nvim mattn/vim-goimports 66e23a2a5f76d8a18eea0258c733f23969a607a3
 # Zsh plugins
 zsh zdharma-continuum/fast-syntax-highlighting 3d574ccf48804b10dca52625df13da5edae7f553
 zsh demostanis/vi-motions e1bc8cd7e3e08ba5c95867d79994dcd8d1ed41b1
-aur gcx-git ced1ea2f47c26bd0963ecab41b222bb945e81239

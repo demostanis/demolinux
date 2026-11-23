@@ -16,7 +16,7 @@ depends=('libxft' 'perl' 'startup-notification' 'rxvt-unicode-terminfo' 'gdk-pix
 optdepends=('gtk2-perl: to use the urxvt-tabbed')
 provides=(rxvt-unicode)
 conflicts=(rxvt-unicode)
-source=("http://dist.schmorp.de/rxvt-unicode/$_pkgname-$pkgver.tar.bz2"
+source=("https://dist.schmorp.de/rxvt-unicode/Attic/$_pkgname-$pkgver.tar.bz2"
 		'urxvt.desktop'
 		'urxvtc.desktop'
 		'urxvt-tabbed.desktop'

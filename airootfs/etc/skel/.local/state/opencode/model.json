@@ -2,7 +2,7 @@
   "recent": [
     {
       "providerID": "openai",
-      "modelID": "gpt-6.2-astra"
+      "modelID": "gpt-6-astra"
     }
   ],
   "favorite": [
@@ -12,7 +12,7 @@
     },
     {
       "providerID": "openai",
-      "modelID": "gpt-6.2-astra"
+      "modelID": "gpt-6-astra"
     },
     {
       "providerID": "opencode-go",

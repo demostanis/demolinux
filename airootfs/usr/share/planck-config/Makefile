@@ -7,8 +7,10 @@ compile:
 
 setup:
 	qmk setup -H ./qmk_firmware/ zsa/qmk_firmware -b firmware22
-	patch -Np1 < ./0001-do-not-turn-on-the-front-leds.patch || :
-	ln -sf "$$PWD/src" ./qmk_firmware/keyboards/planck/ez/glow/keymaps/demolinux
+	@set -e; for p in 0001-do-not-turn-on-the-front-leds.patch 0002-support-python-3.14.patch; do \
+		if ! patch --dry-run -Rfp1 < "$$p" >/dev/null; then patch -Nfp1 < "$$p"; fi; \
+	done
+	ln -sfnT "$$PWD/src" ./qmk_firmware/keyboards/planck/ez/glow/keymaps/demolinux
 
 flash:
 	wally-cli ./planck_ez_glow.bin

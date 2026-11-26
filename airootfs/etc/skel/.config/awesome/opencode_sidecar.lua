@@ -411,7 +411,6 @@ local function hosted_buttons(state)
             local raise = c.x > c.screen.geometry.width
                 - margin_window_move_on_click
                 or c.x + c.width < margin_window_move_on_click
-            client.focus = c
             c:activate({context = "mouse_click", raise = raise})
         end),
         awful.button({modkey}, 3, function()
@@ -863,35 +862,14 @@ local function attach_hosted(tab, hosted, kind, expand_on_attach, adopt)
     end
 
     hosted:connect_signal("request::activate", function(c, context)
-        if tab.hosted_client ~= c then
-            return
-        end
-        local visible = active_tab(state) == tab
-            and state.expanded and owner_is_visible(state.client)
-        if visible and sidecar.is_user_activation(context) then
+        -- The filter already rejects passive requests. Undoing one here could
+        -- take focus away from a client the user just clicked.
+        if tab.hosted_client == c and sidecar.is_user_activation(context)
+            and client_is_visible(c) then
             tab.focus_restore_generation = tab.focus_restore_generation + 1
             tab.focus_before_launch = nil
             tab.restore_focus_pending = false
-            return
         end
-        local previous = client.focus
-        gears.timer.delayed_call(function()
-            if tab.hosted_client ~= c or not is_valid(c) then
-                return
-            end
-            local still_visible = active_tab(state) == tab
-                and state.expanded and owner_is_visible(state.client)
-            if not still_visible then
-                c.hidden = true
-            end
-            if client.focus == c then
-                if client_is_visible(previous) and previous ~= c then
-                    client.focus = previous
-                elseif client_is_visible(state.client) then
-                    client.focus = state.client
-                end
-            end
-        end)
     end)
     hosted:connect_signal("unmanage", function(c)
         if tab.hosted_client == c then

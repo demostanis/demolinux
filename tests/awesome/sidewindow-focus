@@ -1,0 +1,34 @@
+#!/bin/bash
+
+owner_title='OC | sidewindow focus test'
+guest_title='sidewindow focus target'
+urxvt -geometry 60x24 -title "$owner_title" -e sleep 60 &
+expectfocus "$owner_title"
+"$HOME/.local/bin/opencode-sidewindow-api" launch --name 'Focus target' -- urxvt -title "$guest_title" \
+	-e sh -c 'IFS= read -r line && printf "\033]2;%s\007" "$line"; sleep 60'
+"$HOME/.local/bin/opencode-sidewindow-ctl" show
+guest=$(timeout 10 xdotool search --sync --onlyvisible --name "^$guest_title\$")
+
+# Process the app's activation request and any deferred focus change before checking.
+passive_activation() {
+	expectawesome "for _, c in ipairs(client.get()) do
+		if c.window == $guest and c.opencode_sidecar_hosted then
+			c:activate { context = 'ewmh', raise = true }
+			require'gears'.timer.run_delayed_calls_now()
+			return true
+		end
+	end"
+}
+
+passive_activation
+expectfocus "$owner_title"
+xdotool mousemove --window "$guest" 30 40 click 1
+expectfocus "$guest_title"
+passive_activation
+xdotool type 'sidewindow received input'
+xdotool key Return
+expectfocus 'sidewindow received input'
+
+"$HOME/.local/bin/opencode-sidewindow-api" remove 'Focus target'
+expectfocus "$owner_title"
+quitwin
